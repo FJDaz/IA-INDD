@@ -28,6 +28,16 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ---
 
+## Mission 03 — Reconstruction minimale de `insertMarkdownWithStyles` après régression non identifiée
+
+**Statut** : 🔴 À FAIRE
+
+**Fichier détaillé** : [mission_03_reconstruction_minimale.md](mission_03_reconstruction_minimale.md)
+
+**Résumé** : après 3 jours de correctifs empilés, régression réelle constatée par FJD (un fichier DeepSeek qui marchait au tout début ne marche plus, cause non identifiée malgré plusieurs cycles diagnostic/correctif). Décision actée avec FJD : arrêter de driller l'architecture actuelle, repartir d'un cas minimal (texte brut sans styles/segments/tables/listes) et réintroduire les couches une à une, avec test réel InDesign + commit git à chaque étape validée. Git initialisé en urgence le 25/09 (commit `647f691`, snapshot de l'état actuel, pas d'état de référence antérieur disponible).
+
+---
+
 ## Références du projet
 
 - **Wiki technique** : [../doc/wiki_extendscript_indesign.md](../doc/wiki_extendscript_indesign.md) — base de connaissance des pièges ExtendScript/InDesign (22 cas documentés au 25/09), méthode de travail validée (simulation Node avant test réel, vérification doc officielle avant hypothèse)
