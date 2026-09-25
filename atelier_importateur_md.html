@@ -1,0 +1,327 @@
+<title>Créer un importateur MD</title>
+<meta name="description" content="Les étapes pédagogiques de l'atelier : construire un plugin InDesign qui importe du Markdown avec ses styles.">
+<style>
+  :root {
+    --bg: #faf8f5;
+    --surface: #ffffff;
+    --ink: #2a2622;
+    --ink-soft: #6b6358;
+    --line: #e6e0d6;
+    --accent: #b5502e;
+    --accent-soft: #f0e3da;
+    --code-bg: #f4f0e8;
+    --ok: #3d7a5c;
+    --warn: #b5502e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c1a17;
+      --surface: #24211d;
+      --ink: #eee8de;
+      --ink-soft: #a89c8a;
+      --line: #3a352d;
+      --accent: #e08a5f;
+      --accent-soft: #3a2a20;
+      --code-bg: #2a251e;
+      --ok: #6fb894;
+      --warn: #e08a5f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1a17;
+    --surface: #24211d;
+    --ink: #eee8de;
+    --ink-soft: #a89c8a;
+    --line: #3a352d;
+    --accent: #e08a5f;
+    --accent-soft: #3a2a20;
+    --code-bg: #2a251e;
+    --ok: #6fb894;
+    --warn: #e08a5f;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    line-height: 1.6;
+    padding: 0 16px;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding-block: 48px 80px; }
+
+  .kicker {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-family: "Fraunces", "Source Serif 4", Georgia, serif;
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    font-weight: 600;
+    line-height: 1.15;
+    text-wrap: balance;
+    margin: 0 0 8px;
+  }
+  .subtitle {
+    color: var(--ink-soft);
+    font-size: 1.05rem;
+    margin: 0 0 40px;
+    max-width: 60ch;
+  }
+
+  .intro {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 48px;
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+  }
+  .intro strong { color: var(--ink); }
+
+  .steps { display: flex; flex-direction: column; gap: 0; }
+  .step {
+    position: relative;
+    padding: 28px 0 28px 56px;
+    border-bottom: 1px solid var(--line);
+  }
+  .step:last-child { border-bottom: none; }
+  .step::before {
+    content: attr(data-n);
+    position: absolute;
+    left: 0;
+    top: 28px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .step h2 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 6px;
+    line-height: 1.3;
+  }
+  .step .tag {
+    display: inline-block;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    background: var(--code-bg);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-bottom: 10px;
+  }
+  .step p { margin: 0 0 10px; color: var(--ink); }
+  .step p:last-child { margin-bottom: 0; }
+  .step .lesson {
+    margin-top: 14px;
+    padding: 12px 16px;
+    background: var(--code-bg);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    font-size: 0.9rem;
+  }
+  .step .lesson strong {
+    display: block;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 56px 0 32px;
+    color: var(--ink-soft);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .divider::before, .divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
+  .closing {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px;
+    margin-top: 48px;
+  }
+  .closing h2 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.1rem;
+    margin: 0 0 10px;
+  }
+  .closing ul { margin: 0; padding-left: 20px; }
+  .closing li { margin-bottom: 6px; }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.88em;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Source+Serif+4:wght@400;500&family=IBM+Plex+Mono:wght@400;600&display=swap">
+
+<div class="wrap">
+  <p class="kicker">Atelier de création</p>
+  <h1>Créer un importateur Markdown pour InDesign</h1>
+  <p class="subtitle">Les étapes de notre travail, dans l'ordre où elles se sont posées — pas un tutoriel, mais le chemin réel d'une construction, avec ses détours.</p>
+
+  <div class="intro">
+    <strong>Ce qu'on construisait :</strong> un plugin InDesign (script ExtendScript) qui prend un fichier <code>.md</code>, en lit le texte, et l'insère dans une page InDesign en appliquant automatiquement les bons styles — sans que l'utilisateur ait à copier-coller et remettre en forme à la main.
+  </div>
+
+  <div class="steps">
+    <div class="step" data-n="1">
+      <span class="tag">Cadrage</span>
+      <h2>Poser la question avant d'écrire une ligne de code</h2>
+      <p>Avant tout, on a défini ce qu'on voulait exactement : importer un fichier Markdown, faire correspondre chaque élément (titre, paragraphe, liste, gras…) à un style InDesign déjà présent dans le document, et insérer le texte propre — sans les symboles <code>#</code>, <code>**</code>, <code>-</code> qui n'ont de sens qu'en Markdown.</p>
+      <div class="lesson">
+        <strong>Leçon</strong>
+        Un cahier des charges clair, même informel, évite de coder la mauvaise chose vite plutôt que la bonne chose lentement.
+      </div>
+    </div>
+
+    <div class="step" data-n="2">
+      <span class="tag">Principe directeur</span>
+      <h2>Ne jamais coder un nom de style en dur</h2>
+      <p>Décision structurante : le script ne doit connaître aucun nom de style à l'avance. Il doit toujours lire la charte de styles réellement présente dans le document ouvert, et laisser l'utilisateur faire correspondre chaque élément Markdown à un style existant.</p>
+      <div class="lesson">
+        <strong>Leçon</strong>
+        Un outil générique (qui s'adapte à n'importe quel document) est plus robuste qu'un outil qui suppose une seule charte graphique.
+      </div>
+    </div>
+
+    <div class="step" data-n="3">
+      <span class="tag">Premiers essais</span>
+      <h2>Le script plante — et c'est normal</h2>
+      <p>Les tout premiers lancements ont buté sur des erreurs de syntaxe : un mot de programmation réservé utilisé par erreur comme nom de variable, une fonction d'alerte qui n'existait pas sous cette forme. Rien de grave — ce sont les erreurs les plus faciles à corriger, parce que le logiciel les signale lui-même avec précision.</p>
+      <div class="lesson">
+        <strong>Leçon</strong>
+        Un message d'erreur n'est pas un échec, c'est une information. Le pire bug est celui qui ne dit rien.
+      </div>
+    </div>
+
+    <div class="step" data-n="4">
+      <span class="tag">Diagnostic</span>
+      <h2>Arrêter de dépendre des captures d'écran</h2>
+      <p>Montrer une capture d'écran à chaque erreur devenait lent. On a ajouté un système qui écrit chaque erreur dans un simple fichier texte, avec la date, le message, et l'endroit exact du problème — consultable directement, sans repasser par une image.</p>
+      <div class="lesson">
+        <strong>Leçon</strong>
+        Investir un peu de temps dans les outils de diagnostic (ici : un fichier journal) accélère tout ce qui vient après.
+      </div>
+    </div>
+
+    <div class="step" data-n="5">
+      <span class="tag">Bug de structure</span>
+      <h2>Les styles étaient rangés dans des dossiers</h2>
+      <p>Le dialogue de configuration s'affichait, mais les listes de styles restaient vides. Cause : les styles du document étaient organisés en groupes (des dossiers, comme dans un panneau InDesign), et le script ne regardait que la surface, pas l'intérieur des dossiers. Il a fallu apprendre à "descendre" dans chaque groupe.</p>
+      <div class="lesson">
+        <strong>Leçon</strong>
+        Une liste vide n'est pas toujours une absence de données — parfois, on ne regarde simplement pas au bon endroit.
+      </div>
+    </div>
+
+    <div class="step" data-n="6">
+      <span class="tag">Confort d'usage</span>
+      <h2>Rendre chaque test rapide</h2>
+      <p>Pour éviter de reconfigurer manuellement à chaque essai, deux choses ont été ajoutées : une présélection automatique (par défaut, ou par convention de nommage — si un style s'appelle exactement <code>H1</code>, il est proposé pour les titres de niveau 1), et un bouton "Réinitialiser" pour repartir à zéro en un clic.</p>
+      <div class="lesson">
+        <strong>Leçon</strong>
+        Un outil qu'on doit tester dix fois par heure mérite qu'on investisse dans la rapidité du test lui-même, pas seulement dans le résultat final.
+      </div>
+    </div>
+
+    <div class="divider">Le vrai tournant de l'atelier</div>
+
+    <div class="step" data-n="7">
+      <span class="tag">Le mur</span>
+      <h2>Le texte arrive, mais dans le désordre</h2>
+      <p>À ce stade, le script fonctionnait presque : le texte s'insérait, avec les bons styles de titre et de paragraphe. Mais dès qu'un mot en gras apparaissait, tout se dérégla : des morceaux de phrase coupés au milieu, l'ordre des paragraphes mélangé. Plusieurs corrections successives ont chacune réglé un vrai problème (un caractère spécial mal compté, une méthode d'écriture non documentée) — sans faire disparaître le désordre.</p>
+      <div class="lesson">
+        <strong>Leçon</strong>
+        Corriger un symptôme réel n'est pas la même chose que trouver la cause. On peut avoir raison plusieurs fois de suite sans avoir encore trouvé le bon problème.
+      </div>
+    </div>
+
+    <div class="step" data-n="8">
+      <span class="tag">Changement de méthode</span>
+      <h2>Isoler une seule variable à la fois</h2>
+      <p>Plutôt que de tenter un quatrième correctif au hasard, on a pris une décision simple : retirer complètement le gras et l'italique, pour ne garder que le texte brut avec ses styles de titre/paragraphe. Si l'ordre redevenait correct sans le gras, la cause du problème se trouvait bien dans cette partie du code — pas ailleurs.</p>
+      <div class="lesson">
+        <strong>Leçon</strong>
+        Face à un bug qui résiste, réduire le problème à sa version la plus simple révèle souvent en une seule étape ce que dix corrections ciblées n'avaient pas trouvé.
+      </div>
+    </div>
+
+    <div class="step" data-n="9">
+      <span class="tag">Vérification</span>
+      <h2>Tester en dehors d'InDesign avant de tester dans InDesign</h2>
+      <p>Pour ne plus multiplier les allers-retours "je corrige → tu testes → ça casse encore", une partie de la logique (la lecture du fichier Markdown, le découpage en blocs) a été reproduite dans un simple script indépendant, exécutable sans même ouvrir InDesign. Cela permet de vérifier un raisonnement avant de faire perdre du temps à un test réel.</p>
+      <div class="lesson">
+        <strong>Leçon</strong>
+        Tout ce qui peut être vérifié sans l'outil final doit l'être — cela rend chaque vrai test plus fiable et plus rare.
+      </div>
+    </div>
+
+    <div class="step" data-n="10">
+      <span class="tag">Reprise en confiance</span>
+      <h2>Réintroduire les fonctionnalités une par une</h2>
+      <p>Une fois le texte brut stabilisé, on a pu réattaquer le reste dans l'ordre : d'abord réparer les espaces qui créaient des pages blanches, puis nettoyer les séparateurs Markdown parasites, puis — nouveauté — construire de vrais tableaux InDesign à partir des tableaux Markdown. Cette dernière étape, jamais tentée avant, a fonctionné du premier coup.</p>
+      <div class="lesson">
+        <strong>Leçon</strong>
+        Une base stable rend les ajouts suivants beaucoup plus faciles — et beaucoup plus rapides à obtenir juste du premier coup.
+      </div>
+    </div>
+
+    <div class="step" data-n="11">
+      <span class="tag">Capitalisation</span>
+      <h2>Écrire ce qu'on a appris, pas seulement ce qu'on a fait</h2>
+      <p>Chaque bug rencontré et sa cause réelle ont été notés dans un document de référence — pas comme un journal de bord, mais comme une base de connaissance réutilisable pour le prochain script InDesign. La méthode elle-même (comment tester, dans quel ordre, quand s'arrêter de deviner) a aussi été mise par écrit.</p>
+      <div class="lesson">
+        <strong>Leçon</strong>
+        Un savoir qui reste seulement "dans la tête" pendant l'atelier se perd. L'écrire le rend transmissible — à soi-même la prochaine fois, ou à quelqu'un d'autre.
+      </div>
+    </div>
+  </div>
+
+  <div class="closing">
+    <h2>Ce que cet atelier montre, au-delà du script</h2>
+    <ul>
+      <li>Un cahier des charges clair évite de construire la mauvaise chose rapidement.</li>
+      <li>Un message d'erreur est une information, pas un échec.</li>
+      <li>Corriger un vrai problème plusieurs fois ne garantit pas d'avoir trouvé la bonne cause.</li>
+      <li>Réduire un problème à sa forme la plus simple est souvent le raccourci le plus rapide.</li>
+      <li>Vérifier avant de tester en vrai économise du temps à tout le monde.</li>
+      <li>Ce qu'on apprend vaut la peine d'être écrit, pas seulement retenu.</li>
+    </ul>
+  </div>
+</div>

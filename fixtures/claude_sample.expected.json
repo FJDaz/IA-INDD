@@ -1,0 +1,119 @@
+[
+  {
+    "type": "h1",
+    "text": "Rapport de synthèse : Migration API v2"
+  },
+  {
+    "type": "h2",
+    "text": "Contexte"
+  },
+  {
+    "type": "p",
+    "text": "Le service actuel repose sur une architecture legacy qui présente plusieurs limites connues."
+  },
+  {
+    "type": "h3",
+    "text": "Problèmes identifiés"
+  },
+  {
+    "type": "li",
+    "text": "Latence moyenne de 340ms sur les requêtes de lecture"
+  },
+  {
+    "type": "li",
+    "text": "Absence de mise en cache au niveau applicatif"
+  },
+  {
+    "type": "li",
+    "text": "Couplage fort entre la couche de présentation et la logique métier"
+  },
+  {
+    "type": "h3",
+    "text": "Objectifs de la migration"
+  },
+  {
+    "type": "li_num",
+    "text": "Réduire la latence sous les 100ms"
+  },
+  {
+    "type": "li_num",
+    "text": "Introduire un cache Redis en amont de la base"
+  },
+  {
+    "type": "li_num",
+    "text": "Découpler les couches via une API REST versionnée"
+  },
+  {
+    "type": "h2",
+    "text": "Architecture proposée"
+  },
+  {
+    "type": "p",
+    "text": "La nouvelle architecture s'appuie sur trois composants principaux : un **gateway API**, un **service de cache**, et la **base de données** existante, conservée sans modification de schéma."
+  },
+  {
+    "type": "blockquote",
+    "text": "Ce choix de conservation du schéma existant limite le risque de régression, au prix d'une dette technique assumée sur le moyen terme."
+  },
+  {
+    "type": "h3",
+    "text": "Composants"
+  },
+  {
+    "type": "table",
+    "rows": [
+      [
+        "Composant",
+        "Rôle",
+        "Statut"
+      ],
+      [
+        "Gateway",
+        "Routage et authentification",
+        "À développer"
+      ],
+      [
+        "Cache Redis",
+        "Réduction de la latence",
+        "À déployer"
+      ],
+      [
+        "Base existante",
+        "Persistance",
+        "Inchangée"
+      ]
+    ]
+  },
+  {
+    "type": "h2",
+    "text": "Risques et mitigations"
+  },
+  {
+    "type": "p",
+    "text": "Le principal risque identifié concerne la *cohérence du cache* lors des écritures concurrentes. Une stratégie de cache invalidation par événement (plutôt que par TTL seul) est recommandée pour limiter ce risque."
+  },
+  {
+    "type": "h3",
+    "text": "Plan de test"
+  },
+  {
+    "type": "li",
+    "text": "Tests de charge sur l'environnement de pré-production"
+  },
+  {
+    "type": "li",
+    "text": "Validation de la cohérence cache/base sur 48h"
+  },
+  {
+    "type": "li",
+    "text": "Rollback automatisé en cas de dépassement du seuil d'erreur (>1%)"
+  },
+  {
+    "type": "h2",
+    "text": "Conclusion"
+  },
+  {
+    "type": "p",
+    "text": "La migration présente un rapport bénéfice/risque favorable, sous réserve d'une phase de validation rigoureuse en pré-production avant bascule."
+  }
+]

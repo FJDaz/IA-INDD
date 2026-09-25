@@ -1,0 +1,342 @@
+[
+  {
+    "type": "h1",
+    "text": "Programme de Formation : Construire ses outils InDesign avec l'IA et ExtendScript"
+  },
+  {
+    "type": "h2",
+    "text": "Informations Générales"
+  },
+  {
+    "type": "li",
+    "text": "**Public cible :** Maquettistes, graphistes, directeurs artistiques, responsables de production prépresse."
+  },
+  {
+    "type": "li",
+    "text": "**Prérequis :** Maîtrise courante d'InDesign. Aucune expérience préalable en programmation requise."
+  },
+  {
+    "type": "li",
+    "text": "**Durée recommandée :** 3 à 4 jours (21 à 28 heures)."
+  },
+  {
+    "type": "li",
+    "text": "**Stack technique IA :** OpenRouter, VS Code, DeepSeek V4 Pro (Architecte), DeepSeek V4.1 Flash (Ouvrier)."
+  },
+  {
+    "type": "li",
+    "text": "**Coût API estimé :** ~0,60 $ (~0,55 €) par stagiaire / jour."
+  },
+  {
+    "type": "h2",
+    "text": "Module 1 — Remise à niveau : Maîtriser les briques InDesign à automatiser"
+  },
+  {
+    "type": "p",
+    "text": "*Objectif : Consolider la maîtrise des fonctions avancées d'InDesign indispensables à une automatisation robuste.*"
+  },
+  {
+    "type": "h3",
+    "text": "Styles de paragraphe et de caractère avancés"
+  },
+  {
+    "type": "li",
+    "text": "Structuration rigoureuse et enchaînements de styles (*Style suivant*)."
+  },
+  {
+    "type": "li",
+    "text": "Puces et numérotations complexes."
+  },
+  {
+    "type": "h3",
+    "text": "Styles imbriqués et styles GREP"
+  },
+  {
+    "type": "li",
+    "text": "Automatisation typographique native au sein des paragraphes."
+  },
+  {
+    "type": "li",
+    "text": "Application dynamique des styles de caractère sans modifier la structure du texte."
+  },
+  {
+    "type": "h3",
+    "text": "Rechercher/Remplacer avancé & GREP"
+  },
+  {
+    "type": "li",
+    "text": "Syntaxe GREP essentielle (classes de caractères, quantificateurs, captures)."
+  },
+  {
+    "type": "li",
+    "text": "Nettoyage automatique, reformatage et restructuration du texte par expressions régulières."
+  },
+  {
+    "type": "h3",
+    "text": "Tableaux et styles de tableau / cellule"
+  },
+  {
+    "type": "li",
+    "text": "Logique de formatage des tableaux InDesign."
+  },
+  {
+    "type": "li",
+    "text": "Combinaison des styles de tableaux, de cellules et de paragraphes imbriqués."
+  },
+  {
+    "type": "h3",
+    "text": "Objets ancrés"
+  },
+  {
+    "type": "li",
+    "text": "Ancrage en ligne, personnalisé ou au-dessus du texte."
+  },
+  {
+    "type": "li",
+    "text": "Comportement des objets dans le flux de texte (prérequis pour la mise en page automatique par script)."
+  },
+  {
+    "type": "h3",
+    "text": "Variables de texte"
+  },
+  {
+    "type": "li",
+    "text": "En-têtes courants dynamiques, numérotations, métadonnées et champs personnalisés."
+  },
+  {
+    "type": "h3",
+    "text": "Gabarits et héritage"
+  },
+  {
+    "type": "li",
+    "text": "Structuration des gabarits parents/enfants."
+  },
+  {
+    "type": "li",
+    "text": "Masquage, libération d'éléments et gestion propre de l'héritage."
+  },
+  {
+    "type": "h2",
+    "text": "Module 2 — Fondations techniques et environnement de dev"
+  },
+  {
+    "type": "p",
+    "text": "*Objectif : Comprendre le fonctionnement des LLM et installer un environnement de travail efficace.*"
+  },
+  {
+    "type": "h3",
+    "text": "Comprendre les modèles et l'écosystème LLM"
+  },
+  {
+    "type": "li",
+    "text": "Architecture Transformer, fenêtre de contexte, modèles open source vs propriétaires."
+  },
+  {
+    "type": "li",
+    "text": "Clés API, rôle des *providers* et agrégateurs (OpenRouter)."
+  },
+  {
+    "type": "h3",
+    "text": "Méthodologie de pilotage par l'IA"
+  },
+  {
+    "type": "li",
+    "text": "Posture d'Architecte vs posture d'Ouvrier."
+  },
+  {
+    "type": "li",
+    "text": "Établissement de la roadmap et chronologie de traitement (RM > RMA)."
+  },
+  {
+    "type": "h3",
+    "text": "Environnement ExtendScript et IDE"
+  },
+  {
+    "type": "li",
+    "text": "Anatomie d'un script InDesign et intégration dans le système d'exploitation."
+  },
+  {
+    "type": "li",
+    "text": "Installation et configuration de VS Code."
+  },
+  {
+    "type": "li",
+    "text": "Inscription OpenRouter et configuration de l'extension *OpenRouter for VS Code*."
+  },
+  {
+    "type": "li",
+    "text": "Configuration du multi-fenêtrage Copilot/Chat pour séparer les rôles."
+  },
+  {
+    "type": "li",
+    "text": "Structuration de l'espace de travail (documentation structurée)."
+  },
+  {
+    "type": "h2",
+    "text": "Module 3 — Fil rouge guidé : Développer un importateur Markdown"
+  },
+  {
+    "type": "p",
+    "text": "*Objectif : Créer un script complet en appliquant la méthode de travail IA, la Sandbox de simulation et le Wiki de suivi.*"
+  },
+  {
+    "type": "h3",
+    "text": "Cahier des charges et spécifications de l'outil"
+  },
+  {
+    "type": "li",
+    "text": "Périmètre : import Markdown vers styles InDesign existants sans marqueurs (`#`, `*`, `-`)."
+  },
+  {
+    "type": "li",
+    "text": "Reprise dynamique de la feuille de styles du document ouvert."
+  },
+  {
+    "type": "h3",
+    "text": "Gestion des erreurs et capitalisation"
+  },
+  {
+    "type": "li",
+    "text": "Traitement des bugs et résolution du problème des alertes bloquantes."
+  },
+  {
+    "type": "li",
+    "text": "Création du Wiki d'écosystème (alimentation du contexte)."
+  },
+  {
+    "type": "li",
+    "text": "Structure d'une fiche cas : symptôme / cause / correction / leçon transversale."
+  },
+  {
+    "type": "li",
+    "text": "Boucle récursive : documentation immédiate, consultation obligatoire du Wiki avant tout nouveau correctif ou *feature*."
+  },
+  {
+    "type": "h3",
+    "text": "Sandbox Node.js de simulation"
+  },
+  {
+    "type": "li",
+    "text": "Problématique : gérer les correctifs consécutifs sur la traction du texte."
+  },
+  {
+    "type": "li",
+    "text": "Émulation autonome du flux de texte InDesign en Node.js (hors ExtendScript)."
+  },
+  {
+    "type": "li",
+    "text": "Alignement du code réel guidé par la simulation avant test dans InDesign."
+  },
+  {
+    "type": "li",
+    "text": "Règle absolue : passage obligatoire par la Sandbox pour toute modification du modèle texte."
+  },
+  {
+    "type": "h3",
+    "text": "Optimisation du document InDesign et fonctionnalités avancées"
+  },
+  {
+    "type": "li",
+    "text": "Mapping de styles et anticipation par conventions HTML."
+  },
+  {
+    "type": "li",
+    "text": "Ajout du support des tableaux Markdown vers les tables InDesign natives."
+  },
+  {
+    "type": "li",
+    "text": "Rédaction finale du Wiki de cas techniques et formalisation de la méthode."
+  },
+  {
+    "type": "h2",
+    "text": "Module 4 — Atelier personnel : Création d'un outil métier"
+  },
+  {
+    "type": "p",
+    "text": "*Objectif : Concevoir et développer son propre script d'automatisation sur la base de ses besoins de production.*"
+  },
+  {
+    "type": "h3",
+    "text": "Cadrage du besoin"
+  },
+  {
+    "type": "li",
+    "text": "Identification des tâches grises répétitives en production."
+  },
+  {
+    "type": "li",
+    "text": "Inférence du cahier des charges de l'outil individuel."
+  },
+  {
+    "type": "h3",
+    "text": "Architecture et planification"
+  },
+  {
+    "type": "li",
+    "text": "Projection de la roadmap et stratégie de *prompting* Architecte/Ouvrier."
+  },
+  {
+    "type": "li",
+    "text": "Mise en place du journal de logs, du Wiki et de la Sandbox dédiés."
+  },
+  {
+    "type": "h3",
+    "text": "Implémentation et recette"
+  },
+  {
+    "type": "li",
+    "text": "Implémentation itérative soutenue par l'IA."
+  },
+  {
+    "type": "li",
+    "text": "Vérification humaine de la logique code et des contraintes métier InDesign."
+  },
+  {
+    "type": "li",
+    "text": "Phase de tests, recette et améliorations."
+  },
+  {
+    "type": "h2",
+    "text": "Fiche Logistique et Budgétaire"
+  },
+  {
+    "type": "h3",
+    "text": "Répartition temporelle suggérée (Format 3 jours)"
+  },
+  {
+    "type": "li",
+    "text": "**Jour 1 :** Module 1 (Remise à niveau InDesign) + Début du Module 2 (Concepts LLM, Setup VS Code)."
+  },
+  {
+    "type": "li",
+    "text": "**Jour 2 :** Fin du Module 2 + Module 3 complet (Fil rouge Importateur MD, Wiki récursif, Sandbox Node.js)."
+  },
+  {
+    "type": "li",
+    "text": "**Jour 3 :** Module 4 (Atelier individuel, conception du script métier, tests et mise en production)."
+  },
+  {
+    "type": "h3",
+    "text": "Estimation Budgétaire API (OpenRouter)"
+  },
+  {
+    "type": "h4",
+    "text": "Configuration :"
+  },
+  {
+    "type": "li",
+    "text": "*DeepSeek V4 Pro* pour le rôle d'Architecte (Specs, choix d'architecture)."
+  },
+  {
+    "type": "li",
+    "text": "*DeepSeek V4.1 Flash* pour le rôle d'Ouvrier (Génération ExtendScript & Node.js)."
+  },
+  {
+    "type": "li",
+    "text": "**Volumétrie moyenne :** 60 à 80 requêtes / stagiaire / jour."
+  },
+  {
+    "type": "li",
+    "text": "**Coût estimé :** **~0,60 $ / stagiaire / jour** (soit environ 1,80 $ par stagiaire pour les 3 jours)."
+  }
+]

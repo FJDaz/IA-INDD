@@ -1,0 +1,151 @@
+[
+  {
+    "type": "h1",
+    "text": "Rapport de synthèse : Refonte du pipeline de build"
+  },
+  {
+    "type": "blockquote",
+    "text": "Statut : v0.1"
+  },
+  {
+    "type": "blockquote",
+    "text": "Date : 2026-09-25"
+  },
+  {
+    "type": "blockquote",
+    "text": "Contexte : évaluation technique avant lancement"
+  },
+  {
+    "type": "h2",
+    "text": "1. Contexte"
+  },
+  {
+    "type": "h3",
+    "text": "1.1 Constat"
+  },
+  {
+    "type": "p",
+    "text": "Le pipeline actuel accumule des temps de build croissants, sans qu'aucune cause unique n'ait été isolée."
+  },
+  {
+    "type": "h3",
+    "text": "1.2 Problème"
+  },
+  {
+    "type": "p",
+    "text": "Les développeurs contournent le pipeline en local, ce qui masque les régressions jusqu'à l'intégration continue."
+  },
+  {
+    "type": "h2",
+    "text": "2. Objectifs"
+  },
+  {
+    "type": "h3",
+    "text": "2.1 Objectif principal"
+  },
+  {
+    "type": "p",
+    "text": "Réduire le temps de build de 40% sans changer la stack de compilation existante."
+  },
+  {
+    "type": "h3",
+    "text": "2.2 Objectifs secondaires"
+  },
+  {
+    "type": "li",
+    "text": "Réactiver la vérification systématique en local"
+  },
+  {
+    "type": "li",
+    "text": "Documenter les étapes du pipeline pour les nouveaux arrivants"
+  },
+  {
+    "type": "h2",
+    "text": "3. Architecture"
+  },
+  {
+    "type": "p",
+    "text": "Le pipeline se décompose en trois étapes séquentielles."
+  },
+  {
+    "type": "p",
+    "text": "#### 3.1.1 Étape de compilation"
+  },
+  {
+    "type": "p",
+    "text": "Première étape, actuellement la plus lente."
+  },
+  {
+    "type": "h3",
+    "text": "3.2 Étape de tests"
+  },
+  {
+    "type": "li",
+    "text": "Tests unitaires"
+  },
+  {
+    "type": "li",
+    "text": "Tests d'intégration"
+  },
+  {
+    "type": "li",
+    "text": "Tests de bout en bout"
+  },
+  {
+    "type": "h2",
+    "text": "4. Données de référence"
+  },
+  {
+    "type": "table",
+    "rows": [
+      [
+        "Étape",
+        "Durée actuelle",
+        "Durée cible"
+      ],
+      [
+        "Compilation",
+        "4min 20s",
+        "2min 30s"
+      ],
+      [
+        "Tests",
+        "6min 10s",
+        "4min 00s"
+      ],
+      [
+        "Packaging",
+        "1min 45s",
+        "1min 45s"
+      ]
+    ]
+  },
+  {
+    "type": "h2",
+    "text": "5. État du projet"
+  },
+  {
+    "type": "p",
+    "text": "En cours d'évaluation, aucune décision de lancement prise à ce stade."
+  },
+  {
+    "type": "h2",
+    "text": "Annexe"
+  },
+  {
+    "type": "h3",
+    "text": "A. Historique des décisions"
+  },
+  {
+    "type": "p",
+    "text": "**2026-09-20**"
+  },
+  {
+    "type": "li",
+    "text": "Décision : reporter la migration vers un nouveau compilateur"
+  },
+  {
+    "type": "li",
+    "text": "Raisonnement : risque trop élevé sans période de test dédiée"
+  }
+]

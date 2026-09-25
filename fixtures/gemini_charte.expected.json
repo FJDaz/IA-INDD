@@ -1,0 +1,99 @@
+[
+  {
+    "type": "h1",
+    "text": "Programme de Formation : Construire ses outils InDesign avec l'IA — Charte Gemini"
+  },
+  {
+    "type": "p",
+    "text": "Voici le schéma de structure et la feuille de style micro-typographique appliqués à la rédaction des livrables Markdown."
+  },
+  {
+    "type": "h2",
+    "text": "1. Squelette de structure (Architecture MD)"
+  },
+  {
+    "type": "code",
+    "language": "markdown",
+    "text": "# [Titre principal H1] — [Sous-titre ou déclinaison]\n\n> **Chapeau / Métadonnées** (Contextualisation rapide en blockquote : cible, durée, statut, prérequis).\n\n---\n\n## 1. [Section majeure H2]\n* **[Amorce de niveau 1]** : explication synthétique du point clé.\n  * [Détail sous-jacent ou sous-puce de niveau 2 sans gras].\n  * [Deuxième détail].\n\n### [Sous-section optionnelle H3]\nParagraphe court (3 à 4 lignes max). Analyse ou explication contextuelle.\n\n| Colonne 1 | Colonne 2 | Colonne 3 |\n| :--- | :---: | ---: |\n| Alignement gauche | Centre | Droite |\n\n---\n\n## 2. [Section suivante H2]"
+  },
+  {
+    "type": "h2",
+    "text": "2. Feuille de style et règles d'ergonomie"
+  },
+  {
+    "type": "h3",
+    "text": "Hiérarchie et découpage"
+  },
+  {
+    "type": "li",
+    "text": "**Un seul H1 par document :** sert de titre écosystème ou produit."
+  },
+  {
+    "type": "li",
+    "text": "**Pas de saut de niveau :** passage strict de H1 à H2, puis H3. Les niveaux H4 à H6 sont proscrits (remplacés par des amorces en gras sur une ligne isolée si besoin)."
+  },
+  {
+    "type": "li",
+    "text": "**Séparateurs (`---`) :** utilisés uniquement pour isoler les grands blocs H2 ou marquer le passage au cadrage opérationnel/annexes."
+  },
+  {
+    "type": "h3",
+    "text": "Lisibilité et scannabilité (*F-Shape Pattern*)"
+  },
+  {
+    "type": "li",
+    "text": "**Amorce en gras (*Lead-in bold*) :** chaque point d'une liste commence par 2 à 4 mots clés en gras suivis de deux-points ` :`. Cela permet une lecture rapide par balayage visuel."
+  },
+  {
+    "type": "h4",
+    "text": "Format des listes :"
+  },
+  {
+    "type": "li",
+    "text": "**Listes ordonnées (`1.`, `2.`) :** réservées à la chronologie, aux étapes d'un workflow ou aux priorités."
+  },
+  {
+    "type": "li",
+    "text": "**Listes à puces (`*` ou `-`) :** réservées à la description de fonctionnalités, concepts ou listes d'éléments sans ordre de préséance."
+  },
+  {
+    "type": "li",
+    "text": "**Paragraphes courts :** isolés par une ligne vide, sans pavés de texte continu."
+  },
+  {
+    "type": "h3",
+    "text": "Tableaux et blocs techniques"
+  },
+  {
+    "type": "li",
+    "text": "**Tableaux Markdown :** privilégiés dès qu'il y a plus de deux variables à comparer (ex. : Durée / Contenu / Modèle / Coût). Alignement explicite requis dans la ligne de séparation (`:---`, `:---:`, `---:`)."
+  },
+  {
+    "type": "li",
+    "text": "**Blocs de code :** spécification systématique du langage (`js`, `bash`, `html`, `json`, `markdown`)."
+  },
+  {
+    "type": "li",
+    "text": "**Encadrés (`>`) :** réservés aux alertes, résumés stratégiques, ou conditions sine qua non."
+  },
+  {
+    "type": "h3",
+    "text": "Micro-typographie française"
+  },
+  {
+    "type": "li",
+    "text": "**Punctuation & espaces insécables :** espace insécable avant les signes doubles (` :`, ` ;`, ` !`, ` ?`)."
+  },
+  {
+    "type": "li",
+    "text": "**Guillemets :** usage exclusif des guillemets français `« … »` avec espaces insécables internes."
+  },
+  {
+    "type": "li",
+    "text": "**Tirets :** tirets demi-cadratins `–` pour les intervalles, tirets cadratins `—` pour les incises ou séparations de sous-titres."
+  },
+  {
+    "type": "li",
+    "text": "**Nombres :** écriture en toutes lettres en deçà de 10, chiffres au-delà, espaces comme séparateurs de milliers (ex. : `10 000`), virgule pour les décimales (`0,50 €`)."
+  }
+]
