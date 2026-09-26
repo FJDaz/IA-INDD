@@ -42,7 +42,7 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ## Mission 03 — Reconstruction minimale de `insertMarkdownWithStyles` après régression non identifiée
 
-**Statut** : 🔴 BLOQUÉ — priorité absolue (nouvelle étape 0bis) : le compteur `story.paragraphs.length` a menti en mode TextFrame le 26/09 après-midi (`1` rapporté, `3` constatés visuellement par FJD). Tant que la cause de ce faux positif n'est pas identifiée et corrigée, aucun log de cette mission n'est fiable à 100% pour valider une étape — risque qu'un futur vrai bug soit masqué de la même façon, ou qu'un correctif soit écrit pour un problème inexistant. Rien d'autre (1ter, place gun) ne reprend avant que ce point soit clos. Détail complet dans le fichier de mission.
+**Statut** : ✅ DÉBLOQUÉE — étape 0bis **close et validée en réel** (26/09, 17:31–17:32, rejeu TextFrame : le compteur de log annonce `3` puis `85`, conformes au constat visuel, sans `REPLI`/`DIVERGENCE`/`ECART DOM/JS`, chiffres reproduits par réexécution du vrai parseur hors InDesign). Le log est de nouveau fiable et peut servir à valider les étapes suivantes. Commit `eb0f063`. **Suite** : (a) validation formelle de l'étape 1ter (codée, pré-checkée, synchronisée, déjà **observée en réel** — reste un test sur sélection « sale » et l'arbitrage `clearOverrides` vs réaffectation neutre) ; (b) test isolé de faisabilité du place gun. Détail complet dans le fichier de mission.
 
 **Fichier détaillé** : [mission_03_reconstruction_minimale.md](mission_03_reconstruction_minimale.md)
 
@@ -50,13 +50,17 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 **Pivot acté le 26/09** — feuille de route en 5 étapes suite à la réponse Q1 positive (mission 00) : (1) test de faisabilité du place gun natif [à faire APRÈS l'étape 1ter — s'ajoute aux modes déjà couverts par l'étape 1bis, ne les remplace pas], (2) héritage du shift-clic/calibrage de pages, (3) reprise de la construction du script d'origine (étapes 1bis à 8), (4) intégration menu InDesign (`app.menuActions`, scripting pur), (5) exploration SDK C++ — **optionnelle, non prioritaire**, soumise à un critère go/no-go strict : ne démarre que si des précédents documentés/éprouvés existent pour la brique générique (import provider), sinon bifurcation vers un renforcement des étapes 1-4 comme plafond assumé. Piste Rust explicitement écartée (aucun gain, toolchain C++ obligatoire de toute façon). Détail complet dans le fichier de mission.
 
+**Prochaine action immédiate** : test isolé de faisabilité du place gun (`document.place(fichier)` vs `document.placeGuns[0].loadPlaceGun(fichier)`) — sonde jetable d'environ 15 lignes, journalisant OK/KO, à confirmer en réel par FJD avant tout commit.
+
 **Ordre de travail acté le 26/09 (FJD)** : après la 1bis validée → **étape 1ter d'abord** (nettoyage des styles au trigger) → puis le test isolé du place gun. Le place gun ne passe pas avant la 1ter.
+
+**26/09 (soir)** : **étape 0bis close** — le compteur de log est fiabilisé (cause racine : la poignée `story` capturée avant `contents = ""` se détache et renvoie des valeurs périmées ; la mesure se fait désormais sur `targetPoint.parentStory`, avec arbitre JS pur `crCount`). Validé en réel et recoupé par deux méthodes indépendantes. L'étape **1ter** est codée, pré-checkée (sim 13/13) et synchronisée ; le rejeu réel du 17:32 la montre **s'exécuter correctement** (`[paragraphe] remis a neutre -> 'H2' vers '[Aucun style]'`, `[objet] remis a neutre '[Sans]' + clearObjectStyleOverrides()`) — la validation formelle sur une sélection volontairement « sale » et l'arbitrage `clearOverrides(OverrideType)` vs réaffectation neutre restent à trancher avec FJD. Le verrou « place gun après la 1ter » est donc levé sur le fond : la 1ter est en place et observée, seule sa confirmation formelle est en attente.
 
 ---
 
 ## Références du projet
 
-- **Wiki technique** : [../doc/wiki_extendscript_indesign.md](../doc/wiki_extendscript_indesign.md) — base de connaissance des pièges ExtendScript/InDesign (23 cas documentés au 26/09), méthode de travail validée (simulation Node avant test réel, vérification doc officielle avant hypothèse)
+- **Wiki technique** : [../doc/wiki_extendscript_indesign.md](../doc/wiki_extendscript_indesign.md) — base de connaissance des pièges ExtendScript/InDesign (24 cas documentés au 26/09, dont le Cas 24 « le compteur de diagnostic ment » et son addendum sur le faux positif d'alerte), méthode de travail validée (simulation Node avant test réel, contrôle négatif obligatoire, vérification doc officielle avant hypothèse, arbitre indépendant devant reproduire la *même* transformation que le code)
 - **Fixtures de test** : [../fixtures/](../fixtures/) — fichiers `.md` classés par modèle générateur (Claude, DeepSeek ×2, Gemini, ChatGPT) + JSON attendus
 - **Script principal** : [../import_md.jsx](../import_md.jsx) — copié systématiquement vers `~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/import_md.jsx` après chaque modification (InDesign exécute cette seconde copie, jamais le fichier de travail directement)
 - **Rôles** : Architecte (Claude) rédige les missions et valide, Ouvrier (DS) exécute — cf. mémoire `project_agent_roles.md`
