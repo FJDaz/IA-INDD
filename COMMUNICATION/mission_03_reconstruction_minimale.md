@@ -282,6 +282,13 @@ Deux arbitrages de FJD conditionnent la rédaction des étapes 2 à 8 :
 1. **Sort du mode gun = conservé + alerte** (statu quo, déjà en place, commit `3847d6e`). Aucun développement supplémentaire sur le gun au-delà de l'avertissement.
 2. **Périmètre du mapping maison = jusqu'aux tables/code inclus.** L'import natif du gun n'est **pas** un substitut à notre mapping : le projet veut **son propre mapping complet**, y compris les couches tables (étape 6) et code (étape 7). Ces deux étapes restent donc **dans le périmètre plein**.
 
+Ces deux décisions **ferment les deux questions jusqu'ici marquées « ouvertes »** dans la spécification des étapes 2 à 8 :
+
+3. **Étape 6 — API de création de table : CONFIRMÉE.** La création de table par API est disponible en ExtendScript et **déjà éprouvée dans la version 1** du script (`insertMarkdownWithStyles`, `import_md.jsx` L1049-1071) : `story.insertionPoints[-1].tables.add({ headerRowCount: 1, bodyRowCount: rowCount - 1, columnCount: columnCount })`, remplissage `newTable.rows[r].cells[cIdx].texts[0].contents`, puis `newTable.appliedTableStyle` (style issu de `findTableStyleByName(mapping["table"])`). L'étape 6 **reprend cette route connue** ; `insertMarkdownWithStyles_v2` la saute aujourd'hui (L1218) et doit la réintégrer. ⇒ **Plus de point de blocage.**
+4. **Étape 7 — Code multiligne : TRANCHÉ.** Un bloc de code multiligne produit **un paragraphe par ligne** (sauts `\r`), pas un paragraphe unique à sauts `\n` internes (même prudence que la version 1 sur les positions de caractères). ⇒ **Plus de point à trancher.**
+
+Ces quatre points étant actés, les étapes 2 à 8 sont **entièrement spécifiées et débloquées** ; seul le **pivot 2** (shift-clic / calibrage de pages) reste à constater en réel.
+
 ## Étapes 2 à 8
 
 ### Préambule commun
@@ -410,7 +417,7 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 - aucun texte de tableau ne fuit en paragraphes parasites, aucun `|` résiduel visible ;
 - log : `M03-etape6: tables=2 dims=4x3,3x2 cellules=18 paragraphes_hors_table=4`.
 
-**Prérequis** : cette étape dépend de la création de table par API (cf. wiki) — vérifier la disponibilité côté ExtendScript avant d'écrire le mapping ; sinon, le signaler comme **point de blocage** plutôt que de simuler.
+**Prérequis** : ✅ **LEVÉ (FJD, 26/09)** — la création de table par API **est disponible en ExtendScript** et **déjà éprouvée dans la version 1** du script (`insertMarkdownWithStyles`, `import_md.jsx` L1049-1071) : `story.insertionPoints[-1].tables.add({ headerRowCount: 1, bodyRowCount: rowCount - 1, columnCount: columnCount })`, remplissage par `newTable.rows[r].cells[cIdx].texts[0].contents = …`, puis `newTable.appliedTableStyle = <style mappé>`. **Ce n'est donc PAS un point de blocage** : l'étape 6 reprend cette route connue (elle sera réintroduite dans `insertMarkdownWithStyles_v2`, qui la saute aujourd'hui — `if (blocks[i].type === "table") continue;` L1218).
 
 ### Étape 7 — Blocs de code
 
@@ -420,7 +427,7 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 
 **Ce que l'étape doit faire** :
 - mapper le bloc `code` sur un style de paragraphe dédié (monospace, `MARKDOWN_TAGS.code`) ;
-- préserver les **sauts de ligne internes** du bloc (chaque ligne du bloc = un paragraphe dans InDesign, ou un seul paragraphe avec `\n` selon la décision à acter — **point à trancher** ; l'ancienne version restait prudente sur les `\n` internes) ;
+- préserver les **sauts de ligne internes** du bloc : **un paragraphe par ligne** (sauts `\r`) — décision actée par FJD le 26/09, cf. ci-dessous ;
 - **ne jamais** parser l'inline ni les balises Markdown à l'intérieur d'un bloc de code : le `# …` du bloc `markdown` doit rester **littéral**.
 
 **Critère de réussite (test réel)** :
@@ -428,7 +435,7 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 - dans le bloc `markdown`, le `#`, la puce `-` et la ligne `| a | b |` restent **du texte**, aucun titre/puce/table créé ;
 - log : `M03-etape7: code_blocs=3 lignes=7 literaux_intacts=true`.
 
-**Point à trancher (à remonter à FJD avant codage)** : un bloc de code multiligne doit-il produire **un** paragraphe (sauts `\n` internes) ou **un paragraphe par ligne** (sauts `\r`) ? L'ancienne version évitait les `\n` internes pour ne pas désynchroniser le calcul des positions de caractères.
+**Décision actée (FJD, 26/09)** : un bloc de code multiligne produit **un paragraphe par ligne** (sauts `\r`), pas un paragraphe unique à sauts `\n` internes. Raison : l'ancienne version évitait déjà les `\n` internes pour ne pas désynchroniser le calcul des positions de caractères, et la mesure du nombre de paragraphes (étape 0bis, arbitre `crCount`) reste ainsi cohérente. Conséquence pour le log d'étape : `lignes` compte bien les paragraphes créés.
 
 ### Étape 8 — Non-régression complète
 
