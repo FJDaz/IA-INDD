@@ -421,21 +421,26 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 
 ### Étape 7 — Blocs de code
 
-**Entrée** : `test_min_07_code.md` — trois blocs : un sans langage, un ` ```javascript `, un ` ```markdown ` contenant **des balises Markdown littérales** (`# …`, `- …`, `| a | b |`) qui ne doivent **jamais** être interprétées.
+**Entrée** : `test_min_07_code.md` — trois blocs : un sans langage, un ` ```javascript `, un ` ```markdown ` contenant **des balises Markdown littérales** (`# …`, `- …`) qui ne doivent **jamais** être interprétées, **sauf le motif tableau** (voir ci-dessous).
 
 **Ce que le parseur doit produire** (vérifié) : 8 blocs — h1:1, p:4, **code:3** avec `language` = `""`, `javascript`, `markdown` et `text` = lignes brutes (indentation préservée, aucun trim interne).
 
 **Ce que l'étape doit faire** :
 - mapper le bloc `code` sur un style de paragraphe dédié (monospace, `MARKDOWN_TAGS.code`) ;
 - préserver les **sauts de ligne internes** du bloc : **un paragraphe par ligne** (sauts `\r`) — décision actée par FJD le 26/09, cf. ci-dessous ;
-- **ne jamais** parser l'inline ni les balises Markdown à l'intérieur d'un bloc de code : le `# …` du bloc `markdown` doit rester **littéral**.
+- **ne jamais** parser l'inline ni les balises Markdown à l'intérieur d'un bloc de code (`#`, `-`, `*`, etc. restent littéraux) — **à l'exception du motif tableau** : si une ou plusieurs lignes consécutives à l'intérieur d'un bloc de code correspondent au motif d'un tableau Markdown (ligne d'en-tête `| … | … |` suivie d'une ligne de séparateurs `| :--- | :---: |`, éventuellement suivie de lignes de données), ce sous-ensemble de lignes doit être **détecté et traité comme une vraie table**, créée via l'API de création de table (même route que l'étape 6 : `story.insertionPoints[-1].tables.add({...})`), et **non affiché comme texte littéral**.
+
+**Origine de ce cas** : réel, pas hypothétique — présent dans `fixtures/gemini_charte.md` lignes 24-26, à l'intérieur du bloc ` ```markdown ` (un tableau d'exemple documentaire, imbriqué dans un bloc de code qui illustre la structure attendue d'un document).
 
 **Critère de réussite (test réel)** :
 - 3 blocs de code présents, en style code, contenu exact (lignes dans le bon ordre) ;
-- dans le bloc `markdown`, le `#`, la puce `-` et la ligne `| a | b |` restent **du texte**, aucun titre/puce/table créé ;
-- log : `M03-etape7: code_blocs=3 lignes=7 literaux_intacts=true`.
+- dans le bloc `markdown`, le `#` et la puce `-` restent **du texte**, aucun titre/puce créé ;
+- si le bloc de test contient un motif tableau (comme dans `gemini_charte.md`), une vraie table InDesign est créée à cet endroit, pas des lignes `| … |` littérales ;
+- log : `M03-etape7: code_blocs=3 lignes=N literaux_intacts=true tables_detectees_dans_code=<0|1|...>`.
 
 **Décision actée (FJD, 26/09)** : un bloc de code multiligne produit **un paragraphe par ligne** (sauts `\r`), pas un paragraphe unique à sauts `\n` internes. Raison : l'ancienne version évitait déjà les `\n` internes pour ne pas désynchroniser le calcul des positions de caractères, et la mesure du nombre de paragraphes (étape 0bis, arbitre `crCount`) reste ainsi cohérente. Conséquence pour le log d'étape : `lignes` compte bien les paragraphes créés.
+
+**Décision actée (FJD, 26/09, complément)** : un motif de tableau Markdown détecté à l'intérieur d'un bloc de code n'est **pas** un cas d'exclusion du parsing — il doit être extrait et rendu comme une vraie table InDesign, exactement comme un tableau hors bloc de code (étape 6). Le reste du bloc de code (lignes qui ne correspondent pas au motif tableau) reste du texte littéral, un paragraphe par ligne.
 
 ### Étape 8 — Non-régression complète
 
