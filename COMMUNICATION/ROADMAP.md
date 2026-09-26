@@ -42,7 +42,7 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ## Mission 03 — Reconstruction minimale de `insertMarkdownWithStyles` après régression non identifiée
 
-**Statut** : 🔴 BLOQUÉ — régression isolée détectée le 26/09 après-midi : le mode `TextFrame` (outil flèche/cadre sélectionné), pourtant validé et commité à l'étape 1 (`f3f6c68`) puis à l'étape 1bis (`14f30fa`), rejoue systématiquement `paragraphs.length=1` au lieu de 3 en test réel (7 occurrences distinctes, log `import_md_errors.log` 15:33-15:44). Le mode `InsertionPoint` (curseur de texte, cadre neuf) reste correct. Étape 1ter (styles) codée mais **non validée**, le socle texte brut n'étant plus fiable sur ce chemin — priorité : isoler et corriger cette régression avant de reprendre quoi que ce soit d'autre (1ter, place gun).
+**Statut** : 🟡 EN COURS — étape 1 et 1bis validées en réel par FJD (confirmation visuelle : 3 paragraphes propres dans tous les modes, y compris TextFrame). Le `paragraphs.length=1` rapporté par le log en mode TextFrame le 26/09 après-midi était un **faux positif du compteur de diagnostic**, pas une régression fonctionnelle — corrigé après clarification de FJD. Étape 1ter (styles) codée, à valider. Feuille de route pivot (place gun) actée, en attente.
 
 **Fichier détaillé** : [mission_03_reconstruction_minimale.md](mission_03_reconstruction_minimale.md)
 
