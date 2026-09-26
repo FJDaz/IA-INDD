@@ -1411,8 +1411,27 @@ function resolveTargetStory(selection) {
         story = item;
         mode = "Story";
     } else {
-        logToFile("M03-etape1bis: type non géré — échec propre");
-        return null;
+        // Outils « flèche blanche » (sélection directe) et cas assimilés :
+        // l'élément sélectionné peut être un PageItem PORTEUR DE TEXTE sans
+        // être lui-même un TextFrame (contour, chemin, groupe…). Décision FJD
+        // (26/09) : « il fallait étendre à … flèche blanche, peut-être voir
+        // tout outil ». On tente une récupération par le texte contenu AVANT
+        // d'abandonner — aucune supposition : si aucune histoire n'en sort,
+        // c'est un échec propre.
+        var carrierStory = null;
+        try { if (item.texts && item.texts.length > 0) carrierStory = item.texts[0]; } catch (eGT) {}
+        try { if (!carrierStory && item.parentStory) carrierStory = item.parentStory; } catch (eGP) {}
+        if (carrierStory) {
+            story = carrierStory;
+            // Même comportement que le mode TextFrame (vidage puis insertion) :
+            // on réutilise donc l'étiquette « TextFrame » pour que main()
+            // classe ce cas en « cadre » sans logique dupliquée.
+            mode = "TextFrame";
+            logToFile("M03-etape1bis: PageItem porteur de texte (fleche blanche ?) — story recuperee via texts[0]/parentStory");
+        } else {
+            logToFile("M03-etape1bis: type non géré — échec propre");
+            return null;
+        }
     }
 
     if (!story) {
@@ -1594,6 +1613,66 @@ function checkAndCleanStylesAtTrigger(selection, doc, resolved) {
 }
 
 // ============================================================================
+// MISSION 03 — PIVOT « SCRIPT UNIFIÉ » (3 modes : bloc / place gun / curseur)
+// ============================================================================
+
+/**
+ * Neutralise les DÉFAUTS du document — mécanisme exact du symptôme « tout en H2 ».
+ * Doc officielle (build 21.5.1) :
+ *   Document.textDefaults      (TextDefault)     : appliedParagraphStyle (r/w),
+ *                                                  appliedCharacterStyle (r/w)
+ *   Document.pageItemDefaults  (PageItemDefault) : appliedTextObjectStyle (r/w)
+ * Styles neutres lus via item(0) — jamais un nom localisé en dur (wiki Cas 05).
+ * Décision FJD (26/09) : « on neutralise tout » — SANS restauration. Ce choix
+ * rend la question du timing (lecture du défaut au loadPlaceGun vs au clic)
+ * sans objet : le défaut est neutre aux DEUX instants.
+ */
+function neutralizeDocumentDefaults(doc) {
+    if (!doc) return;
+    var neutralPara = doc.paragraphStyles.item(0);
+    var neutralChar = doc.characterStyles.item(0);
+    var neutralObj = doc.objectStyles.item(0);
+
+    var avant = "?";
+    try {
+        avant = "para=" + safeStyleName(doc.textDefaults.appliedParagraphStyle, "?") +
+                " | char=" + safeStyleName(doc.textDefaults.appliedCharacterStyle, "?") +
+                " | obj=" + safeStyleName(doc.pageItemDefaults.appliedTextObjectStyle, "?");
+    } catch (eAv) { avant = "(lecture initiale KO: " + eAv.message + ")"; }
+
+    try { doc.textDefaults.appliedParagraphStyle = neutralPara; } catch (eP) { logError(eP, "neutralize textDefaults para"); }
+    try { doc.textDefaults.appliedCharacterStyle = neutralChar; } catch (eC) { logError(eC, "neutralize textDefaults char"); }
+    try { doc.pageItemDefaults.appliedTextObjectStyle = neutralObj; } catch (eO) { logError(eO, "neutralize pageItemDefaults obj"); }
+
+    var apres = "?";
+    try {
+        apres = "para=" + safeStyleName(doc.textDefaults.appliedParagraphStyle, "?") +
+                " | char=" + safeStyleName(doc.textDefaults.appliedCharacterStyle, "?") +
+                " | obj=" + safeStyleName(doc.pageItemDefaults.appliedTextObjectStyle, "?");
+    } catch (eAp) { apres = "(lecture finale KO: " + eAp.message + ")"; }
+
+    logToFile("PIVOT unifie: neutralisation des defauts — avant [" + avant + "] -> apres [" + apres + "]");
+}
+
+/**
+ * Lit un fichier Markdown par son chemin absolu, sans jamais lever d'exception.
+ */
+function readMarkdownFileAt(path) {
+    try {
+        var f = new File(path);
+        if (!f.exists) { alertUser("Fichier introuvable :\n" + path); return null; }
+        if (!f.open("r")) { alertUser("Impossible d'ouvrir le fichier :\n" + path); return null; }
+        var c = f.read();
+        f.close();
+        return c;
+    } catch (e) {
+        logError(e, "readMarkdownFileAt");
+        alertUser("Erreur lors de la lecture du fichier : " + e.message);
+        return null;
+    }
+}
+
+// ============================================================================
 // FONCTION PRINCIPALE
 // ============================================================================
 
@@ -1609,29 +1688,147 @@ function main() {
             return;
         }
 
-        // MISSION 03 étape 1bis — Résoudre le point d'entrée quel que soit le
-        // mode d'invocation : cadre sélectionné (outil flèche / outil Texte) OU
-        // curseur de texte actif dans un bloc existant. Aucune hypothèse de
-        // TextFrame ; échec propre si rien d'exploitable.
+        // MISSION 03 — PIVOT « SCRIPT UNIFIÉ ». Les trois modes sont TOUS déduits
+        // de l'état d'InDesign, jamais demandés :
+        //   - « cadre »   : un cadre texte (ou une histoire) est sélectionné ;
+        //   - « curseur » : un point d'insertion est actif dans du texte ;
+        //   - « gun »     : AUCUNE sélection ⇒ on charge le place gun et FJD
+        //                   clique dans la page pour créer le cadre.
+        // Décision FJD (26/09) : « aucune sélection = gun ». Le mode gun n'est
+        // donc PAS un état à détecter : un .md ne peut pas être pré-chargé à la
+        // main dans InDesign (format non admis par Fichier > Importer).
         var selection = app.selection;
-        var resolved = resolveTargetStory(selection);
+        var selLen = (selection && typeof selection.length === "number") ? selection.length : 0;
+        var resolved = null;
+        var mode;
+        if (selLen === 0) {
+            // FJD (26/09) : « il fallait étendre à l'outil Texte ». Un curseur
+            // de texte peut rapporter une sélection VIDE quand le focus a migré
+            // vers le panneau Scripts (constat log 26/09 : 7 tirs « selection
+            // vide » alors qu'un curseur était actif) — alors qu'une sélection
+            // d'OBJET (flèche noire) survit toujours. On journalise donc l'état
+            // exact des sources de sélection AVANT de conclure « gun », pour
+            // rendre la prochaine mesure décisive (aucune supposition).
+            var winSelLen = -1;
+            try { winSelLen = (app.activeWindow && app.activeWindow.selection) ? app.activeWindow.selection.length : -1; } catch (eWS) {}
+            var docSelLen = -1;
+            try { docSelLen = doc.selection ? doc.selection.length : -1; } catch (eDS) {}
+            var docStories = -1;
+            try { docStories = doc.stories.length; } catch (eDS2) {}
+            logToFile("PIVOT unifie: selection vide — app.selection=0 | activeWindow.selection.length=" + winSelLen + " | doc.selection.length=" + docSelLen + " | stories du document=" + docStories);
+            mode = "gun";
+        } else {
+            resolved = resolveTargetStory(selection);
+            if (resolved) {
+                mode = (resolved.mode === "TextFrame" || resolved.mode === "Story") ? "cadre" : "curseur";
+            } else {
+                mode = "invalide";
+            }
+        }
+        logToFile("PIVOT unifie: selection.length=" + selLen + " | mode detecte=" + mode);
+
+        if (mode === "invalide") {
+            alertUser("Aucun bloc de texte exploitable n'est actif.\n\nPlacez le curseur dans un bloc de texte, selectionnez un bloc de texte, ou desactivez toute selection (Echap) pour charger le place gun, puis relancez le script.");
+            return;
+        }
+
+        // NETTOYAGE — toujours AVANT le placement.
+        //  - mode « gun » : aucune cible encore ; on neutralise les DÉFAUTS du
+        //    document (mécanisme du symptôme « tout en H2 »).
+        //  - modes « cadre »/« curseur » : nettoyage 1ter de la cible résolue.
+        // Décision FJD (26/09) : « on neutralise tout ». Les DÉFAUTS du document
+        // sont neutralisés dans TOUS les modes — pas seulement « gun ». Cause
+        // MESURÉE (log 26/09 19:17) : le défaut paragraphe du document valait
+        // 'H2' ; en mode « cadre »/« curseur » il n'était jamais neutralisé, si
+        // bien que les paragraphes ouverts à l'insertion héritaient de 'H2' —
+        // c'est le symptôme « le nettoyage ne marche pas ».
+        // MODE « GUN » — AVERTISSEMENT DE RESPONSABILITÉ (décision FJD 26/09 :
+        // « on met le loadGun en suspens »). En mode gun, le texte est déposé
+        // par l'import natif d'InDesign SOUS LE STYLE PARAGRAPHE ACTIF AU
+        // MOMENT DU CLIC : le script n'a AUCUNE prise dessus (le style du
+        // panneau n'a pas d'accesseur API, l'import natif n'est pas scriptable).
+        // Constat FJD (26/09) : « je n'ai que des H2 en loadedgun, le H2
+        // sélectionné dans le panneau style de paragraphe » ⇒ résultat UNIFORME,
+        // donc ce n'est PAS un mapping par balises (un style seul ne peut pas
+        // produire une hiérarchie) mais bien le style actif.
+        // Seule valeur lisible et représentative : le DÉFAUT paragraphe du
+        // document — capturé ICI, AVANT neutralisation (après, il vaudrait
+        // forcément '[Aucun style]' et l'avertissement serait trompeur).
+        var defaultParaBefore = "[Aucun style]";
+        try { defaultParaBefore = safeStyleName(doc.textDefaults.appliedParagraphStyle, "[Aucun style]"); } catch (eDpb) {}
+        logToFile("PIVOT unifie: defaut paragraphe AVANT neutralisation = '" + defaultParaBefore + "'");
+
+        neutralizeDocumentDefaults(doc);
+        if (mode !== "gun" && resolved) {
+            checkAndCleanStylesAtTrigger(selection, doc, resolved);
+        }
+
+        // L'avertissement est posé AVANT le sélecteur de fichier : si
+        // l'utilisateur renonce, il n'a pas à choisir un fichier pour rien.
+        if (mode === "gun") {
+            // NB : le lecteur ci-dessus peut valoir '[Aucun style]' alors que le
+            // panneau Style de paragraphe porte encore un style actif (mesure :
+            // 8/8 tirs gun avaient textDefaults='[Aucun style]' et FJD voyait H2).
+            // On ne depend donc PAS du nom : si le nom est neutre, on renvoie au
+            // panneau sans affirmer de nom.
+            var gunNamed = (defaultParaBefore !== "[Aucun style]" && defaultParaBefore !== "?");
+            var gunStyleTxt = gunNamed
+                ? "le style de paragraphe « " + defaultParaBefore + " » est en route"
+                : "un style de paragraphe est actif dans le panneau Style de paragraphe";
+            var gunActionTxt = gunNamed
+                ? "Changez pour le style de paragraphe standard (« [Aucun style] ») dans le panneau Style de paragraphe, puis relancez : c'est tout ce qu'il y a a faire."
+                : "Selectionnez le style de paragraphe standard (« [Aucun style] ») dans le panneau Style de paragraphe, puis relancez : c'est tout ce qu'il y a a faire.";
+            var gunWarn = "Attention : " + gunStyleTxt + ".\n\n"
+                + "En mode place gun, votre texte sera importe ENTIEREMENT sous ce style (l'import natif d'InDesign n'est pas pilotable par le script).\n\n"
+                + gunActionTxt + " Pour le reste, c'est bon.\n\n"
+                + "Continuer quand meme ?";
+            if (!confirm(gunWarn, false, SCRIPT_NAME)) {
+                logToFile("PIVOT unifie: mode gun — utilisateur a ANNULE apres avertissement (style annonce='" + defaultParaBefore + "')");
+                return;
+            }
+            logToFile("PIVOT unifie: mode gun — utilisateur a CONFIRME l'avertissement (style annonce='" + defaultParaBefore + "')");
+        }
+
+        // SÉLECTEUR DE FICHIER NATIF — aucun dialogue intermédiaire : le mode
+        // est DÉTECTÉ (aucune sélection ? sinon type de sélection), jamais demandé.
+        var sourceFile = File.openDialog("Choisir un fichier Markdown", "Markdown:*.md;*.markdown;*.txt");
+        if (!sourceFile) {
+            logToFile("PIVOT unifie: annulation utilisateur au choix de fichier");
+            return;
+        }
+
+        // MODE « gun » : charger le place gun, puis rendre la main — FJD clique
+        // dans la page pour déposer.
+        if (mode === "gun") {
+            try {
+                doc.placeGuns.loadPlaceGun(sourceFile);
+            } catch (eGun) {
+                logError(eGun, "PIVOT unifie loadPlaceGun");
+                alertUser("Echec du chargement du place gun : " + eGun.message);
+                return;
+            }
+            var gunOk = "?";
+            try { gunOk = "" + doc.placeGuns.loaded; } catch (eGl) { gunOk = "ERR(" + eGl.message + ")"; }
+            logToFile("PIVOT unifie: place gun charge -> " + sourceFile.name + " | doc.placeGuns.loaded=" + gunOk + " (cliquez dans la page pour deposer)");
+            return;
+        }
+
+        // Modes « cadre » / « curseur » : on a besoin d'une cible résolue.
         if (!resolved) {
-            alertUser("Aucun bloc de texte exploitable n'est actif.\n\nPlacez le curseur dans un bloc de texte, ou sélectionnez un bloc de texte (outil flèche ou outil Texte), puis relancez le script.");
+            // Le curseur était peut-être vide au moment de la détection alors
+            // que le gun n'était pas chargé : on retente une résolution.
+            resolved = resolveTargetStory(app.selection);
+        }
+        if (!resolved) {
+            alertUser("Aucun bloc de texte exploitable n'est actif.\n\nPlacez le curseur dans un bloc de texte, ou selectionnez un bloc de texte (outil fleche ou outil Texte), puis relancez le script.");
             return;
         }
         var targetStory = resolved.story;
         var insertionOptions = resolved.insertAt ? { insertAt: resolved.insertAt } : null;
 
-        // MISSION 03 étape 1ter — check + nettoyage des styles courants AU TRIGGER.
-        // Ordre imposé : (1) détecter + journaliser, (2) remettre à neutre,
-        // (3) seulement alors le mapping (plus bas). Aucun mapping sur un état
-        // non nettoyé. Périmètre 4 familles ; objet/table seulement si visés.
-        checkAndCleanStylesAtTrigger(selection, doc, resolved);
-
-        // Sélectionner et lire le fichier Markdown
-        var fileContent = selectAndReadMarkdownFile();
+        // Lire le fichier choisi.
+        var fileContent = readMarkdownFileAt(sourceFile.fsName);
         if (fileContent === null) {
-            // Utilisateur a annulé - arrêt silencieux
             return;
         }
         
