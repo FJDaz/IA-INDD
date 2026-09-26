@@ -3,7 +3,7 @@
 **Statut** : ✅ **ÉTAPE 0bis VALIDÉE EN RÉEL** (rejeu TextFrame du 26/09 17:31–17:32) — le compteur de log ne ment plus, la suite peut s'appuyer dessus. Constat du 26/09 soir : le log annonçait `1` paragraphe (puis `9`) là où FJD a vu **3** (puis **39**) paragraphes propres à l'écran — **faux positif du log lui-même**, pas une régression du texte inséré. **Cause racine identifiée (double couche)** : (1) `targetPoint` résolu AVANT `story.contents = ""` ; (2) — cause définitive — **la poignée `story` capturée avant le vidage se DÉTACHE** : après `contents = ""`, elle renvoie `.contents.length = 0` et un `paragraphs` périmé, alors que le texte vit dans **`targetPoint.parentStory`**. Preuve : tir TextFrame 39 blocs → `story` snapshot=9 / `.contents.length=0`, `parentStory`=4402, œil=39. **Correctif appliqué** : `targetPoint` re-résolu après vidage ; mesure sur `targetPoint.parentStory` (avec repli signalé) ; arbitre JS pur `crCount` (`\r` sur `fullText`, attendu = `crCount + 1`) ; log de contraste vérité vs proxy périmé. Pré-checks OK (`node --check`, sim 1bis **26/26**, contrôle négatif concluant, sim 1ter 13/13), synchronisé Scripts Panel (`348c64f1…`). **Rejeu réel du 26/09 17:31–17:32 — mode TextFrame (les 2 tirs qui mentaient) : `paragraphes reels=3` puis `=85`, conformes au constat visuel (9 titres + 72 puces + 4 paragraphes = 85), sans `REPLI` / `DIVERGENCE` / `ECART DOM/JS`, avec le contraste `snapshot=26 | contents.length=0` exposant le proxy périmé. Chiffres reproduits par réexécution du vrai parseur hors InDesign (85/5474/84). Le compteur est fiable : la 0bis est close et les étapes suivantes peuvent s'appuyer sur le log.**
 **Bloque** : toutes les autres missions jusqu'à validation complète (étape 8)
 
-**Statut pivot (26/09)** : ✅ **étape 1ter validée en réel (FJD)** et ✅ **test de faisabilité du place gun concluant (26/09 18:18)** — le place gun natif est chargeable par script (`loadPlaceGun()` → `loaded=true` / `isValid=true`), le curseur change d'apparence et un clic crée un bloc de texte. La chaîne d'entrée est donc complète, du trigger au placement natif. **Prochaine étape** : héritage du shift-clic / calibrage de pages (point 2 de la feuille de route pivot), puis reprise des étapes 2 à 8.
+**Statut pivot (26/09)** : ✅ **étape 1ter validée en réel (FJD)** et ✅ **test de faisabilité du place gun concluant (26/09 18:18)** — le place gun natif est chargeable par script (`loadPlaceGun()` → `loaded=true` / `isValid=true`), le curseur change d'apparence et un clic crée un bloc de texte. La chaîne d'entrée est donc complète, du trigger au placement natif. ⚠️ **Mais le mode gun est mis en suspens (décision FJD 26/09)** : le texte déposé arrive entièrement sous le **style actif du panneau** (H2, uniforme), qui n'a **aucun accesseur API** et n'est pas scriptable ⇒ **avertir, pas corriger** (voir « Étape pivot 1bis » ci-dessous). **Prochaine étape** : héritage du shift-clic / calibrage de pages (point 2 de la feuille de route pivot), puis reprise des étapes 2 à 8.
 
 ## Feuille de route pivot — place gun natif (actée par FJD le 26/09/2026)
 
@@ -218,6 +218,36 @@ Les deux tirs affichent `source=targetPoint.parentStory` **sans** `REPLI`, **san
 **Ce qui reste à vérifier (point 2 de la feuille de route pivot)** : le **shift-clic** — création automatique des pages nécessaires selon le calibrage du texte chargé, sans code supplémentaire de notre part. Non couvert par cette sonde, qui s'arrête au chargement.
 
 **Leçon de méthode** : la sonde a coûté ~1 minute de conception et a tranché en 4 secondes ce que la doc seule laissait ambigu (`placeGuns[0]`). Le principe du projet — « citer l'extrait exact de la doc **avant** toute hypothèse » — reste vrai, mais ce cas montre qu'il faut **doubler la doc par une mesure** dès que la question tient dans un script de 15 lignes.
+
+## Étape pivot 1bis — Limite du mode gun : avertissement de responsabilité (26/09/2026, ✅ acté par FJD)
+
+**But** : traiter le comportement fautif constaté en mode gun — le texte déposé par l'import natif arrive **entièrement stylisé sous un style unique**, au lieu d'être neutre.
+
+**Fait établi par FJD (26/09)** : « je n'ai que des **H2** en loadedgun, le **H2 sélectionné dans le panneau style de paragraphe** ». Résultat **UNIFORME** ⇒ un **seul** style s'applique à tout le texte ⇒ ce n'est **pas** un interpréteur de balises Markdown (un style unique ne peut pas produire une hiérarchie) mais l'**état du panneau Style de paragraphe**.
+
+**Preuve log (8 tirs sur 8, 19:17 → 21:13)** : chaque tir gun est précédé de sa neutralisation, et les défauts du document valent `[Aucun style]` au moment du `loadPlaceGun` — **et le texte arrive quand même en H2**. ⇒ `textDefaults` est **innocenté** ; le style vient d'un **état du panneau**, qui **n'a aucun accesseur API**. L'import natif n'étant pas scriptable (Q2 = NON, SDK C++ seulement), il n'existe **aucun levier** pour corriger ce comportement depuis le script.
+
+**Deux chemins de placement, à ne plus confondre :**
+
+| | `frame.place(.md)` (script) | clic du gun (UI) |
+|---|---|---|
+| Nature | placement **programmatique** | placement **interactif** |
+| Style obtenu | défauts d'import → **texte brut** (mesuré : 110/110 `[Aucun style]`, marqueurs intacts) | **style actif du panneau** → H2 |
+
+Conséquence : **toute tentative de simulation du gun par `frame.place()` est infidèle** (brut ≠ H2). C'est ce qui invalide la piste du « cadre provisoire » (hack de neutralisation) comme moyen d'observer ou de contourner le comportement du gun.
+
+**Décision FJD (26/09)** : « on met le loadGun en suspens » ⇒ **avertir, pas corriger**. Le mode gun reste disponible mais **encadré par une alerte**.
+
+**Livrable** — dans `import_md.jsx`, branche `mode === "gun"`, **avant** le sélecteur de fichier :
+- lecture du style de paragraphe par défaut **AVANT `neutralizeDocumentDefaults`** (après, il vaudrait forcément `[Aucun style]` et l'alerte serait mensongère) ;
+- `confirm()` (annulable) nommant le style en route et donnant la **consigne** : basculer sur le style de paragraphe standard (`[Aucun style]`) dans le panneau, puis relancer ;
+- **robuste au cas `[Aucun style]`** : si le nom lu est neutre (c'est le cas dès la 2ᵉ exécution), l'alerte renvoie au panneau **sans affirmer de nom** — puisque l'état réel du panneau n'est pas lisible ;
+- **Annuler = sortie propre**, le gun n'est pas chargé ; la décision est tracée au log (`ANNULE` / `CONFIRME`) ;
+- **scope gun uniquement** : les modes `cadre`/`curseur` sont gouvernés par notre mapping, donc pas d'alerte.
+
+**Vérifications** : `node --check` OK, `U+FFFD = 0` (aucune corruption d'encodage), copie Scripts Panel identique (`diff` + `shasum`). Dépôt : hash `c4702dcc…`, 94276 octets. **Commit `3847d6e`.**
+
+**Reste ouvert (non bloquant)** : le sort du mode gun à terme — soit conservé avec cette alerte, soit remplacé par un **mode `cadre` auto-créateur** (création du cadre + insertion via notre mapping, résultat garanti et neutre). À trancher par FJD.
 
 ## Étapes 2 à 8
 
