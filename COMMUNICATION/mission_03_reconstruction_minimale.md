@@ -1,6 +1,6 @@
 # Mission 03 — Reconstruction minimale de `insertMarkdownWithStyles` après régression non identifiée
 
-**Statut** : 🟡 EN COURS — étape 1, 1bis validées en réel par FJD (confirmation visuelle : 3 paragraphes propres dans tous les modes testés, y compris TextFrame). **Correction 26/09 soir** : le log `paragraphs.length=1` en mode TextFrame (voir Journal, tests 15:33-15:44) est un **faux positif de diagnostic**, pas une régression fonctionnelle — FJD confirme avoir vu 3 paragraphes distincts à l'écran à chaque test. Cause probable à investiguer : `story.paragraphs.length` lu sur le mauvais objet, ou lu à un timing où InDesign n'a pas encore recalculé sa collection interne (cf. Cas 23 du wiki sur le comportement non garanti de cette collection). Le compteur de log est donc à corriger avant de s'y refier, mais **le texte brut fonctionne bien** dans les 2 modes. Étape 1ter (styles) codée, à valider. Feuille de route pivot (place gun) actée, en attente.
+**Statut** : 🔴 BLOQUÉ — priorité absolue : fiabiliser le compteur de diagnostic avant toute autre action. Constat du 26/09 soir : `story.paragraphs.length` en mode TextFrame a rapporté `1` alors que FJD a vu 3 paragraphes propres à l'écran (test réel confirmé) — **faux positif du log lui-même**, pas une régression du texte inséré. Tant que la cause de ce mensonge n'est pas identifiée et corrigée, **aucun log de cette mission ne peut être considéré comme fiable** pour valider une étape (1ter comprise) : un futur vrai bug pourrait être masqué de la même façon, ou un futur correctif pourrait être écrit pour « réparer » un problème qui n'existe pas. Toute validation d'étape doit repasser par un double contrôle (log + constat visuel explicite de FJD) tant que ce point n'est pas clos.
 **Bloque** : toutes les autres missions jusqu'à validation complète (étape 8)
 
 ## Feuille de route pivot — place gun natif (actée par FJD le 26/09/2026)
@@ -96,6 +96,24 @@ Si ça échoue déjà ici : le bug est dans la construction du texte complet ou 
 - Mode curseur de texte : les 3 paragraphes s'insèrent au bon endroit, dans l'ordre, sans écraser le texte existant autour du curseur (sauf si c'est le comportement voulu — à trancher avec FJD si ambigu).
 - Mode outil flèche (cadre sélectionné, hors édition) : comportement identique au mode TextFrame déjà validé à l'étape 1, ou échec propre si ce mode n'est pas censé être supporté.
 - Aucune régression sur le mode déjà validé à l'étape 1 (TextFrame sélectionné en mode édition).
+
+## Étape 0bis — URGENT, priorité absolue : fiabiliser le compteur de paragraphes du log
+
+**Origine** : constaté le 26/09/2026 en soirée. En mode TextFrame, `story.paragraphs.length` a rapporté systématiquement `1` sur 7 tests réels distincts (voir Journal, 15:33-15:44), alors que FJD a confirmé visuellement 3 paragraphes propres à l'écran à chaque fois. Le log a menti, pas le script d'insertion.
+
+**Pourquoi c'est urgent et bloquant, pas un détail** : toute la méthode de cette mission repose sur le principe qu'un log fiable permet de valider une étape sans repasser par un contrôle visuel exhaustif à chaque fois. Si le compteur peut mentir silencieusement dans certaines conditions (ici : mode TextFrame) :
+- un **futur vrai bug** peut passer inaperçu, masqué par le même mensonge de compteur ;
+- un **correctif peut être écrit pour réparer un problème qui n'existe pas** (exactement ce qui a failli arriver ici : la mission a été marquée BLOQUÉ à tort avant que FJD ne corrige) ;
+- aucune étape suivante (1ter, 2 à 8) ne peut être considérée comme réellement validée tant que ce doute n'est pas levé, même si son propre log dit "OK".
+
+**Ce qu'il faut faire (avant de reprendre l'étape 1ter ou toute autre chose)** :
+1. Reproduire le cas exact : mode TextFrame, insertion du texte de test, lire `story.paragraphs.length` juste après l'assignation `.contents`.
+2. Vérifier par la doc officielle (citation exacte, pas d'hypothèse) si `paragraphs.length` nécessite un recalcul explicite après une assignation de `.contents` (ex. relire via `story.paragraphs.everyItem().getElements()` au lieu de `.length` direct — cf. wiki Cas 20 et la logique déjà utilisée dans l'ancienne `insertMarkdownWithStyles`, qui snapshot justement via `getElements()` pour cette raison).
+3. Vérifier si le problème vient du fait que `story` référencé dans le log n'est plus le même objet que celui qui a réellement reçu le texte (ex. `story.contents = ""` invalidant une référence gardée en variable).
+4. Une fois la cause identifiée et corrigée, **rejouer les 7 cas déjà testés** (TextFrame avec différents états initiaux) pour confirmer que le compteur corrigé donne bien 3, en cohérence avec le constat visuel de FJD.
+5. Documenter la cause exacte au wiki (nouveau cas), pour que ce piège soit connu et ne se reproduise pas silencieusement sur une future étape.
+
+**Critère de sortie de cette étape** : le compteur de log en mode TextFrame donne `3` (pas `1`) sur le même test qui donnait `1` auparavant, confirmé par au moins 2 tests réels supplémentaires. Tant que ce n'est pas fait, tout statut "validé" d'une étape antérieure basé sur ce compteur reste à confirmer par un constat visuel explicite, pas seulement par le log.
 
 ## Étape 1ter — Check + nettoyage des styles courants au moment du trigger
 

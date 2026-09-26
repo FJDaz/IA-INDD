@@ -42,7 +42,7 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ## Mission 03 — Reconstruction minimale de `insertMarkdownWithStyles` après régression non identifiée
 
-**Statut** : 🟡 EN COURS — étape 1 et 1bis validées en réel par FJD (confirmation visuelle : 3 paragraphes propres dans tous les modes, y compris TextFrame). Le `paragraphs.length=1` rapporté par le log en mode TextFrame le 26/09 après-midi était un **faux positif du compteur de diagnostic**, pas une régression fonctionnelle — corrigé après clarification de FJD. Étape 1ter (styles) codée, à valider. Feuille de route pivot (place gun) actée, en attente.
+**Statut** : 🔴 BLOQUÉ — priorité absolue (nouvelle étape 0bis) : le compteur `story.paragraphs.length` a menti en mode TextFrame le 26/09 après-midi (`1` rapporté, `3` constatés visuellement par FJD). Tant que la cause de ce faux positif n'est pas identifiée et corrigée, aucun log de cette mission n'est fiable à 100% pour valider une étape — risque qu'un futur vrai bug soit masqué de la même façon, ou qu'un correctif soit écrit pour un problème inexistant. Rien d'autre (1ter, place gun) ne reprend avant que ce point soit clos. Détail complet dans le fichier de mission.
 
 **Fichier détaillé** : [mission_03_reconstruction_minimale.md](mission_03_reconstruction_minimale.md)
 
