@@ -1,0 +1,37 @@
+[
+  {
+    "type": "h1",
+    "text": "Blocs de code"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe introductif avant le code."
+  },
+  {
+    "type": "code",
+    "language": "",
+    "text": "ligne de code brute une\nligne de code brute deux"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe entre les deux blocs de code."
+  },
+  {
+    "type": "code",
+    "language": "javascript",
+    "text": "var x = 1;"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe final avant le code markdown."
+  },
+  {
+    "type": "code",
+    "language": "markdown",
+    "text": "# Ceci est un exemple H1 en literral\n- et une puce en littral\n| a | b |"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe final de l'etape 7."
+  }
+]

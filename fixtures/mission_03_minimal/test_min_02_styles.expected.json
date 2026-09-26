@@ -1,0 +1,47 @@
+[
+  {
+    "type": "h1",
+    "text": "Titre de niveau 1"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe standard juste apres le titre 1."
+  },
+  {
+    "type": "h2",
+    "text": "Titre de niveau 2"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe standard apres le titre 2."
+  },
+  {
+    "type": "h3",
+    "text": "Titre de niveau 3"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe standard apres le titre 3."
+  },
+  {
+    "type": "blockquote",
+    "text": "Citation de test pour le mapping du style citation."
+  },
+  {
+    "type": "li",
+    "text": "Item a puces pour le mapping du style liste.",
+    "indentLevel": 0
+  },
+  {
+    "type": "li_num",
+    "text": "Premier item numerote du mapping styles."
+  },
+  {
+    "type": "li_num",
+    "text": "Deuxieme item numerote du mapping styles."
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe final de l'etape 2."
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "type": "h1",
+    "text": "Listes et indentation"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe introductif avant les listes."
+  },
+  {
+    "type": "li",
+    "text": "Item de liste niveau 1 alpha.",
+    "indentLevel": 0
+  },
+  {
+    "type": "li",
+    "text": "Item de liste niveau 1 beta.",
+    "indentLevel": 0
+  },
+  {
+    "type": "li",
+    "text": "Item de liste niveau 2 beta-un.",
+    "indentLevel": 1
+  },
+  {
+    "type": "li",
+    "text": "Item de liste niveau 2 beta-deux.",
+    "indentLevel": 1
+  },
+  {
+    "type": "li",
+    "text": "Item de liste niveau 3 beta-deux-a.",
+    "indentLevel": 2
+  },
+  {
+    "type": "li",
+    "text": "Item de liste niveau 1 gamma.",
+    "indentLevel": 0
+  },
+  {
+    "type": "li_num",
+    "text": "Item numerote un."
+  },
+  {
+    "type": "li_num",
+    "text": "Item numerote deux."
+  },
+  {
+    "type": "li_num",
+    "text": "Item numerote trois."
+  },
+  {
+    "type": "h1",
+    "text": "Section avec sous-titre de liste"
+  },
+  {
+    "type": "h2",
+    "text": "Sous-titre de liste en gras"
+  },
+  {
+    "type": "li",
+    "text": "Item de liste sous le sous-titre.",
+    "indentLevel": 0
+  },
+  {
+    "type": "li",
+    "text": "Deuxieme item de liste sous le sous-titre.",
+    "indentLevel": 0
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe final de l'etape 5."
+  }
+]

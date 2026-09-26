@@ -1,0 +1,63 @@
+[
+  {
+    "type": "h1",
+    "text": "Titre 1 principal"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe introductif sous le titre 1."
+  },
+  {
+    "type": "h2",
+    "text": "Titre 2 premier"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe sous le titre 2 premier."
+  },
+  {
+    "type": "h3",
+    "text": "Titre 3 premier"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe sous le titre 3 premier."
+  },
+  {
+    "type": "h4",
+    "text": "Sous-titre synthetique h4 issu d'une puce entierement en gras"
+  },
+  {
+    "type": "li",
+    "text": "Item de liste normal sous ce sous-titre synthetique.",
+    "indentLevel": 0
+  },
+  {
+    "type": "h2",
+    "text": "Titre 2 second"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe sous le titre 2 second."
+  },
+  {
+    "type": "h3",
+    "text": "Titre 3 second"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe sous le titre 3 second."
+  },
+  {
+    "type": "p",
+    "text": "#### Titre 4 par quatre dieses (sonde de limite connue)"
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe sous la sonde quatre dieses."
+  },
+  {
+    "type": "p",
+    "text": "Paragraphe final de l'etape 3."
+  }
+]
