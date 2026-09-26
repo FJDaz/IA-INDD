@@ -52,7 +52,8 @@ Interdits pendant la mission :
 |---|---|---|---|
 | 0 | Baseline git (déjà fait) | — | `647f691` |
 | 1 | Texte brut uniquement, un seul paragraphe (aucun style, aucun segment, aucune table) | `fixtures/mission_03_minimal/test_min_01_texte.md` | `M03 étape 1 : insertion texte brut OK` ✅ fait (`f3f6c68`) |
-| 1bis | Points d'entrée du script : robustesse selon l'état de sélection InDesign au lancement (voir section dédiée ci-dessous) | `fixtures/mission_03_minimal/test_min_01_texte.md` (rejoué 2× : curseur texte, puis outil flèche) | `M03 étape 1bis : points d'entrée OK` |
+| 1bis | Points d'entrée du script : robustesse selon l'état de sélection InDesign au lancement (voir section dédiée ci-dessous) | `fixtures/mission_03_minimal/test_min_01_texte.md` (rejoué 2× : curseur texte, puis outil flèche) | `M03 étape 1bis : points d'entrée OK` ✅ validé en réel par FJD (26/09) |
+| 1ter | Check + nettoyage des styles courants (caractère, paragraphe, objet, table/cellule) au moment du trigger, AVANT tout mapping (voir section dédiée ci-dessous) | `fixtures/mission_03_minimal/test_min_01_texte.md` rejoué sur une sélection volontairement « sale » (styles appliqués + overrides) | `M03 étape 1ter : nettoyage styles courants OK` |
 | 2 | + styles de paragraphe mappés sur les styles réels du document (une seule passe par index stable, toujours sans segments) | `fixtures/mission_03_minimal/test_min_02_styles.md` | `M03 étape 2 : mapping styles OK` |
 | 3 | + titres (hiérarchie h1-h5) | `fixtures/mission_03_minimal/test_min_03_titres.md` | `M03 étape 3 : titres OK` |
 | 4 | + gras/italique (segments inline) | `fixtures/mission_03_minimal/test_min_04_segments.md` | `M03 étape 4 : segments OK` |
@@ -96,6 +97,41 @@ Si ça échoue déjà ici : le bug est dans la construction du texte complet ou 
 - Mode outil flèche (cadre sélectionné, hors édition) : comportement identique au mode TextFrame déjà validé à l'étape 1, ou échec propre si ce mode n'est pas censé être supporté.
 - Aucune régression sur le mode déjà validé à l'étape 1 (TextFrame sélectionné en mode édition).
 
+## Étape 1ter — Check + nettoyage des styles courants au moment du trigger
+
+**Origine** : demandé par FJD le 26/09/2026, après validation de l'étape 1 et pendant la rédaction de l'étape 1bis. Constat : le script démarre aujourd'hui sans regarder l'état de style du point d'entrée. Si l'utilisateur déclenche l'import depuis un point déjà porteur de styles (caractère/paragraphe/objet/table) ou d'overrides locaux, le mapping qui suit hérite de ce désordre au lieu de partir d'une base propre — d'où l'exigence d'un **check netto yage immédiat, avant tout mapping**.
+
+**Ne pas confondre avec l'étape 1bis** : la 1bis couvre *d'où* on écrit (type de sélection, résolution du `story`/point d'insertion). La 1ter couvre *avec quoi* on écrit (état des styles au point choisi). Les deux sont indépendantes et chacune doit être validée séparément.
+
+**Décision FJD (3 points tranchés)** :
+1. **Observer puis réinitialiser** — le check n'est pas un simple rapport : si des styles sont appliqués, le script les remet à neutre avant le mapping. Ce n'est pas du nettoyage silencieux : ce qui a été retiré est **journalisé nominativement** (style + emplacement), pour que rien ne disparaisse sans trace.
+2. **Périmètre à 4 familles** : caractère, paragraphe, objet, table/cellule. Objet et table/cellule ne sont examinés **que si** un cadre objet ou une table/cellule est réellement visé par la sélection (pas de recherche globale dans le document).
+3. **Étape séparée**, à traiter **après validation de la 1bis** — donc pas insérée dans la 1bis en cours, pour ne pas mélanger deux couches dans un même test.
+
+**Ce qu'il faut vérifier (état de l'art doc officielle, indesignjs.de — build InDesign 2026 / 21.5.1)** :
+
+| Famille | Lecture de l'appliqué | Détection override local | Remise à neutre |
+|---|---|---|---|
+| Caractère | `Text.appliedCharacterStyle` (r/w) | `Text.styleOverridden` ; `Text.textHasOverrides(charOrParaStyle, charStyleAsOverride)` | réaffectation du style neutre (`document.characterStyles.item(0)`, cf. corollaire Cas 05 du wiki — jamais un nom localisé en dur) |
+| Paragraphe | `Text.appliedParagraphStyle` (r/w) | idem | `Text.applyParagraphStyle(using, clearingOverrides = true)` |
+| Objet | `TextFrame.appliedObjectStyle` (r/w) | — | `TextFrame.applyObjectStyle(using, clearingOverrides, clearingOverridesThroughRootObjectStyle)` ; `TextFrame.clearObjectStyleOverrides()` |
+| Table / cellule | `Table.appliedTableStyle`, `Cell.appliedCellStyle` (r/w) | — | `Table.clearTableStyleOverrides()` ; `Cell.clearCellStyleOverrides(clearingOverridesThroughRootCellStyle)` |
+
+⚠️ **Point à valider en réel, pas à supposer** : l'API expose un nettoyage explicite pour objet/table/cellule, mais **aucun `clearCharacterStyleOverrides()` ni `clearParagraphStyleOverrides()` n'existe dans le DOM officiel**. La remise à neutre caractère/paragraphe passe donc par la réaffectation du style neutre (+ l'argument `clearingOverrides` pour le paragraphe). Le comportement exact de `styleOverridden` / `textHasOverrides` sur un `InsertionPoint` vide (curseur, sans plage de texte) n'est pas documenté de façon univoque — à constater par log réel avant de bâtir la logique dessus.
+
+**Ce qui doit être journalisé au trigger** (avant toute modification) : pour chacune des familles concernées, le style appliqué (nom réel lu dans le document) et la présence éventuelle d'overrides locaux. C'est cette trace qui rend le nettoyage vérifiable par FJD.
+
+**Ordre d'exécution imposé** : (1) détecter et journaliser → (2) remettre à neutre → (3) seulement alors, lancer le mapping. Jamais de mapping sur un état non nettoyé.
+
+**Fichier de test** : `fixtures/mission_03_minimal/test_min_01_texte.md` (déjà validé à l'étape 1), rejoué sur une sélection volontairement « sale » : point d'insertion portant un style de caractère non neutre, un style de paragraphe non neutre + overrides locaux, et — pour la passe objet/table — un cadre avec style d'objet et une table avec style de table/cellule.
+
+**Critère de réussite étape 1ter** :
+- Le journal liste bien, avant modification, les styles courants réellement appliqués pour les 4 familles concernées.
+- Après nettoyage, les styles appliqués au point d'entrée sont les styles neutres du document.
+- Le nettoyage ne touche **rien d'autre** dans le document (pas de balayage global : seule la cible de la sélection est traitée).
+- Les modes objet/table restent conditionnels : sur une sélection purement texte, aucun traitement objet/table n'est déclenché.
+- Aucune régression sur l'étape 1 (le texte brut s'insère toujours dans l'ordre).
+
 ## Étapes 2 à 8
 
 Chaque étape ajoute une seule couche sur la base de la précédente déjà validée, avec son propre fichier de test minimal (voir tableau ci-dessus), en respectant le protocole. L'étape 2 réutilise la logique de stylage par index stable déjà documentée dans l'ancienne version (`story.paragraphs.everyItem().getElements()`), sans réintroduire de notion de segment. Les étapes 3 à 7 réintroduisent une seule capacité à la fois. L'étape 8 est la non-régression complète sur le fichier de référence et les 5 fixtures existantes (`claude_sample`, `deepseek_referentiel`, `deepseek_formation`, `gemini_charte`, `chatgpt_convention`), comparée aux JSON `.expected.json`.
@@ -120,7 +156,8 @@ Chaque étape ajoute une seule couche sur la base de la précédente déjà vali
 | 26/09 | 0 — Baseline | ✅ Fait | `MINIMAL_MODE = true` ajouté en tête de `import_md.jsx` ; `insertMarkdownWithStyles_v2()` ajoutée (copie isolée, l'ancienne fonction reste intacte) ; `main()` branché sur v2 quand MINIMAL_MODE actif. Vieux code non modifié. |
 | 26/09 | 1 — Code + simulation | ✅ Codé et simulé | v2 étape 1 : collecte des textes non-table, `join("\r")`, `story.contents = ""`, UNE SEULE assignation `insertionPoints[-1].contents`, logs attendu/réel. Simulation Node (vrai parseur extrait + stubs InDesign) sur 3 fixtures : `test_min_01_texte.md` → 3 blocs / 2 `\r` / 0 "undefined" ; `deepseek_referentiel.md` → **35 blocs** (h1:1 h2:2 h3:5 p:16 li:11) / 34 `\r` / 0 "undefined" ; `gemini_charte.md` → 24 blocs / 23 `\r`. Syntaxe validée (`node --check`). Synchronisé vers Scripts Panel + diff vérifié identique (62 398 octets). |
 | 26/09 | 1 — Test réel | ✅ Validé par FJD | Import réussi, texte présent, ordre correct. **Commit `f3f6c68`.** |
-| 26/09 | 1bis | 🔴 à faire | Section ajoutée sur signalement de FJD après validation de l'étape 1 : couvrir import au curseur de texte et import au curseur d'outil flèche (cadre sélectionné hors édition), négligés jusqu'ici — un seul mode d'invocation testé à l'étape 1. Voir section dédiée. |
+| 26/09 | 1bis | ✅ Validé par FJD | Section ajoutée sur signalement de FJD après validation de l'étape 1 : couvrir import au curseur de texte et import au curseur d'outil flèche (cadre sélectionné hors édition). Code : `resolveTargetStory(selection)` retourne `{ story, mode, insertAt }` (modes `TextFrame`/`InsertionPoint`/`Text`/`Story`, échec propre sinon) ; `insertMarkdownWithStyles_v2` accepte `options.insertAt` (écriture au curseur sans vider la story). Les deux modes d'invocation validés en réel par FJD le 26/09. **Commit `M03 étape 1bis : points d'entrée OK`.** |
+| 26/09 | 1ter | 🔴 à faire | Section ajoutée sur demande de FJD (26/09) : check + nettoyage des styles courants (caractère, paragraphe, objet, table/cellule) au trigger, AVANT tout mapping, avec journalisation nominative de ce qui est retiré. À traiter **après** validation de la 1bis. Voir section dédiée. |
 
 ## Référence
 - Ancienne version (à ne pas modifier tant que la nouvelle n'a pas atteint une couverture équivalente) : `import_md.jsx` lignes 965-1180, fonction `insertMarkdownWithStyles`.
