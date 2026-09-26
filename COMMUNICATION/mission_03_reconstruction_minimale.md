@@ -1,6 +1,6 @@
 # Mission 03 — Reconstruction minimale de `insertMarkdownWithStyles` après régression non identifiée
 
-**Statut** : 🔴 BLOQUÉ — régression isolée sur le chemin `mode=TextFrame` de l'étape 1 (déjà validée et commitée `f3f6c68`, mais rejoue systématiquement `paragraphs.length=1` au lieu de 3 en test réel le 26/09 après-midi, voir Journal). Mode `InsertionPoint` correct. À corriger avant de reprendre la 1ter ou le pivot place gun.
+**Statut** : 🟡 EN COURS — étape 1, 1bis validées en réel par FJD (confirmation visuelle : 3 paragraphes propres dans tous les modes testés, y compris TextFrame). **Correction 26/09 soir** : le log `paragraphs.length=1` en mode TextFrame (voir Journal, tests 15:33-15:44) est un **faux positif de diagnostic**, pas une régression fonctionnelle — FJD confirme avoir vu 3 paragraphes distincts à l'écran à chaque test. Cause probable à investiguer : `story.paragraphs.length` lu sur le mauvais objet, ou lu à un timing où InDesign n'a pas encore recalculé sa collection interne (cf. Cas 23 du wiki sur le comportement non garanti de cette collection). Le compteur de log est donc à corriger avant de s'y refier, mais **le texte brut fonctionne bien** dans les 2 modes. Étape 1ter (styles) codée, à valider. Feuille de route pivot (place gun) actée, en attente.
 **Bloque** : toutes les autres missions jusqu'à validation complète (étape 8)
 
 ## Feuille de route pivot — place gun natif (actée par FJD le 26/09/2026)
