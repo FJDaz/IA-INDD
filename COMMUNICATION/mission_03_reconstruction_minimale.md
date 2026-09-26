@@ -1,6 +1,6 @@
 # Mission 03 — Reconstruction minimale de `insertMarkdownWithStyles` après régression non identifiée
 
-**Statut** : 🔴 À FAIRE — Étape 1 (cas minimal, texte brut)
+**Statut** : � EN COURS — étape 1 codée + simulée, test réel InDesign requis (26/09) — Étape 1 (cas minimal, texte brut)
 **Bloque** : toutes les autres missions jusqu'à validation complète (étape 8)
 
 ⚠️ **Incident Ouvrier GLM (26/09/2026)** : confié à GLM, qui a répondu en recopiant tel quel un ancien message de l'Architecte (Claude) décrivant une création de fichiers déjà faite dans un tour précédent — sans exécuter aucune action réelle. Preuve : `git diff 647f691 -- import_md.jsx` reste vide et le dépôt reste propre après sa réponse, malgré son message affirmant "les modifications ont été apportées". GLM abandonné comme Ouvrier sur cette mission, **repassée à DeepSeek**. Cf. [[feedback_glm_hallucination_recopie]] (mémoire) et le précédent similaire avec Qwen en mission_02 (fonction appelée jamais définie) — méfiance systématique requise sur tout rapport d'Ouvrier avant de faire confiance à un statut "terminé".
@@ -88,3 +88,12 @@ Chaque étape ajoute une seule couche sur la base de la précédente déjà vali
 - Ancienne version (à ne pas modifier tant que la nouvelle n'a pas atteint une couverture équivalente) : `import_md.jsx` lignes 965-1180, fonction `insertMarkdownWithStyles`.
 - Wiki : [../doc/wiki_extendscript_indesign.md](../doc/wiki_extendscript_indesign.md) — Cas 17-23 pour l'historique du problème.
 - Fichier de référence de non-régression : `fixtures/deepseek_referentiel/*.md` (fonctionnait au tout début de la session du 23/09).
+---
+
+## Journal d'exécution
+
+| Date | Étape | Résultat | Détails |
+|------|-------|----------|---------|
+| 26/09 | 0 — Baseline | ✅ Fait | `MINIMAL_MODE = true` ajouté en tête de `import_md.jsx` ; `insertMarkdownWithStyles_v2()` ajoutée (copie isolée, l'ancienne fonction reste intacte) ; `main()` branché sur v2 quand MINIMAL_MODE actif. Vieux code non modifié. |
+| 26/09 | 1 — Code + simulation | ✅ Codé et simulé | v2 étape 1 : collecte des textes non-table, `join("\r")`, `story.contents = ""`, UNE SEULE assignation `insertionPoints[-1].contents`, logs attendu/réel. Simulation Node (vrai parseur extrait + stubs InDesign) sur 3 fixtures : `test_min_01_texte.md` → 3 blocs / 2 `\r` / 0 "undefined" ; `deepseek_referentiel.md` → **35 blocs** (h1:1 h2:2 h3:5 p:16 li:11) / 34 `\r` / 0 "undefined" ; `gemini_charte.md` → 24 blocs / 23 `\r`. Syntaxe validée (`node --check`). **Synchronisé vers Scripts Panel + diff vérifié identique (62 398 octets).** |
+| 26/09 | 1 — Test réel | ⏳ EN ATTENTE FJD | Procédure : (1) ouvrir InDesign + un doc de test avec un TextFrame vide sélectionné, (2) lancer `import_md` depuis le panneau Scripts, (3) choisir `fixtures/mission_03_minimal/test_min_01_texte.md`, (4) valider le dialogue de mapping en un clic (mapping IGNORÉ à l'étape 1, l'alerte finale le rappelle), (5) lire `import_md_errors.log` à côté du script du Scripts Panel : chercher `M03-etape1`. **Critère : `story.paragraphs.length` = 3 (le nb attendu).** En cas d'échec sur le minimal, refaire le test avec `fixtures/deepseek_referentiel.md` (critère : 35). NE PAS avancer à l'étape 2 tant que le compte n'est pas exact. |

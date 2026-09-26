@@ -10,6 +10,15 @@ var SCRIPT_NAME = "Import MD";
 var LABEL_NAME = "md-style-map";
 var LOG_FILE_PATH = new File($.fileName).parent.fsName + "/import_md_errors.log";
 
+// MISSION 03 (25/09, décision FJD) : reconstruction minimale de
+// insertMarkdownWithStyles après régression non identifiée. Quand
+// MINIMAL_MODE = true, main() exécute insertMarkdownWithStyles_v2() au lieu de
+// l'ancienne version — étape 1 = texte brut uniquement (une seule assignation,
+// aucun style, aucune table, aucune liste, aucun segment), cf.
+// COMMUNICATION/mission_03_reconstruction_minimale.md. Remettre à false une
+// fois la reconstruction validée bout en bout (étape 5, non-régression complète).
+var MINIMAL_MODE = true;
+
 // ============================================================================
 // SÉRIALISATION JSON MINIMALE
 // L'objet global JSON n'existe pas nativement en ExtendScript. Le mapping étant
@@ -1179,6 +1188,68 @@ function insertMarkdownWithStyles(story, blocks, mapping) {
     }
 }
 
+/**
+ * MISSION 03 — ÉTAPE 1 : reconstruction minimale, TEXTE BRUT UNIQUEMENT.
+ * (COMMUNICATION/mission_03_reconstruction_minimale.md, décision FJD du 25/09)
+ *
+ * Cette fonction est une COPIE ISOLÉE : l'ancienne insertMarkdownWithStyles()
+ * ci-dessus reste inchangée tant que la nouvelle n'est pas validée bout en bout.
+ *
+ * Ce qu'elle fait — rien d'autre :
+ *   1. Construire fullText = textes des blocs joints par "\r" (blocs "table"
+ *      IGNORÉS à ce stade, cf. mission étape 3 : ils reviendront plus tard).
+ *   2. story.contents = "" puis UNE SEULE assignation à insertionPoints[-1].
+ *   3. Logger le nombre de blocs attendu vs story.paragraphs.length réel après
+ *      écriture — c'est LE critère de validation de l'étape 1.
+ *
+ * Ce qu'elle ne fait PAS (volontairement) : aucun style, aucune table, aucune
+ * liste (cascade li2/li3), aucun segment, aucun gras/italique. Chaque couche
+ * sera réintroduite une à une, avec test réel InDesign + commit git à chaque
+ * étape validée — jamais plusieurs couches d'un coup.
+ */
+function insertMarkdownWithStyles_v2(story, blocks, mapping) {
+    try {
+        // Étape 1 : textes des blocs non-table collectés puis joints par un seul
+        // "\r" entre chaque (formulation fidèle au snippet de la mission ; les
+        // blocs "table" n'ont pas de .text — ils seraient sérialisés "undefined" —
+        // et sont explicitement ignorés à ce stade, cf. étape 3).
+        var textParts = [];
+        for (var i = 0; i < blocks.length; i++) {
+            if (blocks[i].type === "table") continue;
+            textParts.push(blocks[i].text);
+        }
+        var blockCount = textParts.length;
+        var fullText = textParts.join("\r");
+
+        // Log AVANT écriture : ce qu'on attend.
+        logToFile("M03-etape1: blocs texte attendus=" + blockCount + " / total blocs parsés=" + blocks.length + " | fullText.length=" + fullText.length);
+
+        story.contents = "";
+
+        // UNE SEULE assignation — le cœur du cas minimal.
+        story.insertionPoints[-1].contents = fullText;
+
+        // Log APRÈS écriture : le critère de validation est l'égalité entre
+        // blockCount (blocs écrits) et story.paragraphs.length. Toute divergence
+        // isole le bug dans la couche la plus basse (construction de fullText ou
+        // interprétation des "\r" par InDesign), indépendamment des couches
+        // styles/segments/tables.
+        var paraCountAfter = story.paragraphs.length;
+        logToFile("M03-etape1: apres assignation — story.paragraphs.length=" + paraCountAfter + " (attendu=" + blockCount + ")");
+
+        if (paraCountAfter !== blockCount) {
+            logToFile("M03-etape1: DIVERGENCE — nb paragraphes réel (" + paraCountAfter + ") != nb blocs (" + blockCount + "). Cause a isoler avant toute autre étape.");
+        }
+
+        return true;
+
+    } catch (e) {
+        logError(e, "insertMarkdownWithStyles_v2");
+        alertUser("Erreur (v2 étape 1) : " + e.message);
+        return false;
+    }
+}
+
 // ============================================================================
 // FONCTION PRINCIPALE
 // ============================================================================
@@ -1266,14 +1337,28 @@ function main() {
             saveMappingToDocument(mapping);
         }
 
-        // Insérer le Markdown avec les styles
-        var success = insertMarkdownWithStyles(targetStory, blocks, mapping);
+        // Insérer le Markdown avec les styles.
+        // MISSION 03 : si MINIMAL_MODE est actif, on exécute la reconstruction
+        // minimale (étape 1 : texte brut, cf. COMMUNICATION/
+        // mission_03_reconstruction_minimale.md) — l'ancienne version reste
+        // disponible et inchangée pour comparaison (MINIMAL_MODE = false).
+        var success;
+        if (MINIMAL_MODE) {
+            success = insertMarkdownWithStyles_v2(targetStory, blocks, mapping);
+            if (success) {
+                alertUser("M03 étape 1 (texte brut) exécuté.\n\nVérifiez le log import_md_errors.log :\nnb paragraphes attendu vs réel. NE PAS avancer tant que la divergence persiste.");
+            }
+        } else {
+            success = insertMarkdownWithStyles(targetStory, blocks, mapping);
+        }
         if (!success) {
             alertUser("Échec de l'insertion du Markdown avec les styles.");
             return;
         }
 
-        alertUser("Markdown inséré avec succès avec les styles configurés !");
+        if (!MINIMAL_MODE) {
+            alertUser("Markdown inséré avec succès avec les styles configurés !");
+        }
 
     } catch (e) {
         logError(e, "main");

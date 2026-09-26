@@ -30,11 +30,11 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ## Mission 03 — Reconstruction minimale de `insertMarkdownWithStyles` après régression non identifiée
 
-**Statut** : 🔴 À FAIRE
+**Statut** : 🟡 EN COURS — étape 1 (texte brut) codée, simulée Node et synchronisée vers Scripts Panel ; test réel InDesign requis (26/09)
 
 **Fichier détaillé** : [mission_03_reconstruction_minimale.md](mission_03_reconstruction_minimale.md)
 
-**Résumé** : après 3 jours de correctifs empilés, régression réelle constatée par FJD (un fichier DeepSeek qui marchait au tout début ne marche plus, cause non identifiée malgré plusieurs cycles diagnostic/correctif). Décision actée avec FJD : arrêter de driller l'architecture actuelle, repartir d'un cas minimal (texte brut sans styles/segments/tables/listes) et réintroduire les couches une à une, avec test réel InDesign + commit git à chaque étape validée. Git initialisé en urgence le 25/09 (commit `647f691`, snapshot de l'état actuel, pas d'état de référence antérieur disponible).
+**Résumé** : après 3 jours de correctifs empilés, régression réelle constatée par FJD (un fichier DeepSeek qui marchait au tout début ne marche plus, cause non identifiée malgré plusieurs cycles diagnostic/correctif). Décision actée avec FJD : arrêter de driller l'architecture actuelle, repartir d'un cas minimal (texte brut sans styles/segments/tables/listes) et réintroduire les couches une à une, avec test réel InDesign + commit git à chaque étape validée. Git initialisé en urgence le 25/09 (commit `647f691`, snapshot de l'état actuel, pas d'état de référence antérieur disponible). 26/09 : `MINIMAL_MODE` + `insertMarkdownWithStyles_v2()` (copie isolée, ancienne version intacte) ; simulation Node OK sur 3 fixtures (35 blocs attendus sur deepseek_referentiel, 0 "undefined") ; en attente du test réel étape 1 par FJD.
 
 ---
 
