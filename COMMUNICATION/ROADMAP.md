@@ -14,6 +14,8 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 **Résumé** : chantier fondationnel et rétroactif — numéroté 00 car il aurait dû précéder toutes les autres missions plutôt que d'être découvert après coup. Constituer une base documentaire structurée (ontologie) du DOM ExtendScript/InDesign (objets, propriétés, méthodes, pièges connus, citations exactes de doc officielle) à partir d'une recherche web ciblée, pour que tout Ouvrier futur (quel que soit le modèle) dispose d'un contrat de référence fiable au lieu de redécouvrir les mêmes pièges à chaque mission. Capitalise sur les 22+ bugs déjà rencontrés (mission_01) et la méthode de travail déjà validée (vérification doc officielle avant hypothèse).
 
+**Question prioritaire ajoutée le 26/09** (à traiter avant toute recherche large) : le scripting ExtendScript peut-il déclencher le "curseur chargé" natif (loaded cursor, clic = nouveau bloc, shift-clic = pages calibrées) et/ou ajouter le Markdown aux formats éligibles au Placer natif (`File > Place`) ? Si oui sur l'un des deux points, pivot potentiel de toute la mission_03 (actuellement **en pause** en attendant cette réponse) — le mapping de style, les points d'entrée et le calibrage de pages seraient hérités gratuitement du mécanisme natif au lieu d'être reconstruits manuellement.
+
 ---
 
 ## Mission 01 — Plugin InDesign : import Markdown mappé sur la charte de styles réelle du document
@@ -40,7 +42,7 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ## Mission 03 — Reconstruction minimale de `insertMarkdownWithStyles` après régression non identifiée
 
-**Statut** : 🟡 EN COURS — étape 1 (texte brut) validée en réel et commitée (`f3f6c68`) ; étape 1bis (points d'entrée du script) à faire avant l'étape 2
+**Statut** : ⏸️ EN PAUSE — étape 1 (texte brut) validée en réel et commitée (`f3f6c68`) ; étape 1bis suspendue en attente de la question prioritaire de la mission 00 (voir ci-dessus)
 
 **Fichier détaillé** : [mission_03_reconstruction_minimale.md](mission_03_reconstruction_minimale.md)
 

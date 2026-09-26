@@ -15,6 +15,18 @@ FJD propose de construire, en amont, une base documentaire structurée : une rec
 
 Produire un document d'ontologie (`doc/ontologie_dom_indesign.md` ou format structuré équivalent, à trancher en section Forme) couvrant les objets du DOM InDesign effectivement utilisés ou susceptibles de l'être dans ce projet, avec pour chacun : propriétés clés, méthodes clés, relations avec les objets voisins, pièges connus (confirmés par test réel ou par citation exacte de doc officielle), et sources citées.
 
+## Question prioritaire — à traiter en tout premier, avant la recherche large
+
+FJD a soulevé le 26/09/2026 une question qui peut changer toute la feuille de route du projet (mission_01 et mission_03 incluses) : **jusqu'où le scripting ExtendScript a-t-il accès aux mécanismes natifs d'import/placement d'InDesign, et où commence l'obligation de tout réinventer ?**
+
+Deux sous-questions précises, à répondre avant tout le reste de la mission :
+
+1. **Le "curseur chargé" (loaded cursor) est-il déclenchable par script ?** Le comportement natif attendu par FJD : après un déclenchement (menu Fichier > Placer, ou glisser-déposer d'un fichier), le curseur souris se transforme en pictogramme d'attente de placement (comme lors d'un chaînage de texte en transit, "en excès" mais pas encore rattaché à un bloc). Un clic simple crée alors un nouveau bloc de texte dans les marges du document ; un shift-clic crée en plus les pages nécessaires selon le calibrage du texte à placer. Question : un script ExtendScript peut-il mettre l'utilisateur dans cet état (`Text.place()` ou équivalent), avec le comportement clic / shift-clic hérité automatiquement, ou ce mécanisme est-il strictement une interaction UI native inaccessible au scripting ?
+
+2. **Un format de fichier (ici Markdown) peut-il être ajouté à la liste des formats éligibles au Placer natif d'InDesign (`File > Place`) via scripting seul ?** Si oui, tout le travail de mapping de style, de gestion des points d'entrée (curseur texte, outil flèche, cf. mission_03 étape 1bis) et de calibrage de pages serait hérité gratuitement du mécanisme natif, rendant obsolète une bonne partie de la reconstruction en cours. Si la réponse est que ceci relève du SDK InDesign natif (C++/UXP) et non du scripting ExtendScript, il faut le confirmer par citation officielle avant d'abandonner la piste.
+
+**Sortie attendue de cette sous-recherche** : une réponse tranchée (oui/non, avec citation exacte de la doc officielle Adobe ou test réel) sur ces deux points, avant de démarrer la recherche large sur l'ontologie complète. Si la réponse est "impossible en scripting pur" sur les deux points, la mission_03 continue telle quelle (reconstruction manuelle des points d'entrée). Si un des deux points s'avère possible, en informer FJD immédiatement — pivot potentiel de toute la feuille de route, décision qui lui revient.
+
 ## Périmètre — objets à couvrir en priorité
 
 Objets déjà rencontrés dans le projet (source : wiki, mission_01, mission_03) :
