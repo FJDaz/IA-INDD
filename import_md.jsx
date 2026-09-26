@@ -1207,7 +1207,7 @@ function insertMarkdownWithStyles(story, blocks, mapping) {
  * sera réintroduite une à une, avec test réel InDesign + commit git à chaque
  * étape validée — jamais plusieurs couches d'un coup.
  */
-function insertMarkdownWithStyles_v2(story, blocks, mapping) {
+function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
     try {
         // Étape 1 : textes des blocs non-table collectés puis joints par un seul
         // "\r" entre chaque (formulation fidèle au snippet de la mission ; les
@@ -1221,23 +1221,37 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping) {
         var blockCount = textParts.length;
         var fullText = textParts.join("\r");
 
-        // Log AVANT écriture : ce qu'on attend.
-        logToFile("M03-etape1: blocs texte attendus=" + blockCount + " / total blocs parsés=" + blocks.length + " | fullText.length=" + fullText.length);
+        // Étape 1bis — mode d'invocation « curseur de texte » : on écrit à un
+        // insertion point EXISTANT sans vider la story, pour ne pas écraser le
+        // texte autour du curseur (cf. critère de réussite 1bis : « sans écraser
+        // le texte existant autour du curseur »). En l'absence de options.insertAt
+        // (mode TextFrame/Story déjà validé à l'étape 1), le comportement reste
+        // STRICTEMENT identique à celui validé et commité (f3f6c68).
+        var insertAtCursor = !!(options && options.insertAt);
+        var targetPoint = insertAtCursor ? options.insertAt : story.insertionPoints[-1];
 
-        story.contents = "";
+        // Log AVANT écriture : ce qu'on attend.
+        logToFile("M03-etape1: blocs texte attendus=" + blockCount + " / total blocs parsés=" + blocks.length + " | fullText.length=" + fullText.length + " | insertAtCursor=" + insertAtCursor);
+
+        var paraCountBefore = story.paragraphs.length;
+
+        if (!insertAtCursor) {
+            story.contents = "";
+        }
 
         // UNE SEULE assignation — le cœur du cas minimal.
-        story.insertionPoints[-1].contents = fullText;
+        targetPoint.contents = fullText;
 
-        // Log APRÈS écriture : le critère de validation est l'égalité entre
-        // blockCount (blocs écrits) et story.paragraphs.length. Toute divergence
-        // isole le bug dans la couche la plus basse (construction de fullText ou
-        // interprétation des "\r" par InDesign), indépendamment des couches
-        // styles/segments/tables.
+        // Log APRÈS écriture : en mode TextFrame (story vidée) le critère de
+        // validation est l'égalité entre blockCount (blocs écrits) et
+        // story.paragraphs.length. En mode curseur la story préexistante n'est
+        // pas vidée : on journalise l'évolution du nombre de paragraphes
+        // (avant → après) sans en faire un critère bloquant, l'attendu exact
+        // dépendant de la position d'insertion (cf. à trancher en réel).
         var paraCountAfter = story.paragraphs.length;
-        logToFile("M03-etape1: apres assignation — story.paragraphs.length=" + paraCountAfter + " (attendu=" + blockCount + ")");
+        logToFile("M03-etape1: apres assignation — story.paragraphs.length=" + paraCountAfter + " (avant=" + paraCountBefore + ", blocs=" + blockCount + ", insertAtCursor=" + insertAtCursor + ")");
 
-        if (paraCountAfter !== blockCount) {
+        if (!insertAtCursor && paraCountAfter !== blockCount) {
             logToFile("M03-etape1: DIVERGENCE — nb paragraphes réel (" + paraCountAfter + ") != nb blocs (" + blockCount + "). Cause a isoler avant toute autre étape.");
         }
 
@@ -1248,6 +1262,90 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping) {
         alertUser("Erreur (v2 étape 1) : " + e.message);
         return false;
     }
+}
+
+/**
+ * MISSION 03 étape 1bis — Décrit le type de l'élément de sélection.
+ * Sert à journaliser le type EXACT de app.selection[0] dans chacun des modes
+ * d'invocation (cadre sélectionné, curseur de texte, outil flèche), point 1 de
+ * la section « Étape 1bis » de la mission. Aucune hypothèse : on teste par
+ * instanceof (classes du DOM InDesign) et on retombe sur constructor.name.
+ */
+function describeSelectionItem(item) {
+    var parts = [];
+    try { parts.push("TextFrame=" + (item instanceof TextFrame)); } catch (e1) { parts.push("TextFrame=?") ; }
+    try { parts.push("Text=" + (item instanceof Text)); } catch (e2) { parts.push("Text=?") ; }
+    try { parts.push("InsertionPoint=" + (item instanceof InsertionPoint)); } catch (e3) { parts.push("InsertionPoint=?") ; }
+    try { parts.push("Story=" + (item instanceof Story)); } catch (e4) { parts.push("Story=?") ; }
+    try { parts.push("constructor=" + item.constructor.name); } catch (e5) { parts.push("constructor=?") ; }
+    return parts.join(" ");
+}
+
+/**
+ * MISSION 03 étape 1bis — Détermine le story cible et le point d'insertion à
+ * partir de l'état de sélection InDesign, sans JAMAIS supposer un TextFrame
+ * explicitement sélectionné comme objet (point 2 de la section « Étape 1bis »).
+ *
+ * Modes couverts :
+ *   - TextFrame sélectionné (outil flèche ou outil Texte sur le cadre) →
+ *     story = item.texts[0] (chemin validé à l'étape 1), insertion en fin de
+ *     story après vidage.
+ *   - Curseur de texte actif (mode édition) → item est un InsertionPoint ; on
+ *     dérive le story via la propriété documentée parentStory
+ *     (indesignjs.de/extendscriptAPI — InsertionPoint.parentStory : « Story |
+ *     readonly | The story that contains the text ») et on insère AU POINT DU
+ *     CURSEUR, sans vider la story.
+ *   - Plage de texte sélectionnée → item est un Text ; même dérivation
+ *     (Text.parentStory), insertion au début de la plage sélectionnée.
+ *   - Story directement sélectionnée → traitée comme le cas TextFrame.
+ *
+ * Retourne { story: Story, mode: String, insertAt: InsertionPoint|null } ou
+ * null si aucun story exploitable (→ main() échoue proprement, point 3).
+ */
+function resolveTargetStory(selection) {
+    if (!selection || selection.length === 0) {
+        logToFile("M03-etape1bis: selection vide (length=0) — aucun story exploitable");
+        return null;
+    }
+
+    var item = selection[0];
+    logToFile("M03-etape1bis: app.selection[0] → " + describeSelectionItem(item) + " | selection.length=" + selection.length);
+
+    var story = null;
+    var mode = "";
+    var insertAt = null;
+
+    if (item instanceof TextFrame) {
+        // Modes « outil flèche » et « outil Texte sur le cadre » : même type
+        // retourné. Chemin strictement identique à l'étape 1 validée.
+        story = item.texts[0];
+        mode = "TextFrame";
+    } else if (item instanceof InsertionPoint) {
+        story = item.parentStory;
+        insertAt = item;
+        mode = "InsertionPoint";
+    } else if (item instanceof Text) {
+        story = item.parentStory;
+        insertAt = item.insertionPoints[0];
+        mode = "Text";
+    } else if (item instanceof Story) {
+        story = item;
+        mode = "Story";
+    } else {
+        logToFile("M03-etape1bis: type non géré — échec propre");
+        return null;
+    }
+
+    if (!story) {
+        logToFile("M03-etape1bis: type reconnu (mode=" + mode + ") mais aucun story exploitable — échec propre");
+        return null;
+    }
+
+    var paraBefore = "?";
+    try { paraBefore = story.paragraphs.length; } catch (eBefore) {}
+    logToFile("M03-etape1bis: mode=" + mode + " | paragraphes avant=" + paraBefore);
+
+    return { story: story, mode: mode, insertAt: insertAt };
 }
 
 // ============================================================================
@@ -1266,19 +1364,18 @@ function main() {
             return;
         }
 
-        // Vérifier que la sélection est un TextFrame
+        // MISSION 03 étape 1bis — Résoudre le point d'entrée quel que soit le
+        // mode d'invocation : cadre sélectionné (outil flèche / outil Texte) OU
+        // curseur de texte actif dans un bloc existant. Aucune hypothèse de
+        // TextFrame ; échec propre si rien d'exploitable.
         var selection = app.selection;
-        if (!selection || selection.length === 0) {
-            alertUser("Veuillez sélectionner un bloc de texte (TextFrame) avant d'exécuter le script.");
+        var resolved = resolveTargetStory(selection);
+        if (!resolved) {
+            alertUser("Aucun bloc de texte exploitable n'est actif.\n\nPlacez le curseur dans un bloc de texte, ou sélectionnez un bloc de texte (outil flèche ou outil Texte), puis relancez le script.");
             return;
         }
-
-        var selectedItem = selection[0];
-        if (!(selectedItem instanceof TextFrame)) {
-            alertUser("La sélection active n'est pas un bloc de texte (TextFrame).\n\nVeuillez sélectionner un bloc de texte.");
-            return;
-        }
-        var targetStory = selectedItem.texts[0];
+        var targetStory = resolved.story;
+        var insertionOptions = resolved.insertAt ? { insertAt: resolved.insertAt } : null;
 
         // Sélectionner et lire le fichier Markdown
         var fileContent = selectAndReadMarkdownFile();
@@ -1344,9 +1441,9 @@ function main() {
         // disponible et inchangée pour comparaison (MINIMAL_MODE = false).
         var success;
         if (MINIMAL_MODE) {
-            success = insertMarkdownWithStyles_v2(targetStory, blocks, mapping);
+            success = insertMarkdownWithStyles_v2(targetStory, blocks, mapping, insertionOptions);
             if (success) {
-                alertUser("M03 étape 1 (texte brut) exécuté.\n\nVérifiez le log import_md_errors.log :\nnb paragraphes attendu vs réel. NE PAS avancer tant que la divergence persiste.");
+                alertUser("M03 étape 1/1bis (texte brut) exécuté.\n\nMode de sélection détecté : " + resolved.mode + "\n\nVérifiez le log import_md_errors.log :\nnb paragraphes attendu vs réel. NE PAS avancer tant que la divergence persiste.");
             }
         } else {
             success = insertMarkdownWithStyles(targetStory, blocks, mapping);
