@@ -340,6 +340,59 @@ for (var i = 0; i < n; i++) {
 
 ---
 
+## Cas 24 — La story capturée AVANT le vidage se DÉTACHE → le compteur de diagnostic ment
+
+**Symptôme** : le log annonçait « 1 paragraphe » (puis « 9 ») là où l'œil voyait 3 (puis 39) paragraphes propres à l'écran. Le texte inséré était **correct dans tous les cas** — seul le chiffre rapporté était faux. Phénomène strictement corrélé au mode « `TextFrame` sélectionné » (story vidée avant écriture). En mode curseur (aucun vidage), les chiffres étaient justes.
+
+**Cause — deux couches superposées :**
+
+1. **Couche 1 — point d'insertion résolu trop tôt.** `targetPoint = story.insertionPoints[-1]` était évalué **avant** `story.contents = ""`. Le vidage recompose toute la story : la référence conservée ne désigne plus un état de texte cohérent. Correction : re-résoudre `targetPoint` **après** le vidage (le mode curseur, lui, garde son `insertAt` fourni par l'appelant ; seul le mode « fin de story » doit re-résoudre).
+
+2. **Couche 2 — cause racine définitive : la poignée `story` elle-même se DÉTACHE.** Après `story.contents = ""`, l'objet story conservé n'est plus rattaché au document : il renvoie `.contents` **vide** (`length === 0`) et un `paragraphs` **périmé**. Le texte écrit vit en réalité dans **`targetPoint.parentStory`**, seule source de vérité après recomposition. Preuve par log réel (4 tirs, mêmes fichiers) :
+
+| Tir | Mode | Blocs | `story` capturée AVANT vidage | `targetPoint.parentStory` (vérité) |
+|-----|------|-------|-------------------------------|-------------------------------------|
+| 1 | curseur | 3 | snapshot=3, `.contents.length=636` ✅ | 636 ✅ |
+| 2 | TextFrame | 3 | snapshot=3, `.contents.length=0` ⚠️ | 636 ✅ (œil : 3) |
+| 3 | TextFrame | 39 | snapshot=**9**, `.contents.length=0` ❌ | 4402 ✅ (œil : 39) |
+| 4 | curseur | 85 | snapshot=85, `.contents.length=5474` ✅ | 5474 ✅ |
+
+En mode curseur (aucun vidage), `story` reste valide. En mode TextFrame, `story` est un **proxy mort** : sa lecture directe (`paragraphs.length`) est périmée *et* son `.contents` est vide — c'est un même mensonge que le Cas 23, mais sur l'objet entier, pas seulement sur une vue.
+
+**Confirmation en réel du correctif (26/09, 17:31–17:32 — mode TextFrame, celui qui mentait) :**
+
+| Heure | Blocs | `paragraphes reels` (log) | DOM snapshot | compte `\r` | Proxy périmé de contraste | Verdict |
+|-------|-------|---------------------------|--------------|--------------|---------------------------|---------|
+| 17:32:17 | 3 | **3** (avant correctif : `1`) | 3 | 3 | snapshot=3, `.contents.length=0` | ✅ |
+| 17:32:28 | 85 | **85** (avant correctif : valeur périmée) | 85 | 85 | snapshot=**26**, `.contents.length=0` | ✅ |
+
+Les deux tirs affichent `source=targetPoint.parentStory` **sans** mention `REPLI`, **aucune** ligne `DIVERGENCE`, **aucune** ligne `ECART DOM/JS`. Le tir à 85 blocs est le plus parlant : le contraste montre le proxy périmé annonçant `snapshot=26` et `.contents.length=0` pendant que `targetPoint.contents.length=5474` et que les trois mesures de vérité donnent `85` — la couche 2 est donc bien neutralisée, pas contournée par chance.
+
+**Vérification croisée indépendante** : les chiffres du log (blocs / `fullText.length` / `crCount`) ont été reproduits en réexécutant le **vrai parseur** (`parseMarkdown` de `import_md.jsx`) hors InDesign : `test_min_01_texte.md` → 3/636/2 ; `deepseek_formation.md` → 85/5474/84 ; `deepseek_referentiel.md` → 35/3940/34 ; `gemini_charte.md` → 24/2802/23. Concordance exacte sur les quatre fixtures. **Piège de méthode** : un comptage « indépendant » réécrit à la main (hors parseur) avait donné 85 blocs mais 5718 caractères — un faux écart dû à un nettoyage du balisage Markdown différent. Un arbitre n'est valable que s'il reproduit *la même transformation* que le code ; sinon il produit de fausses divergences, aussi nuisibles que les fausses alertes de l'addendum ci-dessous.
+
+**Correction appliquée :**
+1. **Re-résoudre `targetPoint` après le vidage** (couche 1).
+2. **Mesurer sur `targetPoint.parentStory`**, jamais sur la `story` capturée avant (couche 2), avec repli explicite **et signalé dans le log** si `parentStory` est indisponible.
+3. **Arbitre JS pur** : compter les `\r` en JS sur la chaîne réellement écrite ; paragraphes attendus = `crCount + 1`. Totalement indépendant des vues dynamiques du DOM.
+4. **Log de contraste** : afficher côte à côte la vérité (`parentStory`) **et** la valeur mensongère de la `story` capturée avant vidage, pour que toute divergence reste visible au lieu de se cacher derrière un chiffre unique.
+
+**Leçon transversale (méthode)** : un compteur de diagnostic doit être vérifié par un **arbitre indépendant du mécanisme suspecté** — ici, compter les `\r` en JS pur, insensible aux vues dynamiques du DOM InDesign. Et toute divergence journalisée doit être confrontée à l'**observation visuelle** : c'est l'œil (3, puis 39) qui a démasqué le log (1, puis 9), jamais l'inverse.
+
+**Leçon sur les simulateurs (recoupement Cas 12)** : le simulateur Node de l'étape 1bis modélisait un compteur *idéal* (toujours juste) et validait donc le bug à tort — il ne pouvait structurellement pas l'attraper. Corrigé en modélisant explicitement le **détachement** (`contents = ""` → la `story` devient un proxy périmé, le texte vivant dans `parentStory`), **puis** en prouvant par un **contrôle négatif** que le simulateur *échoue* si l'ancien code revient. Un pré-check qui ne peut pas échouer ne prouve rien.
+
+### Addendum — 3ᵉ défaut : le signal d'alerte lui-même peut mentir (faux positif)
+
+Constaté sur le rejeu réel du 26/09 16:58 (nouveau code, 2 tirs curseur). Le log affichait `source=targetPoint.parentStory (REPLI sur story !)` — c'est-à-dire **une alarme de repli** — alors qu'aucun repli n'avait eu lieu. Le test utilisé était `liveStory === story`, qui confond deux situations opposées :
+
+* **mode curseur** (`insertAtCursor=true`) : la story n'est **jamais vidée**, donc `targetPoint.parentStory` **est** `story` — c'est le fonctionnement **normal**, pas un repli ;
+* **mode TextFrame** après vidage : `story` est un proxy périmé ; si `parentStory` échouait vraiment et qu'on retombait sur `story`, **là** c'était un repli dangereux.
+
+Le libellé criait donc au loup sur les deux tirs les plus sains. **Correction** : `var isRealFallback = (liveStory === story) && !insertAtCursor;` — le signal n'apparaît que dans le seul cas où il a un sens. Verrouillé par une assertion dédiée dans le simulateur (26/26).
+
+**Leçon** : un **indicateur d'erreur** est du code de diagnostic comme un autre et doit être testé comme tel. Un faux positif d'alarme est aussi nuisible qu'un faux négatif : il décrédibilise le log et pousse à ignorer les vraies alertes. Corollaire de méthode : un simulateur doit couvrir **chaque branche** qui produit un message (ici le mode curseur, absent de la couverture initiale) — sinon c'est précisément la branche non couverte qui ment.
+
+---
+
 ## Piège structurel à retenir — deux copies du même script
 
 InDesign exécute les scripts depuis `~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/`, pas depuis le dossier de travail/repo. Toute correction faite sur le fichier source doit être recopiée vers cet emplacement avant test, sinon on corrige un fichier que le logiciel n'utilise jamais (piège rencontré le 23/09/2026, cf. mission_01).

@@ -1228,31 +1228,110 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         // (mode TextFrame/Story déjà validé à l'étape 1), le comportement reste
         // STRICTEMENT identique à celui validé et commité (f3f6c68).
         var insertAtCursor = !!(options && options.insertAt);
-        var targetPoint = insertAtCursor ? options.insertAt : story.insertionPoints[-1];
+
+        // Nombre de "\r" réellement présents dans fullText : c'est le SEUL
+        // indicateur calculé en JS pur, donc totalement fiable, indépendant de
+        // toute recomposition côté InDesign. Sert d'arbitre absolu du compteur.
+        var crCount = 0;
+        for (var crIdx = 0; crIdx < fullText.length; crIdx++) {
+            if (fullText.charAt(crIdx) === "\r") crCount++;
+        }
 
         // Log AVANT écriture : ce qu'on attend.
-        logToFile("M03-etape1: blocs texte attendus=" + blockCount + " / total blocs parsés=" + blocks.length + " | fullText.length=" + fullText.length + " | insertAtCursor=" + insertAtCursor);
+        logToFile("M03-etape1: blocs texte attendus=" + blockCount + " / total blocs parsés=" + blocks.length + " | fullText.length=" + fullText.length + " | crCount=" + crCount + " | insertAtCursor=" + insertAtCursor);
 
-        var paraCountBefore = story.paragraphs.length;
+        // ÉTAPE 0bis (26/09/2026) — LECTURE FIABLE DU COMPTEUR.
+        // `story.paragraphs` est une VUE DYNAMIQUE recalculée à l'accès, pas un
+        // tableau figé (wiki Cas 22) : un `.length` lu directement juste après
+        // une mutation de la story peut renvoyer une valeur périmée (wiki Cas
+        // 23 : `.length` valait 0 après `contents = ""`). Le pattern sûr est de
+        // forcer la résolution complète de la collection via
+        // `everyItem().getElements()` puis de lire la longueur du snapshot.
+        var paraCountBefore = 0;
+        try { paraCountBefore = story.paragraphs.everyItem().getElements().length; } catch (ePB) { logError(ePB, "etape0bis paraCountBefore"); }
 
         if (!insertAtCursor) {
             story.contents = "";
         }
 
+        // ÉTAPE 0bis — CAUSE RACINE IDENTIFIÉE le 26/09/2026 : le point
+        // d'insertion doit être ré-obtenu APRÈS le vidage, jamais avant.
+        // `story.contents = ""` recompose intégralement la story ; un
+        // `insertionPoints[-1]` capturé avant cette recomposition reste une
+        // référence stale. Écrire dans cette référence détachée fait bien
+        // apparaître le texte à l'écran (constat visuel FJD : 3 paragraphes)
+        // mais laisse la collection `paragraphs` de `story` dans son ancien
+        // état → `story.paragraphs.length` rapportait `1` en mode TextFrame sur
+        // les 7 tests du 26/09 (15:34→15:51) alors que le texte réel comptait
+        // 3 paragraphes. Aucune anomalie en mode curseur (insertAtCursor=true)
+        // car cette branche ne vide jamais la story.
+        var targetPoint = insertAtCursor ? options.insertAt : story.insertionPoints[-1];
+
         // UNE SEULE assignation — le cœur du cas minimal.
         targetPoint.contents = fullText;
 
-        // Log APRÈS écriture : en mode TextFrame (story vidée) le critère de
-        // validation est l'égalité entre blockCount (blocs écrits) et
-        // story.paragraphs.length. En mode curseur la story préexistante n'est
-        // pas vidée : on journalise l'évolution du nombre de paragraphes
-        // (avant → après) sans en faire un critère bloquant, l'attendu exact
-        // dépendant de la position d'insertion (cf. à trancher en réel).
-        var paraCountAfter = story.paragraphs.length;
-        logToFile("M03-etape1: apres assignation — story.paragraphs.length=" + paraCountAfter + " (avant=" + paraCountBefore + ", blocs=" + blockCount + ", insertAtCursor=" + insertAtCursor + ")");
+        // ÉTAPE 0bis — CAUSE RACINE DÉFINITIVE, confirmée par rejeu réel du
+        // 26/09/2026 (16:39-16:40, 4 tirs) : en mode TextFrame, la référence
+        // `story` capturée AVANT `story.contents = ""` reste un proxy PÉRIMÉ.
+        // Preuves croisées des tirs :
+        //   - tir 3 paragraphes   → snapshot(story)=3 | story.contents.length=0
+        //   - tir 39 paragraphes  → snapshot(story)=9 | story.contents.length=0
+        // alors que `targetPoint.contents.length` valait la taille réelle du
+        // texte (636 / 4402) et que FJD a confirmé visuellement 3 PUIS 39
+        // paragraphes. Le texte est intégralement inséré ; c'est la référence
+        // `story` (poignée obsolète après recomposition) qui n'est plus peuplée.
+        // → La SEULE source de vérité est le parent réel du point d'insertion.
+        var liveStory = null;
+        try { liveStory = targetPoint.parentStory; } catch (eLS) {}
+        if (!liveStory) liveStory = story; // repli — signalé explicitement dans le log
 
-        if (!insertAtCursor && paraCountAfter !== blockCount) {
-            logToFile("M03-etape1: DIVERGENCE — nb paragraphes réel (" + paraCountAfter + ") != nb blocs (" + blockCount + "). Cause a isoler avant toute autre étape.");
+        // Mesure DOM (peut encore être une vue dynamique, comme le prouve le
+        // tir 39 : snapshot story=9 ≠ 39).
+        var liveParaCount = -1;
+        try { liveParaCount = liveStory.paragraphs.everyItem().getElements().length; } catch (eLP) { logError(eLP, "etape0bis liveParaCount"); }
+
+        // Arbitre JS PUR, indépendant de TOUTE collection/vue dynamique du DOM :
+        // on relit la chaîne réelle de la story vivante et on compte les "\r"
+        // (fin de paragraphe en ExtendScript). Paragraphes = nb "\r" + 1.
+        var liveContents = "";
+        try { liveContents = liveStory.contents; } catch (eLC) {}
+        var liveCrCount = 0;
+        for (var lc = 0; lc < liveContents.length; lc++) {
+            if (liveContents.charAt(lc) === "\r") liveCrCount++;
+        }
+        var liveParaFromCr = (liveContents.length === 0) ? 0 : (liveCrCount + 1);
+
+        // Contrastes conservés pour l'audit : poignée périmée vs référence vivante.
+        var straySnapshot = -1;
+        try { straySnapshot = story.paragraphs.everyItem().getElements().length; } catch (eSS) {}
+        var strayContentsLength = -1;
+        try { strayContentsLength = story.contents.length; } catch (eSC) {}
+        var targetContentsLength = -1;
+        try { targetContentsLength = targetPoint.contents.length; } catch (eTC) {}
+
+        // Attention : en mode curseur (insertAtCursor=true) on ne vide JAMAIS la
+        // story, donc `targetPoint.parentStory === story` est le cas NORMAL — ce
+        // n'est pas un repli. Le signal « REPLI » ne doit apparaître que quand
+        // `parentStory` a réellement échoué ET qu'on a dû se rabattre sur `story`
+        // dans un contexte où celle-ci peut être une poignée périmée (mode
+        // TextFrame après vidage). Sinon le log crie au loup pour rien (constat
+        // rejeu réel 26/09 16:58 : 2 tirs curseur tous deux étiquetés REPLI à tort).
+        var isRealFallback = (liveStory === story) && !insertAtCursor;
+        logToFile("M03-etape0bis: VERITE — source=targetPoint.parentStory" +
+            (isRealFallback ? " (REPLI RÉEL sur story — parentStory indisponible !)" : "") +
+            " | paragraphes(DOM snapshot)=" + liveParaCount + " | paragraphes(compte \\r sur contents reel)=" + liveParaFromCr +
+            " | attendu(blocs)=" + blockCount + " | crCount(fullText)=" + crCount);
+        logToFile("M03-etape0bis: contraste — story capturee AVANT vidage : snapshot=" + straySnapshot +
+            " | contents.length=" + strayContentsLength + " || targetPoint.contents.length=" + targetContentsLength);
+        logToFile("M03-etape1: apres assignation — paragraphes reels=" + liveParaFromCr + " (avant=" + paraCountBefore + ", blocs=" + blockCount + ", insertAtCursor=" + insertAtCursor + ")");
+
+        // Le chiffre annoncé est celui de l'arbitre JS pur (infaillible). On
+        // signale toute divergence avec l'attendu OU avec la mesure DOM.
+        if (!insertAtCursor && liveParaFromCr !== blockCount) {
+            logToFile("M03-etape1: DIVERGENCE — nb paragraphes reel (" + liveParaFromCr + ") != nb blocs (" + blockCount + "). Cause a isoler avant toute autre etape.");
+        }
+        if (liveParaCount !== -1 && liveParaCount !== liveParaFromCr) {
+            logToFile("M03-etape0bis: ECART DOM/JS — snapshot(parentStory)=" + liveParaCount + " != compte \\r=" + liveParaFromCr + " (la vue dynamique DOM n'est pas fiable ; le compte JS fait foi).");
         }
 
         return true;
@@ -1348,6 +1427,172 @@ function resolveTargetStory(selection) {
     return { story: story, mode: mode, insertAt: insertAt };
 }
 
+/**
+ * Lit le nom d'un objet style InDesign sans jamais lever d'exception.
+ * Utilisé par l'étape 1ter pour journaliser nominativement les styles lus
+ * (cf. décision FJD : « ce qui a été retiré est journalisé nominativement »).
+ */
+function safeStyleName(styleObj, fallback) {
+    try {
+        if (styleObj === undefined || styleObj === null) return fallback;
+        // Les accesseurs applied*Style renvoient « StyleObject | String » (doc
+        // officielle : « Can return: CharacterStyle or String ») : une valeur
+        // chaîne est le NOM du style, pas un objet porteur de .name.
+        if (typeof styleObj === "string") return styleObj;
+        var n = styleObj.name;
+        if (n === undefined || n === null) return fallback;
+        return String(n);
+    } catch (e) {
+        return fallback;
+    }
+}
+
+/**
+ * MISSION 03 étape 1ter — Check + nettoyage des styles courants au trigger.
+ *
+ * État de l'art (doc officielle indesignjs.de — build InDesign 2026 / 21.5.1) :
+ *   - Caractère  : Text.appliedCharacterStyle (r/w), Text.styleOverridden (ro)
+ *   - Paragraphe : Text.appliedParagraphStyle (r/w), Text.applyParagraphStyle(using, clearingOverrides)
+ *   - Objet      : TextFrame.appliedObjectStyle (r/w), TextFrame.applyObjectStyle(using, clearingOverrides, clearingOverridesThroughRootObjectStyle), TextFrame.clearObjectStyleOverrides()
+ *   - Table/Cell : Table.appliedTableStyle + clearTableStyleOverrides() ; Cell.appliedCellStyle + clearCellStyleOverrides(clearingOverridesThroughRootCellStyle)
+ *   - Aucun clearCharacterStyleOverrides()/clearParagraphStyleOverrides() n'existe → remise à neutre par réaffectation du style neutre.
+ *
+ * Ordre imposé par la spec : (1) détecter + journaliser, (2) remettre à neutre, (3) mapping (fait ailleurs, dans main()).
+ * Périmètre : objet et table/cellule UNIQUEMENT si un cadre ou une table/cellule est réellement visé (aucun balayage global).
+ * Les styles neutres sont lus via document.characterStyles.item(0) / paragraphStyles.item(0) /
+ * objectStyles.item(0) — jamais un nom localisé en dur (corollaire Cas 05 du wiki).
+ */
+function checkAndCleanStylesAtTrigger(selection, doc, resolved) {
+    if (!doc) return;
+
+    var item = (selection && selection.length > 0) ? selection[0] : null;
+
+    // ---- Passe 1 : DÉTECTER + JOURNALISER (aucune modification ici) ----
+    logToFile("M03-etape1ter: === CHECK STYLES AU TRIGGER (avant toute modification) ===");
+
+    var neutralCharStyle = null;
+    var neutralParaStyle = null;
+    var neutralObjStyle = null;
+    try { neutralCharStyle = doc.characterStyles.item(0); } catch (eNC) { logError(eNC, "etape1ter lecture neutralCharStyle"); }
+    try { neutralParaStyle = doc.paragraphStyles.item(0); } catch (eNP) { logError(eNP, "etape1ter lecture neutralParaStyle"); }
+    try { neutralObjStyle = doc.objectStyles.item(0); } catch (eNO) { logError(eNO, "etape1ter lecture neutralObjStyle"); }
+
+    var neutralCharName = safeStyleName(neutralCharStyle, "?");
+    var neutralParaName = safeStyleName(neutralParaStyle, "?");
+    var neutralObjName = safeStyleName(neutralObjStyle, "?");
+    logToFile("M03-etape1ter: styles neutres du document -> caractere='" + neutralCharName + "' paragraphe='" + neutralParaName + "' objet='" + neutralObjName + "'");
+
+    // Cible texte pour lecture caractère/paragraphe : le point d'insertion résolu
+    // (mode curseur/plage) sinon le texte du cadre visé.
+    var textTarget = null;
+    if (resolved && resolved.insertAt) {
+        textTarget = resolved.insertAt;
+    } else if (item instanceof Text) {
+        textTarget = item;
+    } else if (item instanceof TextFrame) {
+        try { textTarget = item.texts[0]; } catch (eTT) { logError(eTT, "etape1ter lecture textTarget"); }
+    }
+
+    // Famille 1 — CARACTÈRE
+    var curCharStyle = null;
+    var curCharName = "";
+    if (textTarget) {
+        try { curCharStyle = textTarget.appliedCharacterStyle; } catch (eCC) { logError(eCC, "etape1ter lecture appliedCharacterStyle"); }
+        curCharName = safeStyleName(curCharStyle, "?");
+        var charOverridden = "?";
+        try { charOverridden = textTarget.styleOverridden; } catch (eCO) { logError(eCO, "etape1ter lecture styleOverridden"); }
+        logToFile("M03-etape1ter: [caractere] applique='" + curCharName + "' overridden=" + charOverridden + " (neutre attendu='" + neutralCharName + "')");
+    } else {
+        logToFile("M03-etape1ter: [caractere] aucun textTarget exploitable -> famille ignoree");
+    }
+
+    // Famille 2 — PARAGRAPHE
+    var curParaStyle = null;
+    var curParaName = "";
+    if (textTarget) {
+        try { curParaStyle = textTarget.appliedParagraphStyle; } catch (ePC) { logError(ePC, "etape1ter lecture appliedParagraphStyle"); }
+        curParaName = safeStyleName(curParaStyle, "?");
+        logToFile("M03-etape1ter: [paragraphe] applique='" + curParaName + "' (neutre attendu='" + neutralParaName + "')");
+    } else {
+        logToFile("M03-etape1ter: [paragraphe] aucun textTarget exploitable -> famille ignoree");
+    }
+
+    // Famille 3 — OBJET (uniquement si un cadre est réellement visé)
+    var objectTarget = (item instanceof TextFrame) ? item : null;
+    var curObjName = "";
+    if (objectTarget) {
+        var curObjStyle = null;
+        try { curObjStyle = objectTarget.appliedObjectStyle; } catch (eOC) { logError(eOC, "etape1ter lecture appliedObjectStyle"); }
+        curObjName = safeStyleName(curObjStyle, "?");
+        logToFile("M03-etape1ter: [objet] cadre vise -> applique='" + curObjName + "' (neutre attendu='" + neutralObjName + "')");
+    } else {
+        logToFile("M03-etape1ter: [objet] aucun cadre vise -> famille non declenchee (pas de balayage global)");
+    }
+
+    // Famille 4 — TABLE / CELLULE (uniquement si réellement visée)
+    var tableTarget = (item instanceof Table) ? item : null;
+    var cellTarget = (item instanceof Cell) ? item : null;
+    if (tableTarget) {
+        var curTblStyle = null;
+        try { curTblStyle = tableTarget.appliedTableStyle; } catch (eTC) { logError(eTC, "etape1ter lecture appliedTableStyle"); }
+        logToFile("M03-etape1ter: [table] applique='" + safeStyleName(curTblStyle, "?") + "'");
+    } else if (cellTarget) {
+        var curCellStyle = null;
+        try { curCellStyle = cellTarget.appliedCellStyle; } catch (eCC2) { logError(eCC2, "etape1ter lecture appliedCellStyle"); }
+        logToFile("M03-etape1ter: [cellule] applique='" + safeStyleName(curCellStyle, "?") + "'");
+    } else {
+        logToFile("M03-etape1ter: [table/cellule] aucune table/cellule visee -> famille non declenchee");
+    }
+
+    // ---- Passe 2 : REMETTRE À NEUTRE ----
+    logToFile("M03-etape1ter: === REMISE A NEUTRE ===");
+
+    // Caractère → réaffectation du style neutre (pas de clearCharacterStyleOverrides dans le DOM).
+    if (textTarget && neutralCharStyle && curCharName !== "" && curCharName !== neutralCharName) {
+        try {
+            textTarget.appliedCharacterStyle = neutralCharStyle;
+            logToFile("M03-etape1ter: [caractere] remis a neutre -> '" + curCharName + "' vers '" + neutralCharName + "'");
+        } catch (eCReset) { logError(eCReset, "etape1ter reset characterStyle"); }
+    } else if (textTarget) {
+        logToFile("M03-etape1ter: [caractere] deja neutre ou indetermine -> aucune action");
+    }
+
+    // Paragraphe → applyParagraphStyle(neutre, clearingOverrides=true).
+    if (textTarget && neutralParaStyle && curParaName !== "" && curParaName !== neutralParaName) {
+        try {
+            textTarget.applyParagraphStyle(neutralParaStyle, true);
+            logToFile("M03-etape1ter: [paragraphe] remis a neutre -> '" + curParaName + "' vers '" + neutralParaName + "' (clearingOverrides=true)");
+        } catch (ePReset) { logError(ePReset, "etape1ter reset paragraphStyle"); }
+    } else if (textTarget) {
+        logToFile("M03-etape1ter: [paragraphe] deja neutre ou indetermine -> aucune action");
+    }
+
+    // Objet → applyObjectStyle(neutre, true, true) + clearObjectStyleOverrides().
+    if (objectTarget && neutralObjStyle) {
+        try {
+            objectTarget.applyObjectStyle(neutralObjStyle, true, true);
+            objectTarget.clearObjectStyleOverrides();
+            logToFile("M03-etape1ter: [objet] remis a neutre '" + neutralObjName + "' + clearObjectStyleOverrides()");
+        } catch (eOReset) { logError(eOReset, "etape1ter reset objectStyle"); }
+    }
+
+    // Table / cellule → méthodes de nettoyage explicites du DOM.
+    if (tableTarget) {
+        try {
+            tableTarget.clearTableStyleOverrides();
+            logToFile("M03-etape1ter: [table] clearTableStyleOverrides() applique");
+        } catch (eTReset) { logError(eTReset, "etape1ter reset tableStyle"); }
+    }
+    if (cellTarget) {
+        try {
+            cellTarget.clearCellStyleOverrides(true);
+            logToFile("M03-etape1ter: [cellule] clearCellStyleOverrides(true) applique");
+        } catch (eCReset2) { logError(eCReset2, "etape1ter reset cellStyle"); }
+    }
+
+    logToFile("M03-etape1ter: === FIN CHECK STYLES ===");
+}
+
 // ============================================================================
 // FONCTION PRINCIPALE
 // ============================================================================
@@ -1376,6 +1621,12 @@ function main() {
         }
         var targetStory = resolved.story;
         var insertionOptions = resolved.insertAt ? { insertAt: resolved.insertAt } : null;
+
+        // MISSION 03 étape 1ter — check + nettoyage des styles courants AU TRIGGER.
+        // Ordre imposé : (1) détecter + journaliser, (2) remettre à neutre,
+        // (3) seulement alors le mapping (plus bas). Aucun mapping sur un état
+        // non nettoyé. Périmètre 4 familles ; objet/table seulement si visés.
+        checkAndCleanStylesAtTrigger(selection, doc, resolved);
 
         // Sélectionner et lire le fichier Markdown
         var fileContent = selectAndReadMarkdownFile();
