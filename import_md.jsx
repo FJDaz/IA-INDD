@@ -1189,23 +1189,28 @@ function insertMarkdownWithStyles(story, blocks, mapping) {
 }
 
 /**
- * MISSION 03 — ÉTAPE 1 : reconstruction minimale, TEXTE BRUT UNIQUEMENT.
- * (COMMUNICATION/mission_03_reconstruction_minimale.md, décision FJD du 25/09)
+ * MISSION 03 — reconstruction minimale, ÉTAPES 1 + 1bis + 2.
+ * (COMMUNICATION/mission_03_reconstruction_minimale.md, décisions FJD 25-26/09)
  *
  * Cette fonction est une COPIE ISOLÉE : l'ancienne insertMarkdownWithStyles()
  * ci-dessus reste inchangée tant que la nouvelle n'est pas validée bout en bout.
  *
  * Ce qu'elle fait — rien d'autre :
  *   1. Construire fullText = textes des blocs joints par "\r" (blocs "table"
- *      IGNORÉS à ce stade, cf. mission étape 3 : ils reviendront plus tard).
- *   2. story.contents = "" puis UNE SEULE assignation à insertionPoints[-1].
- *   3. Logger le nombre de blocs attendu vs story.paragraphs.length réel après
- *      écriture — c'est LE critère de validation de l'étape 1.
+ *      IGNORÉS à ce stade, cf. mission étape 6 : ils reviendront plus tard).
+ *   2. story.contents = "" puis UNE SEULE assignation à insertionPoints[-1]
+ *      (mode cadre) ou à options.insertAt (mode curseur, story NON vidée).
+ *   3. ÉTAPE 2 — appliquer à chaque paragraphe le style lu dans le mapping du
+ *      document, par INDEX STABLE (n-ième bloc non-table = n-ième paragraphe,
+ *      base = index du paragraphe portant le curseur en mode curseur). Style
+ *      neutre (jamais d'échec) si une clé manque ou pointe un style inexistant.
+ *      Aucun nom de style n'est codé en dur : tout vient du mapping.
  *
- * Ce qu'elle ne fait PAS (volontairement) : aucun style, aucune table, aucune
- * liste (cascade li2/li3), aucun segment, aucun gras/italique. Chaque couche
- * sera réintroduite une à une, avec test réel InDesign + commit git à chaque
- * étape validée — jamais plusieurs couches d'un coup.
+ * Ce qu'elle ne fait PAS (volontairement) : aucun segment inline (gras/italique
+ * — étape 4), aucune table (étape 6), aucun bloc de code (étape 7), aucun
+ * relief de liste li2/li3 (étape 5). Chaque couche est réintroduite une à une,
+ * avec test réel InDesign + commit git à chaque étape validée — jamais
+ * plusieurs couches d'un coup.
  */
 function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
     try {
@@ -1333,6 +1338,133 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         if (liveParaCount !== -1 && liveParaCount !== liveParaFromCr) {
             logToFile("M03-etape0bis: ECART DOM/JS — snapshot(parentStory)=" + liveParaCount + " != compte \\r=" + liveParaFromCr + " (la vue dynamique DOM n'est pas fiable ; le compte JS fait foi).");
         }
+
+        // -------------------------------------------------------------------
+        // MISSION 03 — ÉTAPE 2 : MAPPING DES STYLES DE PARAGRAPHE
+        // (COMMUNICATION/mission_03_reconstruction_minimale.md, décision FJD 26/09)
+        //
+        // Principe d'INDEX STABLE : le n-ième bloc NON-TABLE correspond au
+        // n-ième paragraphe de la story. Les blocs "table" sont HORS de ce
+        // compte (ils ne produisent aucun texte — traités à l'étape 6), c'est
+        // déjà le filtre appliqué à la construction de fullText ci-dessus.
+        //
+        // Second point, non négociable : en mode curseur (insertAtCursor=true),
+        // la story N'EST PAS vidée — les paragraphes préexistants restent et
+        // notre texte s'insère AU MILIEU d'eux. L'index stable ne part donc PAS
+        // de 0, mais de l'index du paragraphe qui PORTE le point d'insertion.
+        // Cet index est relevé APRÈS l'assignation (targetPoint.paragraphs[0]
+        // est relu sur l'état recomposé). S'il est illisible, on n'applique
+        // AUCUN style (jamais de style au hasard sur le texte voisin) et on le
+        // journalise explicitement.
+        //
+        // Hors périmètre de cette étape (assumé, cf. spec) : les segments
+        // inline (gras/italique — étape 4) restent littéraux et VISIBLES ; les
+        // listes imbriquées, les tables et les blocs de code ont leurs propres
+        // étapes. Le type de bloc est ici utilisé TEL QUEL comme clé de mapping.
+        // -------------------------------------------------------------------
+        var styleBlocks = [];
+        for (var sb = 0; sb < blocks.length; sb++) {
+            if (blocks[sb].type === "table") continue;
+            styleBlocks.push(blocks[sb]);
+        }
+
+        // Snapshot figé des paragraphes (même pattern qu'à l'étape 1 : la
+        // collection est une vue dynamique, wiki Cas 22/23).
+        var paraSnapshot = [];
+        try { paraSnapshot = liveStory.paragraphs.everyItem().getElements(); } catch (ePS) { logError(ePS, "etape2 snapshot paragraphs"); }
+
+        var baseParaIndex = 0;
+        var baseIndexKnown = true;
+        if (insertAtCursor) {
+            baseParaIndex = -1;
+            try { baseParaIndex = targetPoint.paragraphs[0].index; } catch (eBPI) { logError(eBPI, "etape2 index paragraphe curseur"); }
+            if (baseParaIndex < 0) {
+                baseIndexKnown = false;
+                logToFile("M03-etape2: ABANDON — index du paragraphe portant le curseur illisible (mode curseur). Aucun style applique (jamais au hasard sur le texte voisin).");
+            }
+        }
+
+        // Style neutre lu par index 0 de la collection du document (jamais un
+        // nom localisé en dur — corollaire du Cas 05 du wiki).
+        var neutralPara = null;
+        try { neutralPara = app.activeDocument.paragraphStyles.item(0); } catch (eNP2) { logError(eNP2, "etape2 lecture style neutre"); }
+        var neutralParaLabel = safeStyleName(neutralPara, "?");
+
+        var appliedCount = 0;
+        var neutralCount = 0;
+        var ecarts = 0;
+
+        if (baseIndexKnown) {
+            for (var pb = 0; pb < styleBlocks.length; pb++) {
+                var bloc = styleBlocks[pb];
+                var paraIndex = baseParaIndex + pb;
+                var paraObj = paraSnapshot[paraIndex];
+
+                if (!paraObj) {
+                    ecarts++;
+                    logToFile("M03-etape2: ECART — bloc #" + pb + " (" + bloc.type + ") : paragraphe introuvable a l'index " + paraIndex + " (snapshot=" + paraSnapshot.length + ")");
+                    continue;
+                }
+
+                // Style DEMANDÉ : clé = type de bloc, valeur = nom de style du
+                // mapping du document. Aucun nom de style n'est codé en dur.
+                var demande = (mapping && mapping[bloc.type]) ? mapping[bloc.type] : null;
+                var styleObj = null;
+                if (demande) {
+                    try { styleObj = findParagraphStyleByName(demande); } catch (eFind) { logError(eFind, "etape2 findParagraphStyleByName"); }
+                }
+
+                if (styleObj) {
+                    try {
+                        paraObj.applyParagraphStyle(styleObj, true);
+                        var relu = safeStyleName(paraObj.appliedParagraphStyle, "?");
+                        appliedCount++;
+                        logToFile("M03-etape2: bloc #" + pb + " type=" + bloc.type + " paraIndex=" + paraIndex +
+                            " demande='" + demande + "' relu='" + relu + "'");
+                    } catch (eApply) {
+                        ecarts++;
+                        logError(eApply, "etape2 applyParagraphStyle bloc #" + pb);
+                    }
+                } else {
+                    // Clé absente OU style introuvable : on n'échoue JAMAIS, on
+                    // applique le style neutre et on journalise le motif exact.
+                    neutralCount++;
+                    logToFile("M03-etape2: pas de style pour " + bloc.type + ", neutre applique");
+                    if (neutralPara) {
+                        try {
+                            paraObj.applyParagraphStyle(neutralPara, true);
+                            var reluNeutre = safeStyleName(paraObj.appliedParagraphStyle, "?");
+                            logToFile("M03-etape2: bloc #" + pb + " type=" + bloc.type + " paraIndex=" + paraIndex +
+                                " demande='" + (demande ? demande : "(absent)") + "' relu='" + reluNeutre + "' (neutre attendu='" + neutralParaLabel + "')");
+                        } catch (eNeut) {
+                            ecarts++;
+                            logError(eNeut, "etape2 applyParagraphStyle neutre bloc #" + pb);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Compteur UNIQUE (spec : « paragraphes attendus / réels »). En mode
+        // cadre, base=0 et la story ne contient QUE notre import ⇒ reels doit
+        // valoir exactement le nombre de blocs, sinon c'est un ecart reel.
+        // En mode curseur, la story n'est pas vidée : on isole donc la FENETRE
+        // stylée [base, base+n) et on compte séparément ce qui la précède et ce
+        // qui la suit — un reste non nul n'est PAS une anomalie (texte
+        // préexistant), c'est pourquoi il est libellé, pas confondu avec reels.
+        var reelsRelatifs = 0;
+        try { reelsRelatifs = paraSnapshot.length - baseParaIndex; } catch (eRR) {}
+        if (reelsRelatifs < 0) reelsRelatifs = 0;
+        var avantFenetre = (baseIndexKnown && baseParaIndex > 0) ? baseParaIndex : 0;
+        var apresFenetre = 0;
+        try { apresFenetre = paraSnapshot.length - (baseParaIndex + styleBlocks.length); } catch (eAF) {}
+        if (apresFenetre < 0) apresFenetre = 0;
+        logToFile("M03-etape2: blocs=" + styleBlocks.length + " paragraphes attendus=" + styleBlocks.length +
+            " reels=" + reelsRelatifs + " ecarts=" + ecarts +
+            " | mode=" + (insertAtCursor ? "curseur" : "cadre") + " base=" + baseParaIndex +
+            " story_total=" + paraSnapshot.length + " styles=" + appliedCount + " neutre=" + neutralCount +
+            " baseIndexConnu=" + baseIndexKnown +
+            (insertAtCursor ? " avant_fenetre=" + avantFenetre + " apres_fenetre=" + apresFenetre : ""));
 
         return true;
 
@@ -1891,7 +2023,7 @@ function main() {
         if (MINIMAL_MODE) {
             success = insertMarkdownWithStyles_v2(targetStory, blocks, mapping, insertionOptions);
             if (success) {
-                alertUser("M03 étape 1/1bis (texte brut) exécuté.\n\nMode de sélection détecté : " + resolved.mode + "\n\nVérifiez le log import_md_errors.log :\nnb paragraphes attendu vs réel. NE PAS avancer tant que la divergence persiste.");
+                alertUser("M03 étapes 1/1bis (texte brut) + 2 (styles de paragraphe) exécutées.\n\nMode de sélection détecté : " + resolved.mode + "\n\nVérifiez le log import_md_errors.log :\ncompteur M03-etape2 (blocs / attendus / reels / ecarts) et style relu de chaque bloc. NE PAS avancer tant qu'un ecart persiste.");
             }
         } else {
             success = insertMarkdownWithStyles(targetStory, blocks, mapping);
