@@ -13,8 +13,28 @@
   },
   {
     "type": "code",
-    "language": "markdown",
-    "text": "# [Titre principal H1] — [Sous-titre ou déclinaison]\n\n> **Chapeau / Métadonnées** (Contextualisation rapide en blockquote : cible, durée, statut, prérequis).\n\n---\n\n## 1. [Section majeure H2]\n* **[Amorce de niveau 1]** : explication synthétique du point clé.\n  * [Détail sous-jacent ou sous-puce de niveau 2 sans gras].\n  * [Deuxième détail].\n\n### [Sous-section optionnelle H3]\nParagraphe court (3 à 4 lignes max). Analyse ou explication contextuelle.\n\n| Colonne 1 | Colonne 2 | Colonne 3 |\n| :--- | :---: | ---: |\n| Alignement gauche | Centre | Droite |\n\n---\n\n## 2. [Section suivante H2]"
+    "text": "# [Titre principal H1] — [Sous-titre ou déclinaison]\n\n> **Chapeau / Métadonnées** (Contextualisation rapide en blockquote : cible, durée, statut, prérequis).\n\n---\n\n## 1. [Section majeure H2]\n* **[Amorce de niveau 1]** : explication synthétique du point clé.\n  * [Détail sous-jacent ou sous-puce de niveau 2 sans gras].\n  * [Deuxième détail].\n\n### [Sous-section optionnelle H3]\nParagraphe court (3 à 4 lignes max). Analyse ou explication contextuelle.\n",
+    "language": "markdown"
+  },
+  {
+    "type": "table",
+    "rows": [
+      [
+        "Colonne 1",
+        "Colonne 2",
+        "Colonne 3"
+      ],
+      [
+        "Alignement gauche",
+        "Centre",
+        "Droite"
+      ]
+    ]
+  },
+  {
+    "type": "code",
+    "text": "---\n\n## 2. [Section suivante H2]",
+    "language": "markdown"
   },
   {
     "type": "h2",

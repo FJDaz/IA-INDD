@@ -9,8 +9,8 @@
   },
   {
     "type": "code",
-    "language": "",
-    "text": "ligne de code brute une\nligne de code brute deux"
+    "text": "ligne de code brute une\nligne de code brute deux",
+    "language": ""
   },
   {
     "type": "p",
@@ -18,8 +18,8 @@
   },
   {
     "type": "code",
-    "language": "javascript",
-    "text": "var x = 1;"
+    "text": "var x = 1;",
+    "language": "javascript"
   },
   {
     "type": "p",
@@ -27,8 +27,21 @@
   },
   {
     "type": "code",
-    "language": "markdown",
-    "text": "# Ceci est un exemple H1 en literral\n- et une puce en littral\n| a | b |"
+    "text": "# Ceci est un exemple H1 en literral\n- et une puce en littral",
+    "language": "markdown"
+  },
+  {
+    "type": "table",
+    "rows": [
+      [
+        "a",
+        "b"
+      ],
+      [
+        "1",
+        "2"
+      ]
+    ]
   },
   {
     "type": "p",

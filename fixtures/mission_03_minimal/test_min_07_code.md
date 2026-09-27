@@ -19,6 +19,8 @@ Paragraphe final avant le code markdown.
 # Ceci est un exemple H1 en literral
 - et une puce en littral
 | a | b |
+| :--- | :--- |
+| 1 | 2 |
 ```
 
 Paragraphe final de l'etape 7.

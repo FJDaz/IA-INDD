@@ -199,6 +199,71 @@ function parseMarkdown(markdownText) {
     var inCodeBlock = false;
     var inList = false;
 
+    // ------------------------------------------------------------------
+    // MISSION 03 — ÉTAPE 7 : MOTIF TABLEAU À L'INTÉRIEUR D'UN BLOC DE CODE.
+    //
+    // Règle générale : dans un fence, RIEN n'est interprété (un "#" reste un
+    // "#", une puce reste un "-"). UNE SEULE exception, actée par FJD le
+    // 26/09 : le motif d'un tableau Markdown (ligne d'en-tête `| … | … |`
+    // SUIVIE d'une ligne de séparateurs `| :--- | :---: |`, puis d'éventuelles
+    // lignes de données) doit être extrait et rendu comme une VRAIE table
+    // InDesign, exactement comme une table hors fence (étape 6).
+    //
+    // Le motif est donc TAMPONNÉ avant décision : tant qu'on n'a pas vu la
+    // ligne de séparateurs, on ne peut pas savoir si c'est un tableau ou un
+    // simple exemple littéral (`| a | b |` sans séparatrice n'est PAS un
+    // tableau — c'est le cas de la fixture `test_min_07_code.md`). Si la
+    // séparatrice ne vient jamais, les lignes tamponnées sont RÉINJECTÉES
+    // telles quelles dans le texte du bloc de code : aucun contenu perdu.
+    // La ligne de séparateurs elle-même n'entre jamais dans `rows` (même
+    // convention que le parseur hors fence).
+    // ------------------------------------------------------------------
+    var codeTableLines = null;
+    // Langue du fence en cours : indispensable pour réouvrir un bloc de code
+    // APRÈS l'extraction d'une table (le fence est alors SCINDÉ en plusieurs
+    // blocs `code` encadrant la table, tous de la même langue).
+    var codeLanguage = "";
+
+    // Crée paresseusement le bloc de code courant. Nécessaire car, juste après
+    // une table extraite d'un fence, il n'existe plus de bloc de code alors
+    // qu'on est TOUJOURS dans le fence : la ligne suivante doit en rouvrir un.
+    function ensureCodeBlock() {
+        if (!currentBlock) {
+            currentBlock = { type: "code", text: "", language: codeLanguage, children: [], fromCodeFence: true };
+        }
+    }
+
+    function resolveCodeTableLines() {
+        if (!codeTableLines) return;
+        var buffered = codeTableLines;
+        codeTableLines = null;
+        if (!buffered.hasSeparator) {
+            // Pas de separateurs : ce n'est PAS un tableau. Reinjection
+            // litterale, ligne pour ligne, dans le bloc de code en cours.
+            ensureCodeBlock();
+            for (var ri = 0; ri < buffered.length; ri++) {
+                if (currentBlock.text !== "") currentBlock.text += "\n";
+                currentBlock.text += buffered[ri];
+            }
+            return;
+        }
+        // Bloc de code interrompu : pousse seulement s'il porte du texte (un
+        // bloc vide ne doit pas etre cree juste parce qu'une table suit).
+        if (currentBlock && currentBlock.text !== "") blocks.push(currentBlock);
+        currentBlock = { type: "table", rows: [], children: [], fromCodeFence: true };
+        for (var ti = 0; ti < buffered.length; ti++) {
+            var tLine = buffered[ti].replace(/^\s+|\s+$/g, "");
+            var tCells = tLine.split("|");
+            tCells = tCells.slice(1, tCells.length - 1);
+            for (var tc = 0; tc < tCells.length; tc++) {
+                tCells[tc] = tCells[tc].replace(/^\s+|\s+$/g, "");
+            }
+            currentBlock.rows.push(tCells);
+        }
+        blocks.push(currentBlock);
+        currentBlock = null;
+    }
+
     // Première passe : séparer les blocs (titres, paragraphes, listes, citations)
     for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
@@ -214,22 +279,48 @@ function parseMarkdown(markdownText) {
         var codeFenceMatch = trimmed.match(/^```(.*)$/);
         if (codeFenceMatch) {
             if (inCodeBlock) {
-                // Ligne de fermeture : clôt le bloc de code en cours.
+                // Ligne de fermeture : on résout d'abord un éventuel tampon de
+                // lignes de tableau resté ouvert (il n'y aura pas de
+                // séparateurs), PUIS on clôt le bloc de code en cours.
+                resolveCodeTableLines();
                 if (currentBlock) blocks.push(currentBlock);
                 currentBlock = null;
                 inCodeBlock = false;
             } else {
                 // Ligne d'ouverture : commence un nouveau bloc de code.
                 if (currentBlock) blocks.push(currentBlock);
-                currentBlock = { type: "code", text: "", language: codeFenceMatch[1] || "", children: [] };
+                codeLanguage = codeFenceMatch[1] || "";
+                currentBlock = { type: "code", text: "", language: codeLanguage, children: [], fromCodeFence: true };
                 inCodeBlock = true;
             }
             continue;
         }
         if (inCodeBlock) {
+            // ÉTAPE 7 — SEULE exception à la règle « rien n'est interprété dans
+            // un bloc de code » : le motif d'un tableau Markdown. Les lignes
+            // `| … |` sont TAMPONNÉES ; le tampon ne devient une table que si
+            // une ligne de séparateurs suit. Toute autre ligne résout d'abord
+            // le tampon en cours (réinjection littérale s'il n'y a pas de
+            // tableau) avant d'être accumulée normalement.
+            if (/^\|.*\|$/.test(trimmed)) {
+                var isSepInCode = /^\|[\s:|-]+\|$/.test(trimmed);
+                if (!codeTableLines) {
+                    codeTableLines = [line];
+                    codeTableLines.hasSeparator = false;
+                    continue;
+                }
+                if (isSepInCode && !codeTableLines.hasSeparator) {
+                    codeTableLines.hasSeparator = true;
+                    continue;
+                }
+                codeTableLines[codeTableLines.length] = line;
+                continue;
+            }
+            resolveCodeTableLines();
             // À l'intérieur d'un bloc de code : accumuler la ligne TELLE QUELLE
             // (pas de trim, les espaces d'indentation du code comptent), sans
             // passer par aucune des détections Markdown ci-dessous.
+            ensureCodeBlock();
             if (currentBlock.text !== "") currentBlock.text += "\n";
             currentBlock.text += line;
             continue;
@@ -383,6 +474,8 @@ function parseMarkdown(markdownText) {
     // le gras/italique dans les cellules n'est pas géré pour l'instant (hors scope).
     // Un bloc "code" est exclu aussi : son contenu ne doit JAMAIS être interprété
     // comme du Markdown (un "**" littéral dans du code ne doit pas devenir du gras).
+    // ÉTAPE 7 : un bloc "table" EXTRAIT d'un fence (`fromCodeFence`) est exclu pour
+    // la même raison — ses cellules sont du texte brut, jamais de l'inline.
     for (var b = 0; b < blocks.length; b++) {
         var block = blocks[b];
         if (block.type !== "table" && block.type !== "code") {
@@ -511,7 +604,23 @@ function parseInlineMarkdown(text) {
  */
 function getBlockPlainText(block) {
     if (!block) return "";
-    if (block.type === "code") return block.text || "";
+    if (block.type === "code") {
+        // MISSION 03 — ÉTAPE 7 : « UN PARAGRAPHE PAR LIGNE » (décision FJD du
+        // 26/09). Un bloc de code multiligne n'est pas UN paragraphe à sauts de
+        // ligne internes : il devient un paragraphe PAR LIGNE, les lignes étant
+        // jointes par "\r". C'est ce qui rend le compteur d'arbitrage JS pur
+        // (`crCount` sur `fullText`, étape 0bis) cohérent avec le nombre de
+        // paragraphes réellement créés — et donc ce qui autorise la mesure du
+        // nombre de paragraphes à rester exacte.
+        // Les lignes VIDES sont ignorées (décision FJD du 27/09) : elles ne
+        // créent pas de paragraphe vide.
+        var codeLines = (block.text || "").split("\n");
+        var keptLines = [];
+        for (var ci = 0; ci < codeLines.length; ci++) {
+            if (codeLines[ci] !== "") keptLines.push(codeLines[ci]);
+        }
+        return keptLines.join("\r");
+    }
     if (block.type === "table") return "";
     if (!block.children) return block.text || "";
     var plain = "";
@@ -1334,9 +1443,32 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         // exactement les offsets cumulés des children. Les blocs `code` gardent
         // leur texte brut (marqueurs compris) : voir getBlockPlainText().
         var textParts = [];
+        // -------------------------------------------------------------------
+        // ÉTAPE 7 — OFFSET PARAGRAPHE DE CHAQUE BLOC NON-TABLE.
+        // Jusqu'à l'étape 6, un bloc = un paragraphe, donc l'index du paragraphe
+        // d'un bloc valait simplement son rang de bloc. Un bloc de code
+        // multiligne produit désormais UN PARAGRAPHE PAR LIGNE : le rang de bloc
+        // n'est plus l'offset de paragraphe, et les étapes 2 (styles) et 4
+        // (segments) viseraient les mauvais paragraphes. On calcule donc, une
+        // fois pour toutes et dans le même ordre que `textParts`, l'offset de
+        // paragraphe de chaque bloc non-table.
+        // Formule : pour k parties déjà collectées, fullText contient
+        // (somme des \r des k parties) + (k - 1) séparateurs ⇒ l'offset du
+        // paragraphe de la partie k+1 vaut (somme des \r) + k. Cette valeur est
+        // par construction cohérente avec `crCount` (arbitre JS pur de l'étape
+        // 0bis) : les deux se déduisent du même fullText.
+        var paraOffsets = [];
+        var crsSoFar = 0;
         for (var i = 0; i < blocks.length; i++) {
             if (blocks[i].type === "table") continue;
-            textParts.push(getBlockPlainText(blocks[i]));
+            var partText = getBlockPlainText(blocks[i]);
+            paraOffsets[textParts.length] = crsSoFar + textParts.length;
+            var partCrs = 0;
+            for (var pc = 0; pc < partText.length; pc++) {
+                if (partText.charAt(pc) === "\r") partCrs++;
+            }
+            crsSoFar += partCrs;
+            textParts.push(partText);
         }
         var blockCount = textParts.length;
         var fullText = textParts.join("\r");
@@ -1375,8 +1507,17 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
             if (fullText.charAt(crIdx) === "\r") crCount++;
         }
 
+        // ÉTAPE 7 — NOMBRE DE PARAGRAPHES RÉELLEMENT OCCUPÉS PAR L'IMPORT.
+        // Défini ICI (et non plus tard comme avant l'étape 7) car plusieurs
+        // logs et contrôles en ont besoin : chaque \r ferme un paragraphe et le
+        // dernier paragraphe est complet ⇒ N = crCount + 1 (si texte non vide).
+        // Avec l'étape 7, un bloc de code multiligne produit un paragraphe par
+        // ligne : `insertedParaCount` peut donc désormais DÉPASSER le nombre de
+        // blocs — c'est normal, et c'est la référence des contrôles ci-dessous.
+        var insertedParaCount = (fullText.length > 0) ? (crCount + 1) : 0;
+
         // Log AVANT écriture : ce qu'on attend.
-        logToFile("M03-etape1: blocs texte attendus=" + blockCount + " / total blocs parsés=" + blocks.length + " | fullText.length=" + fullText.length + " | crCount=" + crCount + " | insertAtCursor=" + insertAtCursor);
+        logToFile("M03-etape1: blocs texte attendus=" + blockCount + " / total blocs parsés=" + blocks.length + " | fullText.length=" + fullText.length + " | crCount=" + crCount + " | paragraphes attendus=" + insertedParaCount + " | insertAtCursor=" + insertAtCursor);
 
         // ÉTAPE 0bis (26/09/2026) — LECTURE FIABLE DU COMPTEUR.
         // `story.paragraphs` est une VUE DYNAMIQUE recalculée à l'accès, pas un
@@ -1465,8 +1606,8 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
 
         // Le chiffre annoncé est celui de l'arbitre JS pur (infaillible). On
         // signale toute divergence avec l'attendu OU avec la mesure DOM.
-        if (!insertAtCursor && liveParaFromCr !== blockCount) {
-            logToFile("M03-etape1: DIVERGENCE — nb paragraphes reel (" + liveParaFromCr + ") != nb blocs (" + blockCount + "). Cause a isoler avant toute autre etape.");
+        if (!insertAtCursor && liveParaFromCr !== insertedParaCount) {
+            logToFile("M03-etape1: DIVERGENCE — nb paragraphes reel (" + liveParaFromCr + ") != nb paragraphes attendus (" + insertedParaCount + ", soit " + blockCount + " blocs non-table dont les blocs de code multiligne). Cause a isoler avant toute autre etape.");
         }
         if (liveParaCount !== -1 && liveParaCount !== liveParaFromCr) {
             logToFile("M03-etape0bis: ECART DOM/JS — snapshot(parentStory)=" + liveParaCount + " != compte \\r=" + liveParaFromCr + " (la vue dynamique DOM n'est pas fiable ; le compte JS fait foi).");
@@ -1507,9 +1648,9 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         try { paraSnapshot = liveStory.paragraphs.everyItem().getElements(); } catch (ePS) { logError(ePS, "etape2 snapshot paragraphs"); }
 
         // Nombre de paragraphes que le texte insere occupe REELLEMENT :
-        // crCount = nombre de \r de fullText ; chaque \r ferme un paragraphe et
-        // le dernier paragraphe est complet => N = crCount + 1 (si texte non vide).
-        var insertedParaCount = (fullText.length > 0) ? (crCount + 1) : 0;
+        // `insertedParaCount` est calculé plus haut (juste après crCount),
+        // désormais AVANT le vidage de la story — l'étape 7 en a besoin pour
+        // l'indexation par paragraphe, pas seulement pour ce contrôle final.
 
         var baseParaIndex = 0;
         var baseIndexKnown = true;
@@ -1550,6 +1691,32 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         var appliedCount = 0;
         var neutralCount = 0;
         var ecarts = 0;
+        var codeParaStyled = 0;   // ÉTAPE 7 : lignes de code 2..N stylées
+
+        // ÉTAPE 7 — UN BLOC DE CODE MULTILIGNE OCCUPE PLUSIEURS PARAGRAPHES.
+        // Le style du bloc doit couvrir TOUTES ses lignes : sinon seule la
+        // première est stylée et les suivantes restent au style par défaut du
+        // document — incohérence visible dès qu'un style de code est mappé.
+        // Nombre de paragraphes d'un bloc de code = nb de "\r" du texte plat
+        // + 1 (les lignes vides ne produisent aucun paragraphe : elles ont déjà
+        // été retirées par getBlockPlainText). Retourne le nombre de lignes
+        // supplémentaires effectivement stylées.
+        function styleCodeContinuationLines(startParaIndex, styleToUse, blockRef) {
+            if (!styleToUse) return 0;
+            var plainTmp = getBlockPlainText(blockRef);
+            var nbParas = 1;
+            for (var q1 = 0; q1 < plainTmp.length; q1++) {
+                if (plainTmp.charAt(q1) === "\r") nbParas++;
+            }
+            var done = 0;
+            for (var q2 = 1; q2 < nbParas; q2++) {
+                var p2 = paraSnapshot[startParaIndex + q2];
+                if (!p2) continue;
+                try { p2.applyParagraphStyle(styleToUse, true); done++; }
+                catch (eCC) { logError(eCC, "etape7 style ligne de code (para " + (startParaIndex + q2) + ")"); }
+            }
+            return done;
+        }
 
         // -------------------------------------------------------------------
         // MISSION 03 — ÉTAPE 5 : LISTES (CASCADE D'INDENTATION)
@@ -1583,7 +1750,10 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         if (baseIndexKnown) {
             for (var pb = 0; pb < styleBlocks.length; pb++) {
                 var bloc = styleBlocks[pb];
-                var paraIndex = baseParaIndex + pb;
+                // ÉTAPE 7 : l'index du paragraphe n'est PLUS le rang du bloc —
+                // un bloc de code multiligne occupe plusieurs paragraphes. On
+                // passe par `paraOffsets` (même ordre que `styleBlocks`).
+                var paraIndex = baseParaIndex + paraOffsets[pb];
                 var paraObj = paraSnapshot[paraIndex];
 
                 if (!paraObj) {
@@ -1621,6 +1791,7 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
                         appliedCount++;
                         logToFile("M03-etape2: bloc #" + pb + " type=" + bloc.type + " paraIndex=" + paraIndex +
                             " demande='" + demande + "' relu='" + relu + "'");
+                        if (bloc.type === "code") codeParaStyled += styleCodeContinuationLines(paraIndex, styleObj, bloc);
                     } catch (eApply) {
                         ecarts++;
                         logError(eApply, "etape2 applyParagraphStyle bloc #" + pb);
@@ -1636,6 +1807,7 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
                             var reluNeutre = safeStyleName(paraObj.appliedParagraphStyle, "?");
                             logToFile("M03-etape2: bloc #" + pb + " type=" + bloc.type + " paraIndex=" + paraIndex +
                                 " demande='" + (demande ? demande : "(absent)") + "' relu='" + reluNeutre + "' (neutre attendu='" + neutralParaLabel + "')");
+                            if (bloc.type === "code") codeParaStyled += styleCodeContinuationLines(paraIndex, neutralPara, bloc);
                         } catch (eNeut) {
                             ecarts++;
                             logError(eNeut, "etape2 applyParagraphStyle neutre bloc #" + pb);
@@ -1817,7 +1989,7 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
                     if (sPlain.charAt(sr) === "*") segResiduels++;
                 }
 
-                var sPara = paraSnapshot[baseParaIndex + sb2];
+                var sPara = paraSnapshot[baseParaIndex + paraOffsets[sb2]];
                 if (!sPara || sPlainLen === 0) continue;
 
                 // 1. Plages (offsets relatifs au paragraphe).
@@ -2111,6 +2283,45 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         }
         logToFile("M03-etape6: tables=" + tablesCreated + " dims=" + dimsParts.join(",") +
             " cellules=" + tableCellsTotal + " paragraphes_hors_table=" + styleBlocks.length);
+
+        // -------------------------------------------------------------------
+        // MISSION 03 — ÉTAPE 7 : JOURNAL DES BLOCS DE CODE.
+        // `code_blocs`   = nombre de blocs de type `code` (blocs littéraux).
+        // `lignes`       = nombre de PARAGRAPHES produits par ces blocs (un
+        //                  paragraphe par ligne non vide, décision FJD 26/09).
+        // `literaux_intacts` = contrôle FALSIFIABLE : un bloc issu d'un fence
+        //                  doit être de type `code` ou `table` — jamais autre
+        //                  chose. Si un `#` ou un `-` d'un fence avait été
+        //                  interprété, un bloc h1/li apparaîtrait avec
+        //                  `fromCodeFence` et ce drapeau passerait à false.
+        // `tables_detectees_dans_code` = tables EXTRAITES d'un fence.
+        // -------------------------------------------------------------------
+        var codeBlockCount = 0;
+        var codeLineCount = 0;
+        var literauxIntacts = true;
+        var codeTableCount = 0;
+        for (var cb = 0; cb < blocks.length; cb++) {
+            if (blocks[cb].type === "code") {
+                codeBlockCount++;
+                var cbText = blocks[cb].text || "";
+                if (cbText !== "") {
+                    var cbLines = cbText.split("\n");
+                    for (var cl = 0; cl < cbLines.length; cl++) {
+                        if (cbLines[cl] !== "") codeLineCount++;
+                    }
+                }
+            }
+            if (blocks[cb].fromCodeFence) {
+                if (blocks[cb].type === "table") {
+                    codeTableCount++;
+                } else if (blocks[cb].type !== "code") {
+                    literauxIntacts = false;
+                }
+            }
+        }
+        logToFile("M03-etape7: code_blocs=" + codeBlockCount + " lignes=" + codeLineCount +
+            " literaux_intacts=" + literauxIntacts + " tables_detectees_dans_code=" + codeTableCount +
+            " lignes_code_stylees=" + codeParaStyled);
         var anchorsParts = [];
         for (var ap = 0; ap < tableAnchors.length; ap++) {
             if (tableAnchors[ap] !== undefined && tableAnchors[ap] !== null) anchorsParts.push(tableAnchors[ap]);
@@ -2135,9 +2346,9 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         if (reelsRelatifs < 0) reelsRelatifs = 0;
         var avantFenetre = (baseIndexKnown && baseParaIndex > 0) ? baseParaIndex : 0;
         var apresFenetre = 0;
-        try { apresFenetre = paraSnapshot.length - (baseParaIndex + styleBlocks.length); } catch (eAF) {}
+        try { apresFenetre = paraSnapshot.length - (baseParaIndex + insertedParaCount); } catch (eAF) {}
         if (apresFenetre < 0) apresFenetre = 0;
-        logToFile("M03-etape2: blocs=" + styleBlocks.length + " paragraphes attendus=" + styleBlocks.length +
+        logToFile("M03-etape2: blocs=" + styleBlocks.length + " paragraphes attendus=" + insertedParaCount +
             " reels=" + reelsRelatifs + " ecarts=" + ecarts +
             " | mode=" + (insertAtCursor ? "curseur" : "cadre") + " base=" + baseParaIndex +
             " story_total=" + paraSnapshot.length + " styles=" + appliedCount + " neutre=" + neutralCount +
