@@ -1250,10 +1250,11 @@ function insertMarkdownWithStyles(story, blocks, mapping) {
  *      Aucun nom de style n'est codé en dur : tout vient du mapping.
  *
  * Ce qu'elle ne fait PAS (volontairement) : aucune table (étape 6), aucun bloc
- * de code (étape 7), aucun relief de liste li2/li3 (étape 5). Les segments
- * inline (gras/italique) sont traités à l'étape 4, plus bas dans cette fonction.
- * Chaque couche est réintroduite une à une, avec test réel InDesign + commit
- * git à chaque étape validée — jamais plusieurs couches d'un coup.
+ * de code (étape 7). Les segments inline (gras/italique) sont traités à l'étape
+ * 4 et la cascade d'indentation des listes à l'étape 5, toutes deux plus bas
+ * dans cette fonction. Chaque couche est réintroduite une à une, avec test réel
+ * InDesign + commit git à chaque étape validée — jamais plusieurs couches d'un
+ * coup.
  */
 function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
     try {
@@ -1466,6 +1467,35 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         var neutralCount = 0;
         var ecarts = 0;
 
+        // -------------------------------------------------------------------
+        // MISSION 03 — ÉTAPE 5 : LISTES (CASCADE D'INDENTATION)
+        //
+        // La cascade existe DÉJÀ, écrite et documentée :
+        // getLiStyleForIndentLevel(block, mapping) (mission_02, section
+        // « APPLICATION DES STYLES »). La spec de l'étape 5 demande de la
+        // RÉUTILISER TELLE QUELLE — aucun nouveau code de décision ici, on
+        // remplace seulement la résolution « mapping[type] » par la cascade
+        // pour les blocs de type `li`.
+        //
+        // RÉVISION DU 27/09/2026 (option 1, décision FJD) : la règle « puce
+        // entièrement en gras ⇒ titre synthétique » a été supprimée — une puce
+        // reste une puce à TOUS les niveaux, et le gras qu'elle contient est du
+        // gras INLINE (traité à l'étape 4, via sa clé `bold`). Il n'existe plus
+        // qu'une seule provenance de titre : le vrai `#`. En conséquence, un
+        // style de TITRE ne peut apparaître ici que par la cascade documentée
+        // (étape 2 ci-dessus), jamais par conversion d'une puce grasse.
+        //
+        // Compteurs de contrôle : combien de puces par niveau d'indentation,
+        // et combien d'items numérotés (type `li_num`, style de liste distinct
+        // de la puce). Le style effectivement RETENU par la cascade est
+        // mémorisé par niveau (le premier rencontré) pour être journalisé :
+        // c'est ce qui permet de VOIR si un niveau tombe dans la cascade de
+        // titres ou retombe sur la puce racine.
+        // -------------------------------------------------------------------
+        var liCountByLevel = {};
+        var liNumCount = 0;
+        var liStyleByLevel = {};
+
         if (baseIndexKnown) {
             for (var pb = 0; pb < styleBlocks.length; pb++) {
                 var bloc = styleBlocks[pb];
@@ -1480,7 +1510,21 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
 
                 // Style DEMANDÉ : clé = type de bloc, valeur = nom de style du
                 // mapping du document. Aucun nom de style n'est codé en dur.
-                var demande = (mapping && mapping[bloc.type]) ? mapping[bloc.type] : null;
+                // ÉTAPE 5 : pour une puce, ce n'est plus `mapping["li"]` mais le
+                // résultat de la cascade d'indentation (style de liste dédié au
+                // niveau, sinon cascade de titres plafonnée au plus haut titre
+                // réellement mappé, sinon puce racine). Le niveau 0 rend
+                // exactement `mapping["li"]` — comportement identique à avant.
+                var demande = null;
+                if (bloc.type === "li") {
+                    try { demande = getLiStyleForIndentLevel(bloc, mapping); } catch (eLi) { logError(eLi, "etape5 getLiStyleForIndentLevel bloc #" + pb); demande = (mapping && mapping["li"]) ? mapping["li"] : null; }
+                    var liLevel = bloc.indentLevel || 0;
+                    liCountByLevel[liLevel] = (liCountByLevel[liLevel] || 0) + 1;
+                    if (!liStyleByLevel[liLevel]) liStyleByLevel[liLevel] = (demande ? demande : "(absent)");
+                } else {
+                    if (bloc.type === "li_num") liNumCount++;
+                    demande = (mapping && mapping[bloc.type]) ? mapping[bloc.type] : null;
+                }
                 var styleObj = null;
                 if (demande) {
                     try { styleObj = findParagraphStyleByName(demande); } catch (eFind) { logError(eFind, "etape2 findParagraphStyleByName"); }
@@ -1516,6 +1560,40 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
                 }
             }
         }
+
+        // -------------------------------------------------------------------
+        // MISSION 03 — ÉTAPE 5 : journal de contrôle de la cascade de listes.
+        // `li0`, `li1`, `li2`… = nombre de puces par niveau d'indentation ;
+        // `styles_li` = style RETENU par niveau (premier rencontré) — c'est là
+        // qu'on voit si un niveau est allé chercher un style de titre via la
+        // cascade ou s'il est retombé sur la puce racine ; `li_num` = items
+        // numérotés (style distinct de la puce).
+        // Alerte dédiée si une puce a reçu un style de TITRE : depuis l'option 1
+        // (27/09/2026) cela ne peut venir QUE de la cascade documentée, jamais
+        // d'une conversion de puce grasse — on le nomme pour que ce soit visible.
+        // -------------------------------------------------------------------
+        // Quels noms de styles sont des styles de TITRE effectivement mappés ?
+        // Sert uniquement au compteur `cascade_titres` : un niveau > 0 dont le
+        // style retenu tombe dans cet ensemble est passé par la cascade de titres.
+        var mappedTitleStyleNames = {};
+        for (var mtLvl = 1; mtLvl <= 9; mtLvl++) {
+            var mtName = (mapping && mapping["h" + mtLvl]) ? mapping["h" + mtLvl] : null;
+            if (mtName) mappedTitleStyleNames[mtName] = true;
+        }
+        var liCountStr = "";
+        var liStyleStr = "";
+        var liParCascade = 0;
+        for (var liLvl = 0; liLvl <= 8; liLvl++) {
+            if (liCountByLevel[liLvl]) liCountStr += "li" + liLvl + "=" + liCountByLevel[liLvl] + " ";
+            if (liStyleByLevel[liLvl]) {
+                liStyleStr += liLvl + ":'" + liStyleByLevel[liLvl] + "' ";
+                if (liLvl > 0 && mappedTitleStyleNames[liStyleByLevel[liLvl]]) liParCascade += 1;
+            }
+        }
+        logToFile("M03-etape5: " + (liCountStr ? liCountStr.replace(/\s+$/, " ") : "aucune puce ") +
+            "li_num=" + liNumCount +
+            " | styles_li=[" + (liStyleStr ? liStyleStr.replace(/\s+$/, "") : "aucun") + "]" +
+            (liParCascade > 0 ? " cascade_titres=" + liParCascade : ""));
 
         // -------------------------------------------------------------------
         // SONDE CIBLEE (27/09/2026, run 15:49). Le symptome reel rapporte par
@@ -2269,13 +2347,22 @@ function main() {
             return;
         }
 
-        // Charger le mapping existant (s'il existe, sert uniquement à préremplir
+        // Charge le mapping existant (s'il existe, sert uniquement à préremplir
         // le dialogue ci-dessous — pas de bypass silencieux). Le dialogue de
         // configuration s'affiche systématiquement, déjà présélectionné avec ce
         // mapping (ou à défaut le style neutre par défaut) pour permettre de
         // valider en un clic ou d'ajuster directement, sans écran de confirmation
         // intermédiaire.
-        var mapping = loadMappingFromDocument();
+        // MEMOIRE DE TEST : si ce document n'a pas de mapping propre, on retombe
+        // sur la copie disque laissée par le dernier document mappé — c'est ce qui
+        // évite de tout ressaisir dans un document neuf. Le mapping du document
+        // reste PRIORITAIRE quand il existe.
+        var docMapping = loadMappingFromDocument();
+        var memoryMapping = loadMemoryMapping();
+        var mapping = docMapping || memoryMapping;
+        logToFile("M03-memoire: mapping du document=" + (docMapping ? "present" : "absent") +
+            " | memoire disque=" + (memoryMapping ? "presente" : "absente") +
+            " | source retenue=" + (docMapping ? "document" : (memoryMapping ? "memoire" : "aucune")));
 
         mapping = showConfigurationDialog(mapping);
         if (!mapping) {
@@ -2288,6 +2375,9 @@ function main() {
             alertUser("Impossible de sauvegarder le mapping. Le plugin ne fonctionnera pas correctement.");
             return;
         }
+        // MEMOIRE DE TEST : on met a jour la copie disque a chaque validation du
+        // dialogue, pour que le prochain document neuf en herite automatiquement.
+        logToFile("M03-memoire: memoire disque mise a jour -> " + saveMemoryMapping(mapping));
 
         // Vérifier que tous les tags ont un mapping.
         // MISSION 03 étape 3 : les niveaux de titre profonds (h6..h9) sont marqués
@@ -2310,6 +2400,7 @@ function main() {
                 return;
             }
             saveMappingToDocument(mapping);
+            saveMemoryMapping(mapping);
         }
 
         // Insérer le Markdown avec les styles.
