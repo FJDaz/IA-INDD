@@ -19,6 +19,9 @@ var LOG_FILE_PATH = new File($.fileName).parent.fsName + "/import_md_errors.log"
 // volontairement une commodite de test : les noms de styles qu'elle contient
 // peuvent ne pas exister dans un autre document, l'insertion le journalise et
 // retombe sur le neutre (aucun plantage). A retirer avant diffusion.
+// ATTENTION : ceci est un CHEMIN (chaine), comme LOG_FILE_PATH — il faut le
+// convertir en objet File AVANT tout .exists/.open/.read, sinon l'erreur tombe
+// dans main() AVANT l'insertion et fait echouer l'import complet en silence.
 var MEMORY_MAPPING_PATH = new File($.fileName).parent.fsName + "/import_md_mapping_memory.txt";
 
 // Valeur sentinelle du dialogue de mapping : "ce tag n'est PAS mappe". Proposee
@@ -701,11 +704,12 @@ function saveMappingToDocument(mapping) {
  */
 function loadMemoryMapping() {
     try {
-        if (!MEMORY_MAPPING_PATH.exists) return null;
-        MEMORY_MAPPING_PATH.encoding = "UTF-8"; // noms de styles accentues
-        if (!MEMORY_MAPPING_PATH.open("r")) return null;
-        var c = MEMORY_MAPPING_PATH.read();
-        MEMORY_MAPPING_PATH.close();
+        var memFile = new File(MEMORY_MAPPING_PATH);
+        if (!memFile.exists) return null;
+        memFile.encoding = "UTF-8"; // noms de styles accentues
+        if (!memFile.open("r")) return null;
+        var c = memFile.read();
+        memFile.close();
         if (!c || c.replace(/\s/g, "") === "") return null;
         var m = deserializeFlatMapping(c);
         var hasKey = false;
@@ -725,10 +729,11 @@ function loadMemoryMapping() {
  */
 function saveMemoryMapping(mapping) {
     try {
-        MEMORY_MAPPING_PATH.encoding = "UTF-8"; // noms de styles accentues
-        if (!MEMORY_MAPPING_PATH.open("w")) return false;
-        MEMORY_MAPPING_PATH.write(serializeFlatMapping(mapping || {}));
-        MEMORY_MAPPING_PATH.close();
+        var memFile = new File(MEMORY_MAPPING_PATH);
+        memFile.encoding = "UTF-8"; // noms de styles accentues
+        if (!memFile.open("w")) return false;
+        memFile.write(serializeFlatMapping(mapping || {}));
+        memFile.close();
         return true;
     } catch (eMemWrite) {
         logError(eMemWrite, "saveMemoryMapping");
