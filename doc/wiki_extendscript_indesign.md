@@ -393,6 +393,69 @@ Le libellé criait donc au loup sur les deux tirs les plus sains. **Correction**
 
 ---
 
+## Cas 25 — Une valeur par défaut « qui rend service » applique un style sans geste de l'utilisateur
+
+**Symptôme** : sur un document neuf, 72 paragraphes sur 85 ressortaient en style neutre (`[Aucun style]`) après import, alors que le récapitulatif du script affichait `ecarts=0 ... neutre=0`. L'utilisateur n'avait rien configuré : le style était « mis sans son intervention ». Seuls les titres et les paragraphes (`h1`, `h2`, `h3`, `p`) recevaient le bon style.
+
+**Cause** : dans le dialogue de mapping, la **présélection** de chaque liste déroulante suivait une 3ᵉ règle de repli : *« sinon, le premier style disponible à la racine »* — c'est-à-dire, dans la pratique, le style neutre. Cette règle avait été ajoutée volontairement (« pour permettre de tester le flux sans configuration »). Or la 2ᵉ règle (correspondance exacte entre le nom du style et la convention HTML du tag) ne peut **structurellement jamais** aboutir pour une partie des tags :
+
+| Tag | `htmlName` | Peut correspondre à un style réel ? |
+|-----|-----------|-------------------------------------|
+| `li`, `li2`..`li4` | `li`, `li2`..`li4` | ✗ |
+| `li_num` | `ol` | ✗ |
+| `blockquote` | `quote` | ✗ |
+| `h1`, `h2`, `h3`, `p` | `h1`, `h2`, `h3`, `p` | ✓ |
+
+Résultat : pour tous les tags de liste et de citation, la règle 2 échoue → la règle 3 s'applique → le **neutre est présélectionné en silence** → l'utilisateur clique OK (ou ne touche à rien) → **le neutre est persisté dans le mapping du document** comme s'il avait été choisi. Le symptôme n'était donc pas un problème d'API, d'héritage, ni d'adressage : la valeur *demandée* était déjà le neutre.
+
+**Deux pièges de diagnostic, tous deux documentés comme leçons :**
+
+1. **Le compteur d'auto-contrôle mentait.** `ecarts=0 / neutre=0` comptait les *applications réussies*, pas les *styles distincts* — appliquer le neutre est une application réussie. Un contrôle qui relit le paragraphe qu'il vient d'écrire valide la cohérence *interne* de l'action, jamais sa *pertinence*.
+2. **Les sondes ponctuelles ne voyaient rien.** Ce qui a tranché est une **carte en plages (run-length) de la story entière** — une seule ligne de log listant, pour chaque plage contiguë de paragraphes, le style effectivement appliqué :
+   ```
+   0=H1 1=H2 2-6=[Aucun style] 7=H2 8=P 9-28=[Aucun style] ...
+   ```
+   72 paragraphes au neutre sont apparus d'un coup, invisibles à toutes les inspections locales précédentes.
+
+**Correction** :
+1. **Supprimer la règle de repli** — plus aucune présélection arbitraire.
+2. **Ajouter une entrée sentinelle explicite** (« — non mappé — ») en tête de chaque liste, **sélectionnée par défaut** quand aucune correspondance n'existe.
+3. **Au clic OK** : une sélection sur la sentinelle ⇒ le tag reste **absent** du mapping (aucune affectation), avec une ligne de log dédiée.
+
+La sentinelle est écrite en **échappements ASCII** (`\u2014`, `\u00e9`) pour rester compatible avec l'encodage du script.
+
+**Leçon transversale** : une valeur par défaut qui « rend service » est un bug en puissance. Un défaut doit être **explicite et visible** (« non mappé »), jamais **plausible et silencieux**. Et un repli silencieux devient particulièrement dangereux quand il est **persisté** : ce qui n'était qu'un confort de test se transforme en choix enregistré, que l'utilisateur croira ensuite avoir fait lui-même.
+
+---
+
+## Cas 26 — `Paragraph.index` n'est PAS un index de paragraphe
+
+**Symptôme** : aucun style n'était appliqué du tout (`reels=0 ecarts=21 styles=0`) alors que le parseur produisait bien 21 blocs, et **uniquement** dans le chemin « insertion au curseur de texte » (`insertAtCursor=true`). Le même code fonctionnait en mode cadre. Un décalage constant d'un cran était suspecté — c'était autre chose.
+
+**Cause** : `targetPoint.paragraphs[0].index` était utilisé comme point de départ pour calculer l'index du premier paragraphe inséré :
+
+```javascript
+baseParaIndex = targetPoint.paragraphs[0].index;   // ❌
+```
+
+Or `.index` renvoie ici un **offset de caractère dans la story**, pas une position de paragraphe. Valeur mesurée : `2015`, exactement égale à `story.contents.length − fullText.length` — la taille du texte déjà présent. La doc Adobe est ambiguë sur ce point (« The index of the text in the collection or parent object ») : le mot *index* laisse croire à un rang, alors que la valeur est une position de caractère.
+
+Conséquence mécanique : `paraSnapshot[baseParaIndex + pb]` visait très au-delà de la fin du tableau ⇒ `undefined` pour chaque bloc ⇒ aucune application, sans erreur levée. Le décalage n'était donc pas « d'un cran » : il était **hors échelle**.
+
+**Correction** : ne plus lire `.index` du tout dans le calcul. Reconstruire la frontière par **soustraction**, à partir de deux valeurs dont on maîtrise le sens :
+
+```javascript
+var insertedParaCount = (fullText.length > 0) ? (crCount + 1) : 0;
+var baseParaIndex = paraSnapshot.length - insertedParaCount;
+if (baseParaIndex < 0) { baseParaIndex = 0; }   // garde-fou + drapeau baseIndexKnown=false si incohérence
+```
+
+Preuve en réel : `baseParSoustraction=65` (= 86 − 21), puis `reels=21 ecarts=0 styles=21 neutre=0`. `.index` n'est plus lu que pour **journaliser** la frontière (comparaison), jamais pour calculer.
+
+**Leçon transversale** : ne jamais se fier au **nom** d'une propriété du DOM InDesign pour en déduire sa **sémantique**. `.index` sonne comme un rang ; c'est un offset de caractère. La doc officielle entretient l'ambiguïté — dans ce cas, la seule autorité est la **mesure** : comparer la valeur lue à une valeur calculable par un autre chemin (`contents.length − fullText.length`) tranche en une ligne. Corollaire de méthode : un bug « d'un cran » peut en réalité être un bug **hors échelle** ; mesurer l'écart absolu, pas seulement son signe.
+
+---
+
 ## Piège structurel à retenir — deux copies du même script
 
 InDesign exécute les scripts depuis `~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/`, pas depuis le dossier de travail/repo. Toute correction faite sur le fichier source doit être recopiée vers cet emplacement avant test, sinon on corrige un fichier que le logiciel n'utilise jamais (piège rencontré le 23/09/2026, cf. mission_01).

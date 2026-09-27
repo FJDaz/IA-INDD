@@ -45,8 +45,8 @@
     "text": "**Amorce en gras (*Lead-in bold*) :** chaque point d'une liste commence par 2 à 4 mots clés en gras suivis de deux-points ` :`. Cela permet une lecture rapide par balayage visuel."
   },
   {
-    "type": "h4",
-    "text": "Format des listes :"
+    "type": "li",
+    "text": "**Format des listes :**"
   },
   {
     "type": "li",

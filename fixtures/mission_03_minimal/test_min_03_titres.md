@@ -10,8 +10,8 @@ Paragraphe sous le titre 2 premier.
 
 Paragraphe sous le titre 3 premier.
 
-* **Sous-titre synthetique h4 issu d'une puce entierement en gras**
-* Item de liste normal sous ce sous-titre synthetique.
+* **Item de liste entierement en gras (option 1 : reste une puce)**
+* Item de liste normal apres la puce en gras.
 
 ## Titre 2 second
 
@@ -21,8 +21,20 @@ Paragraphe sous le titre 2 second.
 
 Paragraphe sous le titre 3 second.
 
-#### Titre 4 par quatre dieses (sonde de limite connue)
+#### Titre 4 par quatre dieses (vrai titre depuis l'etape 3)
 
-Paragraphe sous la sonde quatre dieses.
+Paragraphe sous le titre 4.
+
+##### Titre 5 par cinq dieses
+
+Paragraphe sous le titre 5.
+
+###### Titre 6 par six dieses (sonde H6)
+
+Paragraphe sous la sonde H6.
+
+####### Titre 7 par sept dieses (sonde H7)
+
+Paragraphe sous la sonde H7.
 
 Paragraphe final de l'etape 3.

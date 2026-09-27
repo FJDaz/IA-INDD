@@ -10,6 +10,12 @@ var SCRIPT_NAME = "Import MD";
 var LABEL_NAME = "md-style-map";
 var LOG_FILE_PATH = new File($.fileName).parent.fsName + "/import_md_errors.log";
 
+// Valeur sentinelle du dialogue de mapping : "ce tag n'est PAS mappe". Proposee
+// par defaut quand aucune correspondance n'existe, elle signifie : aucune
+// affectation de style pour ce tag. Le script ne devine JAMAIS a la place de
+// l'utilisateur (decision FJD 27/09/2026, cf. doc/wiki Cas 25).
+var NOT_MAPPED_LABEL = "\u2014 non mapp\u00e9 \u2014";
+
 // MISSION 03 (25/09, décision FJD) : reconstruction minimale de
 // insertMarkdownWithStyles après régression non identifiée. Quand
 // MINIMAL_MODE = true, main() exécute insertMarkdownWithStyles_v2() au lieu de
@@ -61,12 +67,26 @@ function deserializeFlatMapping(str) {
 // (strong/em) plutôt que les balises brutes (b/i), choisi par FJD. "li" utilise
 // "puces" — pas un nom HTML mais le terme métier de FJD, tout aussi valable comme
 // convention exacte.
+// MISSION 03 — ÉTAPE 3 (décision FJD, 26/09/2026, révisée le 27/09/2026) : les
+// balises "####", "#####", "######"... sont TOUJOURS de VRAIS titres, et rien
+// d'autre. L'ancien usage DÉTOURNÉ (« une puce entièrement en gras devient un
+// sous-titre ») a été ABANDONNÉ (option 1) : il transformait tous les items de
+// liste en gras d'un document réel en faux titres. Le parseur ne produit donc
+// plus de tag "hN" que pour un vrai #/##/###..., et le drapeau `synthetic`
+// n'existe plus. Côté dialogue de mapping, le nombre de niveaux proposés est
+// volontairement plafonné à h9 : le PARSER, lui, n'a aucune limite (au-delà de
+// h9 le bloc est produit normalement puis tombe en style neutre + log, sans
+// échec).
 var MARKDOWN_TAGS = {
     "h1": { type: "paragraph", display: "Titre 1 (#)", htmlName: "h1" },
     "h2": { type: "paragraph", display: "Titre 2 (##)", htmlName: "h2" },
     "h3": { type: "paragraph", display: "Titre 3 (###)", htmlName: "h3" },
-    "h4": { type: "paragraph", display: "Titre 4 (sous-titre de liste en gras sous ###)", htmlName: "h4" },
-    "h5": { type: "paragraph", display: "Titre 5 (sous-titre de liste en gras sous h4)", htmlName: "h5" },
+    "h4": { type: "paragraph", display: "Titre 4 (####)", htmlName: "h4" },
+    "h5": { type: "paragraph", display: "Titre 5 (#####)", htmlName: "h5" },
+    "h6": { type: "paragraph", display: "Titre 6 (######)", htmlName: "h6", optional: true },
+    "h7": { type: "paragraph", display: "Titre 7 (#######)", htmlName: "h7", optional: true },
+    "h8": { type: "paragraph", display: "Titre 8 (########)", htmlName: "h8", optional: true },
+    "h9": { type: "paragraph", display: "Titre 9 (#########)", htmlName: "h9", optional: true },
     "p": { type: "paragraph", display: "Paragraphe standard", htmlName: "p" },
     "li": { type: "paragraph", display: "Liste à puces (-, *, +)", htmlName: "li" },
     "li2": { type: "paragraph", display: "Liste à puces niveau 2", htmlName: "li2" },
@@ -165,17 +185,6 @@ function parseMarkdown(markdownText) {
     var inCodeBlock = false;
     var inList = false;
 
-    // Niveau du dernier vrai titre (#/##/###) rencontré — utilisé pour convertir
-    // un item de liste ENTIÈREMENT en gras (ex. "* **Titre**", rien avant/après
-    // les "**") : traité comme un sous-titre de niveau (dernier titre réel
-    // rencontré + 1), pas comme un item de liste normal. Plusieurs niveaux
-    // successifs de ce pattern s'empilent (un "**Titre**" trouvé juste après
-    // un autre du même type reste au même niveau, il ne descend pas plus —
-    // seul un vrai #/##/### fait varier currentTitleLevel). Cette règle ne
-    // s'applique qu'au niveau d'indentation 0 : un item en gras imbriqué
-    // (indentLevel > 0) est un sous-item de liste normal, pas un titre.
-    var currentTitleLevel = 0; // 0 = aucun titre encore rencontré
-
     // Première passe : séparer les blocs (titres, paragraphes, listes, citations)
     for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
@@ -234,25 +243,22 @@ function parseMarkdown(markdownText) {
             continue;
         }
 
-        // Détecter les titres
-        var h1Match = trimmed.match(/^#\s+(.*)/);
-        var h2Match = trimmed.match(/^##\s+(.*)/);
-        var h3Match = trimmed.match(/^###\s+(.*)/);
-
-        if (h1Match) {
+        // Détecter les titres.
+        // MISSION 03 — ÉTAPE 3 (décision FJD 26/09/2026) : la détection est
+        // DYNAMIQUE, quel que soit le nombre de "#" en tête de ligne (h1, h2, h3,
+        // h4, h5, h6, h7... sans plafond côté parseur). Auparavant seuls "#", "##"
+        // et "###" étaient reconnus : une ligne "#### Titre" tombait en paragraphe
+        // standard avec le texte LITTÉRAL "#### Titre" (constat FJD du 26/09 sur
+        // l'extrait ChatGPT, 3.1.1 Étape de compilation). FJD a acté que #### et
+        // au-delà sont d'abord de VRAIS titres. Une espace OBLIGATOIRE après les
+        // "#" reste exigée (CommonMark) : "#hashtag" n'est pas un titre.
+        var headingMatch = trimmed.match(/^(#{1,})\s+(.*)$/);
+        if (headingMatch) {
             if (currentBlock) blocks.push(currentBlock);
-            currentBlock = { type: "h1", text: h1Match[1], children: [] };
-            currentTitleLevel = 1;
-            continue;
-        } else if (h2Match) {
-            if (currentBlock) blocks.push(currentBlock);
-            currentBlock = { type: "h2", text: h2Match[1], children: [] };
-            currentTitleLevel = 2;
-            continue;
-        } else if (h3Match) {
-            if (currentBlock) blocks.push(currentBlock);
-            currentBlock = { type: "h3", text: h3Match[1], children: [] };
-            currentTitleLevel = 3;
+            var headingLevel = headingMatch[1].length;
+            // Plus de champ `synthetic` : depuis l'option 1 (27/09/2026) tout
+            // titre "hN" provient d'un vrai #/##/###..., sans exception.
+            currentBlock = { type: "h" + headingLevel, text: headingMatch[2], children: [] };
             continue;
         }
 
@@ -289,22 +295,14 @@ function parseMarkdown(markdownText) {
             var indentLevel = Math.floor(indentSpaces / 2);
             var liContent = liIndentMatch[2].replace(/\s+$/, "");
 
-            // Item de liste ENTIÈREMENT en gras (ex. "* **Titre**", rien avant/après
-            // les "**") : traité comme un sous-titre de niveau (dernier titre réel
-            // rencontré + 1), pas comme un item de liste normal. Plusieurs niveaux
-            // successifs de ce pattern s'empilent (un "**Titre**" trouvé juste après
-            // un autre du même type reste au même niveau, il ne descend pas plus —
-            // seul un vrai #/##/### fait varier currentTitleLevel). Cette règle ne
-            // s'applique qu'au niveau d'indentation 0 : un item en gras imbriqué
-            // (indentLevel > 0) est un sous-item de liste normal, pas un titre.
-            var fullyBoldMatch = liContent.match(/^\*\*(.+)\*\*$/);
-            if (fullyBoldMatch && currentTitleLevel > 0 && indentLevel === 0) {
-                if (currentBlock) blocks.push(currentBlock);
-                var syntheticLevel = currentTitleLevel + 1;
-                currentBlock = { type: "h" + syntheticLevel, text: fullyBoldMatch[1], children: [] };
-                continue;
-            }
-
+            // Option 1 (décision FJD, 27/09/2026) : une puce RESTE une puce.
+            // La règle précédente (« puce entièrement en gras ⇒ titre de niveau
+            // currentTitleLevel + 1 ») a été SUPPRIMÉE. Elle détournait tous les
+            // items de liste en gras d'un vrai document (constat FJD sur
+            // programme_de_formation_indesign_ia_extendscript.md : 18 puces
+            // `* **...**` converties en faux titres H3). Le gras d'une puce sera
+            // traité comme du gras inline à l'étape 4, la puce gardant son style
+            // de liste.
             if (currentBlock) blocks.push(currentBlock);
             currentBlock = { type: "li", indentLevel: indentLevel, text: liContent, children: [] };
             continue;
@@ -351,7 +349,11 @@ function parseMarkdown(markdownText) {
         // sont fusionnées avec un espace, pas un "\n" — elles forment une seule
         // phrase continue dans le paragraphe InDesign final, et un espace évite
         // toute ambiguïté \n/\r dans le calcul ultérieur des positions de caractères.
-        if (!currentBlock || currentBlock.type === "h1" || currentBlock.type === "h2" || currentBlock.type === "h3" || currentBlock.type === "h4" || currentBlock.type === "h5" || currentBlock.type === "blockquote" || currentBlock.type === "li" || currentBlock.type === "li_num" || currentBlock.type === "table" || currentBlock.type === "code") {
+        // Le test de titre est volontairement GÉNÉRIQUE (/^h\d+$/) et non une
+        // énumération littérale h1||h2||h3... : avec la détection dynamique de
+        // l'étape 3, un titre "h6"/"h7" doit aussi clore le bloc courant, sinon
+        // il serait avalé comme continuation de paragraphe.
+        if (!currentBlock || /^h\d+$/.test(currentBlock.type) || currentBlock.type === "blockquote" || currentBlock.type === "li" || currentBlock.type === "li_num" || currentBlock.type === "table" || currentBlock.type === "code") {
             if (currentBlock) blocks.push(currentBlock);
             currentBlock = { type: "p", text: trimmed, children: [] };
         } else {
@@ -773,7 +775,12 @@ function showConfigurationDialog(currentMapping) {
                 return a < b ? -1 : (a > b ? 1 : 0);
             });
 
-            var selectableNames = []; // en parallèle des items ajoutés, "" pour les en-têtes
+            var selectableNames = []; // en parallele des items ajoutes, null pour les entrees non selectionnables
+            // Entree sentinelle en tete (index 0) : "non mappe". C'est le defaut
+            // quand aucune correspondance n'existe, ce qui evite d'appliquer un
+            // style arbitraire (typiquement le neutre) sans geste de l'utilisateur.
+            dropdown.add("item", NOT_MAPPED_LABEL);
+            selectableNames.push(null);
             for (k = 0; k < groupOrder.length; k++) {
                 var gName2 = groupOrder[k];
                 if (gName2 !== "") {
@@ -794,9 +801,12 @@ function showConfigurationDialog(currentMapping) {
             //    casse) à la convention HTML du tag (ex. "H1" pour le tag h1) — pour
             //    les documents dont la charte de styles suit cette convention de
             //    nommage, aucune configuration manuelle n'est nécessaire.
-            // 3. Sinon, le premier style disponible à la racine (typiquement le style
-            //    neutre "[Style de paragraphe de base]"/"[Aucun]"), pour permettre de
-            //    tester le flux sans configuration.
+            // 3. Sinon, l'entrée sentinelle "— non mappé —" (index 0) : AUCUNE
+            //    présélection arbitraire. L'ancienne règle 3 retenait "le premier
+            //    style disponible à la racine" (souvent le style neutre) et
+            //    appliquait donc un style SANS intervention de l'utilisateur —
+            //    c'était la cause racine du symptôme "style neutralisé" du
+            //    27/09/2026 (cf. doc/wiki_extendscript_indesign.md, Cas 25).
             var styleToPreselect = (currentMapping && currentMapping[tag]) ? currentMapping[tag] : null;
 
             if (!styleToPreselect && tagInfo.htmlName) {
@@ -809,14 +819,7 @@ function showConfigurationDialog(currentMapping) {
                 }
             }
 
-            if (!styleToPreselect) {
-                for (k = 0; k < selectableNames.length; k++) {
-                    if (selectableNames[k] !== null) {
-                        styleToPreselect = selectableNames[k];
-                        break;
-                    }
-                }
-            }
+            dropdown.selection = 0; // defaut = "non mappe"
             if (styleToPreselect) {
                 for (k = 0; k < selectableNames.length; k++) {
                     if (selectableNames[k] === styleToPreselect) {
@@ -850,8 +853,8 @@ function showConfigurationDialog(currentMapping) {
         try {
             // Efface le mapping stocké dans le document (repasse par la même
             // sauvegarde que le flux normal, {} vide) et relance le dialogue de
-            // configuration à partir de zéro : présélection HTML/style neutre,
-            // sans les choix précédents.
+            // configuration à partir de zéro : présélection par convention HTML,
+            // sinon "— non mappé —", sans les choix précédents.
             var saveResult = saveMappingToDocument({});
             logToFile("resetBtn.onClick: saveMappingToDocument({}) a retourné " + saveResult);
             wasReset = true;
@@ -872,9 +875,17 @@ function showConfigurationDialog(currentMapping) {
                 var dropdown = mappingControls[tag];
                 // Ignorer une sélection sur un en-tête de groupe (non sélectionnable en
                 // principe via enabled=false, sécurisé ici au cas où ce ne serait pas honoré)
-                if (dropdown.selection !== null && dropdown.selection.text.indexOf("── ") !== 0) {
-                    resultMapping[tag] = dropdown.selection.text;
+                if (dropdown.selection === null || dropdown.selection.text.indexOf("── ") === 0) {
+                    continue;
                 }
+                // Sentinelle "non mappé" : le tag reste volontairement ABSENT du
+                // mapping => aucune affectation de style pour lui. Le repli neutre
+                // de l'insertion (etape 2) reste inchangé : c'est lui qui journalise.
+                if (dropdown.selection.text === NOT_MAPPED_LABEL) {
+                    logToFile("M03-dialogue: tag=" + tag + " -> non mappe");
+                    continue;
+                }
+                resultMapping[tag] = dropdown.selection.text;
             }
         }
         win.close();
@@ -892,7 +903,7 @@ function showConfigurationDialog(currentMapping) {
 
     // Sur "Réinitialiser" : le mapping stocké vient d'être effacé, on relance le
     // dialogue à partir de zéro (récursion — currentMapping devient null, donc la
-    // présélection retombe sur la convention HTML / le style neutre).
+    // présélection retombe sur la convention HTML, sinon "— non mappé —").
     if (wasReset) {
         logToFile("showConfigurationDialog: wasReset=true, relance récursive");
         return showConfigurationDialog(null);
@@ -943,8 +954,11 @@ function getLiStyleForIndentLevel(block, mapping) {
     // Étape 2 : cascade de titres plafonnée au niveau de titre maximum RÉELLEMENT
     // disponible dans le mapping (pas juste MARKDOWN_TAGS — un h4/h5 déclaré dans
     // MARKDOWN_TAGS mais non mappé par l'utilisateur ne compte pas comme disponible).
+    // Borne portée à 9 à l'étape 2 de la mission 03 (décision FJD 26/09 : les vrais
+    // titres vont jusqu'à hN ; MARKDOWN_TAGS propose désormais h1..h9, la cascade de
+    // listes doit pouvoir s'y appuyer au même plafond).
     var maxAvailableTitleLevel = 0;
-    for (var lvl = 1; lvl <= 5; lvl++) {
+    for (var lvl = 1; lvl <= 9; lvl++) {
         var hTag = "h" + lvl;
         var hStyleName = mapping[hTag];
         if (hStyleName && findParagraphStyleByName(hStyleName)) {
@@ -1373,14 +1387,38 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         var paraSnapshot = [];
         try { paraSnapshot = liveStory.paragraphs.everyItem().getElements(); } catch (ePS) { logError(ePS, "etape2 snapshot paragraphs"); }
 
+        // Nombre de paragraphes que le texte insere occupe REELLEMENT :
+        // crCount = nombre de \r de fullText ; chaque \r ferme un paragraphe et
+        // le dernier paragraphe est complet => N = crCount + 1 (si texte non vide).
+        var insertedParaCount = (fullText.length > 0) ? (crCount + 1) : 0;
+
         var baseParaIndex = 0;
         var baseIndexKnown = true;
         if (insertAtCursor) {
-            baseParaIndex = -1;
-            try { baseParaIndex = targetPoint.paragraphs[0].index; } catch (eBPI) { logError(eBPI, "etape2 index paragraphe curseur"); }
-            if (baseParaIndex < 0) {
+            // DÉCISION FJD (27/09) — SOUSTRACTION, PAS D'OFFSET DEVINÉ.
+            // `targetPoint.paragraphs[0].index` N'EST PAS un numéro de paragraphe :
+            // le réel a mesuré 671 pour 42 paragraphes et 1344 pour 65 paragraphes,
+            // soit exactement l'offset CARACTÈRE du curseur (doc Adobe :
+            // InsertionPoint.index / Paragraph.index = « the index of the text in
+            // the collection or parent object »). Un tableau indexé par paragraphe
+            // n'est donc pas adressable avec cette valeur.
+            // Méthode retenue : le texte inséré occupe les N DERNIERS paragraphes
+            // (mode curseur = insertion, la story n'est pas vidée) =>
+            //     base = story_total - N
+            // Contrôle sur le log réel : 42-21=21 et 65-21=44 = les « paragraphes
+            // avant » du log. Aucune valeur en dur, tout est déduit.
+            baseParaIndex = paraSnapshot.length - insertedParaCount;
+            if (baseParaIndex < 0) baseParaIndex = 0;
+            var indexAffiche = "?";
+            try { indexAffiche = targetPoint.paragraphs[0].index; } catch (eBPI) { logError(eBPI, "etape2 index frontiere curseur"); }
+            logToFile("M03-etape2: frontiere curseur — story_total=" + paraSnapshot.length
+                + " paragraphes_inseres=" + insertedParaCount
+                + " => baseParSoustraction=" + baseParaIndex
+                + " | indexAffiche(inutilisable, offset caractere)=" + indexAffiche
+                + " contents.length=" + ("" + targetPoint.contents).length);
+            if (baseParaIndex <= 0 && paraSnapshot.length > insertedParaCount) {
                 baseIndexKnown = false;
-                logToFile("M03-etape2: ABANDON — index du paragraphe portant le curseur illisible (mode curseur). Aucun style applique (jamais au hasard sur le texte voisin).");
+                logToFile("M03-etape2: ABANDON — soustraction incoherente (base=0 alors que la story contient des paragraphes avant le bloc insere). Aucun style applique (jamais au hasard sur le texte voisin).");
             }
         }
 
@@ -1444,6 +1482,84 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
                 }
             }
         }
+
+        // -------------------------------------------------------------------
+        // SONDE CIBLEE (27/09/2026, run 15:49). Le symptome reel rapporte par
+        // FJD (« contamination + dernier paragraphe en standard ») est la
+        // signature d'un decalage d'UN cran, pas d'une erreur d'arithmetique :
+        // le delta +84 du run est NORMAL (les 85 lignes ne creent que 84
+        // frontieres nouvelles, la 1re ligne reutilise un paragraphe existant).
+        // Le log de fenetre est AVEUGLE par construction (il relit
+        // paraSnapshot[base+pb] et le compare au meme bloc). On dumpe donc le
+        // CONTENU + le STYLE des paragraphes VOISINS de la frontiere et de la
+        // FIN : le contenu localise le cran sans ambiguite.
+        // Sonde temporaire, ASCII seul, a retirer a l'etape 8.
+        // -------------------------------------------------------------------
+        // SONDE v2 (27/09/2026, run 16:27) : la v1 a disculpe la boucle
+        // (para[171] = bloc #0, para[255] = bloc #84, ecarts=0, neutre=0).
+        // On emet maintenant une CARTE des styles en plages (run-length) sur
+        // TOUTE la story, plus le nombre de paragraphes relus en direct :
+        // une seule ligne suffit a voir tout decalage ou tout trou.
+        // Sonde temporaire, ASCII seul, a retirer a l'etape 8.
+        var liveNowLen = -1;
+        try { liveNowLen = liveStory.paragraphs.everyItem().getElements().length; } catch (eLN) {}
+        logToFile("M03-sonde2: snapshot=" + paraSnapshot.length + " liveNow=" + liveNowLen + " base=" + baseParaIndex);
+        var mapParts = [];
+        var mapRunStyle = null;
+        var mapRunStart = 0;
+        for (var mi = 0; mi < paraSnapshot.length; mi++) {
+            var miStyle = "?";
+            try { miStyle = safeStyleName(paraSnapshot[mi].appliedParagraphStyle, "?"); } catch (eMS) {}
+            if (miStyle !== mapRunStyle) {
+                if (mapRunStyle !== null) {
+                    mapParts.push(mapRunStart + (mapRunStart === mi - 1 ? "" : "-" + (mi - 1)) + "=" + mapRunStyle);
+                }
+                mapRunStyle = miStyle;
+                mapRunStart = mi;
+            }
+        }
+        if (mapRunStyle !== null) {
+            mapParts.push(mapRunStart + (mapRunStart === paraSnapshot.length - 1 ? "" : "-" + (paraSnapshot.length - 1)) + "=" + mapRunStyle);
+        }
+        logToFile("M03-carte: n=" + paraSnapshot.length + " base=" + baseParaIndex + " | " + mapParts.join(" "));
+
+        // -------------------------------------------------------------------
+        // ÉTAPE 3 — COMPTEUR DES TITRES (décision FJD 26/09/2026, révisée le
+        // 27/09/2026 — option 1). Il n'existe plus qu'UNE provenance de titre :
+        // le vrai #/##/###... (l'ancienne conversion « puce entièrement en gras »
+        // a été supprimée). Le drapeau `synthetic` a donc disparu du code.
+        // On compte aussi les dérives (« derive ») : un titre "hN" dont le niveau
+        // dépasse le plus haut niveau mappé/offert par le dialogue (h9) — ce n'est
+        // PAS un échec, le bloc reçoit le style neutre comme tout tag non mappé.
+        // -------------------------------------------------------------------
+        var hRealCounts = {};
+        var hDeriveCounts = {};
+        var maxMappedHeading = 0;
+        for (var lvlProbe = 1; lvlProbe <= 9; lvlProbe++) {
+            var tagProbe = "h" + lvlProbe;
+            if (mapping && mapping[tagProbe] && findParagraphStyleByName(mapping[tagProbe])) {
+                maxMappedHeading = lvlProbe;
+            }
+        }
+        for (var hb = 0; hb < blocks.length; hb++) {
+            var hBloc = blocks[hb];
+            if (!hBloc || !/^h\d+$/.test(hBloc.type)) continue;
+            var hLevel = parseInt(hBloc.type.substring(1), 10);
+            hRealCounts[hLevel] = (hRealCounts[hLevel] || 0) + 1;
+            if (hLevel > maxMappedHeading) {
+                hDeriveCounts[hLevel] = (hDeriveCounts[hLevel] || 0) + 1;
+            }
+        }
+        var hRealStr = "";
+        var hDeriveStr = "";
+        var deriveTotal = 0;
+        for (var lvlStr = 1; lvlStr <= 12; lvlStr++) {
+            if (hRealCounts[lvlStr]) hRealStr += "h" + lvlStr + "=" + hRealCounts[lvlStr] + " ";
+            if (hDeriveCounts[lvlStr]) { hDeriveStr += "h" + lvlStr + "=" + hDeriveCounts[lvlStr] + " "; deriveTotal += hDeriveCounts[lvlStr]; }
+        }
+        logToFile("M03-etape3: titres reels [" + (hRealStr ? hRealStr.replace(/\s+$/, "") : "aucun") +
+            "] maxMappe=h" + maxMappedHeading +
+            " derives=" + deriveTotal + (hDeriveStr ? " [" + hDeriveStr.replace(/\s+$/, "") + "]" : ""));
 
         // Compteur UNIQUE (spec : « paragraphes attendus / réels »). En mode
         // cadre, base=0 et la story ne contient QUE notre import ⇒ reels doit
@@ -1996,10 +2112,15 @@ function main() {
             return;
         }
 
-        // Vérifier que tous les tags ont un mapping
+        // Vérifier que tous les tags ont un mapping.
+        // MISSION 03 étape 3 : les niveaux de titre profonds (h6..h9) sont marqués
+        // `optional: true` — leur absence de mapping est NORMALE (peu de chartes
+        // ont 9 niveaux de titre) et ne doit PAS bloquer l'import : un titre h6+
+        // non mappé tombe simplement en style neutre, avec un log de dérive
+        // (`M03-etape3`), jamais un échec ni un blocage du dialogue.
         var missingTags = [];
         for (var tag in MARKDOWN_TAGS) {
-            if (MARKDOWN_TAGS.hasOwnProperty(tag) && !mapping[tag]) {
+            if (MARKDOWN_TAGS.hasOwnProperty(tag) && !mapping[tag] && !MARKDOWN_TAGS[tag].optional) {
                 missingTags.push(MARKDOWN_TAGS[tag].display);
             }
         }
@@ -2023,7 +2144,7 @@ function main() {
         if (MINIMAL_MODE) {
             success = insertMarkdownWithStyles_v2(targetStory, blocks, mapping, insertionOptions);
             if (success) {
-                alertUser("M03 étapes 1/1bis (texte brut) + 2 (styles de paragraphe) exécutées.\n\nMode de sélection détecté : " + resolved.mode + "\n\nVérifiez le log import_md_errors.log :\ncompteur M03-etape2 (blocs / attendus / reels / ecarts) et style relu de chaque bloc. NE PAS avancer tant qu'un ecart persiste.");
+                alertUser("M03 étapes 1/1bis (texte brut) + 2 (styles de paragraphe) + 3 (titres) exécutées.\n\nMode de sélection détecté : " + resolved.mode + "\n\nVérifiez le log import_md_errors.log :\ncompteurs M03-etape2 (blocs / attendus / reels / ecarts) et M03-etape3 (titres reels / maxMappe / derives), plus le style relu de chaque bloc. NE PAS avancer tant qu'un ecart persiste.");
             }
         } else {
             success = insertMarkdownWithStyles(targetStory, blocks, mapping);

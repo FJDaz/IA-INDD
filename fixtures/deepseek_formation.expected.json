@@ -36,8 +36,8 @@
     "text": "*Objectif : Consolider la maîtrise des fonctions avancées d'InDesign indispensables à une automatisation robuste.*"
   },
   {
-    "type": "h3",
-    "text": "Styles de paragraphe et de caractère avancés"
+    "type": "li",
+    "text": "**Styles de paragraphe et de caractère avancés**"
   },
   {
     "type": "li",
@@ -48,8 +48,8 @@
     "text": "Puces et numérotations complexes."
   },
   {
-    "type": "h3",
-    "text": "Styles imbriqués et styles GREP"
+    "type": "li",
+    "text": "**Styles imbriqués et styles GREP**"
   },
   {
     "type": "li",
@@ -60,8 +60,8 @@
     "text": "Application dynamique des styles de caractère sans modifier la structure du texte."
   },
   {
-    "type": "h3",
-    "text": "Rechercher/Remplacer avancé & GREP"
+    "type": "li",
+    "text": "**Rechercher/Remplacer avancé & GREP**"
   },
   {
     "type": "li",
@@ -72,8 +72,8 @@
     "text": "Nettoyage automatique, reformatage et restructuration du texte par expressions régulières."
   },
   {
-    "type": "h3",
-    "text": "Tableaux et styles de tableau / cellule"
+    "type": "li",
+    "text": "**Tableaux et styles de tableau / cellule**"
   },
   {
     "type": "li",
@@ -84,8 +84,8 @@
     "text": "Combinaison des styles de tableaux, de cellules et de paragraphes imbriqués."
   },
   {
-    "type": "h3",
-    "text": "Objets ancrés"
+    "type": "li",
+    "text": "**Objets ancrés**"
   },
   {
     "type": "li",
@@ -96,16 +96,16 @@
     "text": "Comportement des objets dans le flux de texte (prérequis pour la mise en page automatique par script)."
   },
   {
-    "type": "h3",
-    "text": "Variables de texte"
+    "type": "li",
+    "text": "**Variables de texte**"
   },
   {
     "type": "li",
     "text": "En-têtes courants dynamiques, numérotations, métadonnées et champs personnalisés."
   },
   {
-    "type": "h3",
-    "text": "Gabarits et héritage"
+    "type": "li",
+    "text": "**Gabarits et héritage**"
   },
   {
     "type": "li",
@@ -124,8 +124,8 @@
     "text": "*Objectif : Comprendre le fonctionnement des LLM et installer un environnement de travail efficace.*"
   },
   {
-    "type": "h3",
-    "text": "Comprendre les modèles et l'écosystème LLM"
+    "type": "li",
+    "text": "**Comprendre les modèles et l'écosystème LLM**"
   },
   {
     "type": "li",
@@ -136,8 +136,8 @@
     "text": "Clés API, rôle des *providers* et agrégateurs (OpenRouter)."
   },
   {
-    "type": "h3",
-    "text": "Méthodologie de pilotage par l'IA"
+    "type": "li",
+    "text": "**Méthodologie de pilotage par l'IA**"
   },
   {
     "type": "li",
@@ -148,8 +148,8 @@
     "text": "Établissement de la roadmap et chronologie de traitement (RM > RMA)."
   },
   {
-    "type": "h3",
-    "text": "Environnement ExtendScript et IDE"
+    "type": "li",
+    "text": "**Environnement ExtendScript et IDE**"
   },
   {
     "type": "li",
@@ -180,8 +180,8 @@
     "text": "*Objectif : Créer un script complet en appliquant la méthode de travail IA, la Sandbox de simulation et le Wiki de suivi.*"
   },
   {
-    "type": "h3",
-    "text": "Cahier des charges et spécifications de l'outil"
+    "type": "li",
+    "text": "**Cahier des charges et spécifications de l'outil**"
   },
   {
     "type": "li",
@@ -192,8 +192,8 @@
     "text": "Reprise dynamique de la feuille de styles du document ouvert."
   },
   {
-    "type": "h3",
-    "text": "Gestion des erreurs et capitalisation"
+    "type": "li",
+    "text": "**Gestion des erreurs et capitalisation**"
   },
   {
     "type": "li",
@@ -212,8 +212,8 @@
     "text": "Boucle récursive : documentation immédiate, consultation obligatoire du Wiki avant tout nouveau correctif ou *feature*."
   },
   {
-    "type": "h3",
-    "text": "Sandbox Node.js de simulation"
+    "type": "li",
+    "text": "**Sandbox Node.js de simulation**"
   },
   {
     "type": "li",
@@ -232,8 +232,8 @@
     "text": "Règle absolue : passage obligatoire par la Sandbox pour toute modification du modèle texte."
   },
   {
-    "type": "h3",
-    "text": "Optimisation du document InDesign et fonctionnalités avancées"
+    "type": "li",
+    "text": "**Optimisation du document InDesign et fonctionnalités avancées**"
   },
   {
     "type": "li",
@@ -256,8 +256,8 @@
     "text": "*Objectif : Concevoir et développer son propre script d'automatisation sur la base de ses besoins de production.*"
   },
   {
-    "type": "h3",
-    "text": "Cadrage du besoin"
+    "type": "li",
+    "text": "**Cadrage du besoin**"
   },
   {
     "type": "li",
@@ -268,8 +268,8 @@
     "text": "Inférence du cahier des charges de l'outil individuel."
   },
   {
-    "type": "h3",
-    "text": "Architecture et planification"
+    "type": "li",
+    "text": "**Architecture et planification**"
   },
   {
     "type": "li",
@@ -280,8 +280,8 @@
     "text": "Mise en place du journal de logs, du Wiki et de la Sandbox dédiés."
   },
   {
-    "type": "h3",
-    "text": "Implémentation et recette"
+    "type": "li",
+    "text": "**Implémentation et recette**"
   },
   {
     "type": "li",
@@ -320,8 +320,8 @@
     "text": "Estimation Budgétaire API (OpenRouter)"
   },
   {
-    "type": "h4",
-    "text": "Configuration :"
+    "type": "li",
+    "text": "**Configuration :**"
   },
   {
     "type": "li",

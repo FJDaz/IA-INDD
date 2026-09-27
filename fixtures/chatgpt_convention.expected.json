@@ -68,8 +68,8 @@
     "text": "Le pipeline se décompose en trois étapes séquentielles."
   },
   {
-    "type": "p",
-    "text": "#### 3.1.1 Étape de compilation"
+    "type": "h4",
+    "text": "3.1.1 Étape de compilation"
   },
   {
     "type": "p",
