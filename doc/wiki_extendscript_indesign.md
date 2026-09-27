@@ -456,6 +456,23 @@ Preuve en réel : `baseParSoustraction=65` (= 86 − 21), puis `reels=21 ecarts=
 
 ---
 
+## Cas 27 — Séparation stricte code maison / DOM InDesign (pourquoi le sandbox Node ne peut jamais suffire)
+
+**Origine** : recherche externe menée le 27/09/2026 (FJD) pour savoir s'il existe un environnement dédié permettant de simuler InDesign (ExtendScript ou UXP) hors de l'application, façon "test-driven development". Résultat net et sourcé : **aucun mock du DOM InDesign n'existe dans la communauté**, ni en ExtendScript ni en UXP. Les frameworks de test trouvés (Extendables/Jasmine, jasminejsx) exécutent leurs tests **dans InDesign**, avec le vrai DOM — ils ne le remplacent jamais. Seul InDesign Server (licence payante, ~2100$/an) permet un vrai headless, mais avec le moteur de composition réel, pas un mock léger. Un thread Adobe Community de 2012 résume la pratique de la communauté : *« the decision went to use real world full runs rather than isolated test units »*.
+
+**Raison structurelle (pas un manque d'outillage, une contrainte de fond)** : les objets `app`, `Document`, `Story`, `TextFrame`, etc. sont injectés par le runtime Adobe au moment de l'exécution dans l'application hôte — ce ne sont pas des modules importables ou substituables de l'extérieur. Un mock fidèle supposerait de réimplémenter tout le moteur de composition InDesign (retour à la ligne, gestion des styles, chaînage de texte, etc.) — hors de portée pour ce projet, et probablement pour n'importe quel projet hors Adobe lui-même.
+
+**Conséquence directe, déjà vécue sur ce projet sans être nommée comme telle** : le sandbox Node maison (`simulate_*.js`, stubs `File`/`app`/`alert`) ne peut reproduire que ce qu'on lui a explicitement enseigné — il a été **structurellement incapable** de révéler les bugs les plus coûteux de la mission 03 (détachement de la référence `story` après vidage, Cas 24 ; `paragraphs.length` qui ment, Cas 23 ; `.index` qui n'est pas un index de paragraphe, Cas 26) parce que ce sont des comportements *runtime réels* d'InDesign, pas des questions de logique JS pure. Une simulation Node, aussi soignée soit-elle, ne remplace jamais le test réel — c'est déjà la règle non négociable de ce projet, et cette recherche en confirme le bien-fondé structurel plutôt que de le remettre en question.
+
+**Principe à appliquer, déjà pratiqué dans ce projet sans avoir été formalisé** : séparer strictement, dans `import_md.jsx`, deux catégories de fonctions —
+
+1. **Code maison, logique pure** (`parseMarkdown()`, `parseInlineMarkdown()`, `isWordBoundaryChar()`) : aucune référence à `app`/`Document`/`Story`/`TextFrame`, prend du texte en entrée, retourne des structures de données (blocs typés) en sortie. **Cette catégorie, et uniquement elle, est testable de façon fiable par simulation Node** — les résultats du sandbox y sont dignes de confiance, parce qu'il n'y a aucun comportement runtime InDesign à reproduire.
+2. **Code d'intégration DOM** (`insertMarkdownWithStyles_v2()`, `resolveTargetStory()`, `checkAndCleanStylesAtTrigger()`, toute manipulation de `story`/`paragraphs`/`insertionPoints`) : appelle directement les objets du DOM InDesign. **Cette catégorie ne peut être validée que par test réel dans InDesign** — une simulation Node dessus ne prouve que la syntaxe et la logique de branchement, jamais le comportement réel (c'est exactement là que les Cas 23/24/26 ont été manqués par la simulation).
+
+**Règle pratique qui en découle** : avant d'ajouter une fonction, se demander à laquelle des deux catégories elle appartient. Si elle mélange les deux (logique de transformation + appels DOM dans la même fonction), envisager de les séparer — la fonction de logique pure devient testable et fiable en simulation, la coquille DOM autour reste fine et le seul endroit qui nécessite un test réel.
+
+---
+
 ## Piège structurel à retenir — deux copies du même script
 
 InDesign exécute les scripts depuis `~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/`, pas depuis le dossier de travail/repo. Toute correction faite sur le fichier source doit être recopiée vers cet emplacement avant test, sinon on corrige un fichier que le logiciel n'utilise jamais (piège rencontré le 23/09/2026, cf. mission_01).
