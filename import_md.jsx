@@ -10,6 +10,17 @@ var SCRIPT_NAME = "Import MD";
 var LABEL_NAME = "md-style-map";
 var LOG_FILE_PATH = new File($.fileName).parent.fsName + "/import_md_errors.log";
 
+// MEMOIRE DE MAPPING INTER-DOCUMENTS (MODE TEST)
+// Le mapping vit normalement DANS le document (label). Pour ne pas avoir a le
+// ressaisir a chaque nouveau document pendant la phase de test, on garde en plus
+// une copie sur disque, A COTE DU SCRIPT (meme dossier que le log) : elle sert
+// de source quand le document n'a pas de mapping, et elle est mise a jour a
+// chaque validation du dialogue. Elle est DISSOCIEE du document — c'est
+// volontairement une commodite de test : les noms de styles qu'elle contient
+// peuvent ne pas exister dans un autre document, l'insertion le journalise et
+// retombe sur le neutre (aucun plantage). A retirer avant diffusion.
+var MEMORY_MAPPING_PATH = new File($.fileName).parent.fsName + "/import_md_mapping_memory.txt";
+
 // Valeur sentinelle du dialogue de mapping : "ce tag n'est PAS mappe". Proposee
 // par defaut quand aucune correspondance n'existe, elle signifie : aucune
 // affectation de style pour ce tag. Le script ne devine JAMAIS a la place de
@@ -684,7 +695,49 @@ function saveMappingToDocument(mapping) {
 }
 
 /**
- * Vérifie si le mapping est valide (tous les styles référencés existent)
+ * MEMOIRE DE TEST : lit le mapping conserve sur disque a cote du script.
+ * Retourne null si le fichier n'existe pas ou est illisible — jamais d'alerte,
+ * c'est un confort de test, pas une fonctionnalite du plugin.
+ */
+function loadMemoryMapping() {
+    try {
+        if (!MEMORY_MAPPING_PATH.exists) return null;
+        MEMORY_MAPPING_PATH.encoding = "UTF-8"; // noms de styles accentues
+        if (!MEMORY_MAPPING_PATH.open("r")) return null;
+        var c = MEMORY_MAPPING_PATH.read();
+        MEMORY_MAPPING_PATH.close();
+        if (!c || c.replace(/\s/g, "") === "") return null;
+        var m = deserializeFlatMapping(c);
+        var hasKey = false;
+        for (var k in m) { if (m.hasOwnProperty(k)) { hasKey = true; break; } }
+        return hasKey ? m : null;
+    } catch (eMemRead) {
+        logError(eMemRead, "loadMemoryMapping");
+        return null;
+    }
+}
+
+/**
+ * MEMOIRE DE TEST : ecrit le mapping sur disque a cote du script (mode "w",
+ * qui ecrase l'existant). Un mapping vide est ecrit tel quel (fichier vide =
+ * aucune memoire) : c'est ce qui permet au bouton "Reinitialiser" d'effacer
+ * aussi la memoire. Ne lève jamais d'exception.
+ */
+function saveMemoryMapping(mapping) {
+    try {
+        MEMORY_MAPPING_PATH.encoding = "UTF-8"; // noms de styles accentues
+        if (!MEMORY_MAPPING_PATH.open("w")) return false;
+        MEMORY_MAPPING_PATH.write(serializeFlatMapping(mapping || {}));
+        MEMORY_MAPPING_PATH.close();
+        return true;
+    } catch (eMemWrite) {
+        logError(eMemWrite, "saveMemoryMapping");
+        return false;
+    }
+}
+
+/**
+ * Verifie si le mapping est valide (tous les styles referes existent)
  */
 /**
  * Array.prototype.indexOf n'existe pas en ExtendScript (ES3) : recherche manuelle.
@@ -886,6 +939,9 @@ function showConfigurationDialog(currentMapping) {
             // sinon "— non mappé —", sans les choix précédents.
             var saveResult = saveMappingToDocument({});
             logToFile("resetBtn.onClick: saveMappingToDocument({}) a retourné " + saveResult);
+            // Memoire de test : "Reinitialiser" efface aussi la copie disque, sinon
+            // elle resservirait immediatement (comportement contre-intuitif).
+            logToFile("resetBtn.onClick: memoire disque effacee -> " + saveMemoryMapping({}));
             wasReset = true;
             logToFile("resetBtn.onClick: avant win.close()");
             win.close();
