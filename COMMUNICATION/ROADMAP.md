@@ -74,11 +74,11 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ## Mission 04 — Audit : lien dynamique vers le Markdown source (UXP vs update() natif vs solution maison)
 
-**Statut** : 🔴 À FAIRE — mission d'audit uniquement, aucun code attendu
+**Statut** : 🔴 BLOQUÉE — en attente de la clôture complète de la mission 03 (étapes 4 à 8 + intégration menu natif « Fichier > Importer > Importer un MD »). Ne pas démarrer avant. Ouvre le second chapitre du projet, « Panneau Import MD ».
 
 **Fichier détaillé** : [mission_04_audit_lien_dynamique.md](mission_04_audit_lien_dynamique.md)
 
-**Résumé** : FJD veut qu'InDesign détecte (via son panneau Liens natif si possible) quand le `.md` source a changé, et qu'un clic relance notre pipeline complet (reparsing + mapping), pas juste un import brut. Exploration préalable avec l'Architecte (Claude) : `place()` existe sur `Document`/`InsertionPoint`/`Text` ; `Story.itemLink` et `Link.update()`/`.status` sont scriptables, mais `Link.update()` semble être une boîte noire non pilotable (relance vraisemblablement un import natif brut, écrasant tout mapping fait après coup) — **non confirmé par test réel**. Notre méthode d'insertion actuelle (assignation `.contents`, jamais `place()`) ne crée structurellement aucun `Link`. Piste alternative repérée mais non auditée : **UXP** (framework JS moderne d'Adobe pour panneaux InDesign, pas C++) — pourrait éviter le mur du SDK propriétaire, mais compatibilité avec notre code existant non vérifiée. Chantier strictement séparé de la mission 03, ne doit pas interférer avec les étapes 4-8 en cours.
+**Résumé** : FJD veut qu'InDesign détecte (via son panneau Liens natif si possible) quand le `.md` source a changé, et qu'un clic relance notre pipeline complet (reparsing + mapping), pas juste un import brut. Exploration préalable avec l'Architecte (Claude) : `place()` existe sur `Document`/`InsertionPoint`/`Text` ; `Story.itemLink` et `Link.update()`/`.status` sont scriptables, mais `Link.update()` semble être une boîte noire non pilotable (relance vraisemblablement un import natif brut, écrasant tout mapping fait après coup) — **non confirmé par test réel**. Notre méthode d'insertion actuelle (assignation `.contents`, jamais `place()`) ne crée structurellement aucun `Link`. Piste alternative repérée mais non auditée : **UXP** (framework JS moderne d'Adobe pour panneaux InDesign, pas C++) — pourrait éviter le mur du SDK propriétaire, mais compatibilité avec notre code existant non vérifiée.
 
 ---
 

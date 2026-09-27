@@ -3,6 +3,8 @@
 **Statut** : ✅ **ÉTAPE 0bis VALIDÉE EN RÉEL** (rejeu TextFrame du 26/09 17:31–17:32) — le compteur de log ne ment plus, la suite peut s'appuyer dessus. Constat du 26/09 soir : le log annonçait `1` paragraphe (puis `9`) là où FJD a vu **3** (puis **39**) paragraphes propres à l'écran — **faux positif du log lui-même**, pas une régression du texte inséré. **Cause racine identifiée (double couche)** : (1) `targetPoint` résolu AVANT `story.contents = ""` ; (2) — cause définitive — **la poignée `story` capturée avant le vidage se DÉTACHE** : après `contents = ""`, elle renvoie `.contents.length = 0` et un `paragraphs` périmé, alors que le texte vit dans **`targetPoint.parentStory`**. Preuve : tir TextFrame 39 blocs → `story` snapshot=9 / `.contents.length=0`, `parentStory`=4402, œil=39. **Correctif appliqué** : `targetPoint` re-résolu après vidage ; mesure sur `targetPoint.parentStory` (avec repli signalé) ; arbitre JS pur `crCount` (`\r` sur `fullText`, attendu = `crCount + 1`) ; log de contraste vérité vs proxy périmé. Pré-checks OK (`node --check`, sim 1bis **26/26**, contrôle négatif concluant, sim 1ter 13/13), synchronisé Scripts Panel (`348c64f1…`). **Rejeu réel du 26/09 17:31–17:32 — mode TextFrame (les 2 tirs qui mentaient) : `paragraphes reels=3` puis `=85`, conformes au constat visuel (9 titres + 72 puces + 4 paragraphes = 85), sans `REPLI` / `DIVERGENCE` / `ECART DOM/JS`, avec le contraste `snapshot=26 | contents.length=0` exposant le proxy périmé. Chiffres reproduits par réexécution du vrai parseur hors InDesign (85/5474/84). Le compteur est fiable : la 0bis est close et les étapes suivantes peuvent s'appuyer sur le log.**
 **Bloque** : toutes les autres missions jusqu'à validation complète (étape 8)
 
+**Cadrage du 27/09 (FJD)** : cette mission constitue, avec l'ajout d'un point d'entrée natif dans le menu InDesign (`Fichier > Importer > Importer un MD`, via `app.menuActions`/`ScriptMenuAction` — scripting pur, déjà identifié comme l'étape 4 de la feuille de route pivot, pas de SDK requis), le **premier exercice complet** du projet : finir le pipeline (étapes 4 à 8), puis l'exposer proprement dans l'interface InDesign. Ce n'est qu'une fois ce premier exercice achevé que s'ouvre le second chapitre — [[mission_04_audit_lien_dynamique]], panneau custom pour le suivi de lien dynamique — qui ne doit **pas** être entamé en parallèle.
+
 **Statut pivot (26/09)** : ✅ **étape 1ter validée en réel (FJD)** et ✅ **test de faisabilité du place gun concluant (26/09 18:18)** — le place gun natif est chargeable par script (`loadPlaceGun()` → `loaded=true` / `isValid=true`), le curseur change d'apparence et un clic crée un bloc de texte. La chaîne d'entrée est donc complète, du trigger au placement natif. ⚠️ **Mais le mode gun est mis en suspens (décision FJD 26/09)** : le texte déposé arrive entièrement sous le **style actif du panneau** (H2, uniforme), qui n'a **aucun accesseur API** et n'est pas scriptable ⇒ **avertir, pas corriger** (voir « Étape pivot 1bis » ci-dessous). **Décision FJD (26/09) : gun CONSERVÉ avec l'alerte (choix A), pas de mode `cadre` auto-créateur.** **Prochaine étape** : héritage du shift-clic / calibrage de pages (point 2 de la feuille de route pivot — **spécifié** ci-dessous, **à exécuter**), puis reprise des étapes 2 à 8 (**spec détaillée** dans la section « Étapes 2 à 8 »).
 
 ## Feuille de route pivot — place gun natif (actée par FJD le 26/09/2026)
@@ -347,8 +349,7 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 
 | Type de bloc | Source Markdown réelle | Champs |
 |---|---|---|
-| `h1` / `h2` / `h3` | `# ` / `## ` / `### ` — **seuls niveaux littéraux reconnus** | `text` |
-| `h4` / `h5` | **uniquement synthétiques** : une puce **entièrement en gras** (`* **Titre**`) au niveau d'indentation 0, après qu'un vrai titre a été rencontré → niveau `currentTitleLevel + 1`. Un `#### ` littéral **n'est pas un titre** (il tombe en `p` avec le texte `"#### …"`). | `text` |
+| `h1` … `h9` | `# ` … `######### ` — **seuls titres reconnus**, sans plafond ni exception (option 1, 27/09/2026) | `text` |
 | `p` | paragraphe (lignes source consécutives fusionnées avec **un espace**) | `text` |
 | `li` | `- ` / `* ` / `+ ` | `text`, `indentLevel = floor(espaces / 2)` |
 | `li_num` | `1. ` | `text` |
@@ -365,9 +366,9 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 | Étape | Couche ajoutée | Fixture | Oracle (blocs réels) | Commit attendu |
 |---|---|---|---|---|
 | 2 | Styles de paragraphe mappés (index stable, sans segment) | `test_min_02_styles.md` | 11 blocs : h1:1, p:4, h2:1, h3:1, blockquote:1, li:1, li_num:2 | `M03 étape 2 : mapping styles OK` |
-| 3 | Titres (h1→h3 littéraux + h4/h5 synthétiques) | `test_min_03_titres.md` | 15 blocs : h1:1, p:8, h2:2, h3:2, h4:1, li:1 | `M03 étape 3 : titres OK` |
+| 3 | Titres (vrais `#` → `h1`…`h7`, sans exception) | `test_min_03_titres.md` | 21 blocs : h1:1, p:9, h2:2, h3:2, h4:1, h5:1, h6:1, h7:1, li:2 | `M03 étape 3 : titres OK` |
 | 4 | Gras / italique (segments inline) | `test_min_04_segments.md` | 9 blocs : h1:1, p:5, li:3 | `M03 étape 4 : segments OK` |
-| 5 | Listes (cascade d'indentation) | `test_min_05_listes.md` | 16 blocs : h1:2, h2:1, p:2, li:8 (indentLevel 0/1/2), li_num:3 | `M03 étape 5 : listes OK` |
+| 5 | Listes (cascade d'indentation) | `test_min_05_listes.md` | 16 blocs : h1:2, p:2, li:9 (indentLevel 0/1/2), li_num:3 | `M03 étape 5 : listes OK` |
 | 6 | Tableaux | `test_min_06_tables.md` | 6 blocs : h1:1, p:3, table:2 (rows 4×3 et 3×2) | `M03 étape 6 : tables OK` |
 | 7 | Blocs de code | `test_min_07_code.md` | 8 blocs : h1:1, p:4, code:3 (`` `` , `javascript`, `markdown`) | `M03 étape 7 : code OK` |
 | 8 | Non-régression complète | `fixtures/deepseek_referentiel.md` + 5 fixtures existantes | oracle `.expected.json` respectifs (35 / 32 / 24 / 24 / 85 blocs) | `M03 étape 8 : non-régression complète` |
@@ -396,20 +397,27 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 
 **Entrée** : `test_min_03_titres.md`.
 
-**Ce que le parseur doit produire** (vérifié) : 15 blocs — deux `h2`, deux `h3` (pour éprouver la **répétition** et la **remontée** de niveau : h2 → h3 → h2 → h3), **un `h4` synthétique** issu d'une puce `* **…**` au niveau 0, et une **sonde de limite** : la ligne `#### Titre 4 par quatre dieses` **doit tomber en `p`** (texte littéral commençant par `####`), car le parseur ne reconnaît que `#`/`##`/`###`.
+**Décision de parsing (26/09/2026, révisée le 27/09/2026 — option 1, FJD)** : les balises `####` et au-delà sont des **vrais titres** (H4, H5, H6, H7…), et **rien d'autre**. L'usage détourné « une puce entièrement en gras est un sous-titre » a été **ABANDONNÉ** (option 1) : il détournait 18 puces légitimes d'un vrai document de formation en faux titres H3. **Une puce reste toujours une puce** ; le gras d'une puce sera traité comme du gras *inline* à l'étape 4. Conséquence : le parseur reconnaît `^#{1,}` sans plafond (le dialogue de configuration propose `h1`→`h9` ; au-delà de `h9`, repli sur le style neutre avec journalisation, sans échec).
 
-**Ce que l'étape doit faire** : mapper `h1`→`h5` sur les styles de titre du document via `MARKDOWN_TAGS` (déjà déclarés, y compris `h4`/`h5` dont le libellé est explicitement *« sous-titre de liste en gras »*), en gardant l'index stable.
+**Ce que le parseur doit produire** (vérifié, oracle présent) : **21 blocs**, dans l'ordre
+`h1, p, h2, p, h3, p, li, li, h2, p, h3, p, h4, p, h5, p, h6, p, h7, p, p`.
+- deux `h2`, deux `h3` (pour éprouver la **répétition** et la **remontée** de niveau : h2 → h3 → h2 → h3) ;
+- **deux `li` consécutifs** : une puce entièrement en gras (`* **…**`) suivie d'une puce normale — les deux restent des `li` (garde-fou de l'option 1 : la puce en gras **n'est plus** convertie en titre) ;
+- **un vrai `h4`** (`#### Titre 4 par quatre dieses`), puis `h5`, **sonde H6** (`######`) et **sonde H7** (`#######`) — ces deux derniers n'ayant **pas de style mappé** dans le document minimal, ils retombent sur le style **neutre** et incrémentent le compteur `derives` : c'est le comportement **attendu**.
+
+**Ce que l'étape doit faire** : mapper `h1`→`h9` sur les styles de titre du document via `MARKDOWN_TAGS` (`h6`→`h9` sont déclarés `optional: true` : leur absence du mapping ne bloque pas l'import), en gardant l'index stable. Il n'existe plus qu'**une seule provenance de titre** (le vrai `#`/`##`/`###`…) : le drapeau `synthetic` a été supprimé du code, et le log ne comporte plus de volet `synth`.
 
 **Critère de réussite (test réel)** :
-- les 4 titres littéraux (1×h1, 2×h2, 2×h3) et le `h4` synthétique portent chacun le style attendu ;
-- la ligne `#### …` apparaît comme **paragraphe standard** avec le texte **littéral** `#### Titre 4 par quatre dieses` (aucun `#` consommé) ;
-- log : `M03-etape3: h1=1 h2=2 h3=2 h4_synth=1 derives=0 sonde_#### = p`.
+- les titres littéraux (1×h1, 2×h2, 2×h3, 1×h4, 1×h5) portent chacun le style attendu ;
+- **les deux puces (dont celle entièrement en gras) reçoivent un style de liste**, jamais un style de titre ;
+- **les sondes H6 et H7** reçoivent leur style **si et seulement si** les clés `h6`/`h7` sont mappées dans le document ; sinon elles retombent sur le style **neutre**, sans échec, et sont comptées dans `derives` ;
+- log sur `test_min_03_titres.md` : `M03-etape3: titres reels [h1=1 h2=2 h3=2 h4=1 h5=1 h6=1 h7=1] maxMappe=h5 derives=2` (avec le mapping **minimal**, qui n'a pas de style h6/h7). Avec le mapping **complet** de FJD (`maxMappe=h9`), le même fichier donne `derives=0` : les sondes H6/H7 sont alors stylées normalement. **Le nombre de dérives dépend donc du mapping du document, pas du parseur.**
 
-**Point de vigilance** : la sonde `####` documente une **limite connue et assumée** du parseur. Si FJD souhaite un jour les vraies balises `####`/`#####`, c'est une **décision de parsing** (à acter), pas un bug de mapping.
+**Point de vigilance** : la sonde H6/H7 documente un **repli attendu** (niveau sans style mappé → neutre + `derives`), et non une limite du parseur. Si FJD souhaite mapper H6/H7 sur de vrais styles, il suffit de renseigner les clés `h6`/`h7` dans le dialogue de configuration — **aucun changement de code**.
 
 ### Étape 4 — Gras / italique (segments inline)
 
-**Entrée** : `test_min_04_segments.md` — du texte **avant et après** chaque marqueur (jamais un paragraphe entièrement en gras, qui serait un titre synthétique), plus du gras/italique **dans des puces**, plus un mot `mot_gras_isole` contenant des underscores (contrôle de la règle `isWordBoundaryChar`).
+**Entrée** : `test_min_04_segments.md` — du texte **avant et après** chaque marqueur, plus du gras/italique **dans des puces**, plus un mot `mot_gras_isole` contenant des underscores (contrôle de la règle `isWordBoundaryChar`).
 
 **Ce que le parseur doit produire** (vérifié) : 9 blocs — h1:1, p:5, li:3 ; chaque bloc non-table porte des `children` issus de `parseInlineMarkdown` (`{text, isBold, isItalic}`) — à ce stade l'oracle ne stocke que `type`/`text` (les `children` sont la matière de **cette** étape).
 
@@ -429,7 +437,7 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 
 **Entrée** : `test_min_05_listes.md`.
 
-**Ce que le parseur doit produire** (vérifié) : 16 blocs — h1:2, h2:1 (**synthétique**), p:2, li:8 avec `indentLevel` 0/1/2, li_num:3. Les `li` de niveau 3 sont obtenus par **4 espaces** (2 espaces = 1 niveau).
+**Ce que le parseur doit produire** (vérifié) : 16 blocs — h1:2, p:2, li:9 avec `indentLevel` 0/1/2, li_num:3. Les `li` de niveau 2 sont obtenus par **4 espaces** (2 espaces = 1 niveau). **Option 1 (27/09/2026)** : la puce `* **Sous-titre de liste en gras**` **reste une puce** (elle n'est plus convertie en `h2` synthétique) — c'est pour cela que l'oracle compte **9 `li`** et **aucun `h2`**.
 
 **Ce que l'étape doit faire** — appliquer la cascade **déjà écrite** dans `getLiStyleForIndentLevel(block, mapping)` (ancienne version, à réutiliser telle quelle) :
 1. `indentLevel === 0` → style `li` ;
@@ -438,12 +446,12 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 4. sinon, retomber sur le style `li` racine.
 
 **Critère de réussite (test réel)** :
-- les 8 puces portent le style attendu par la cascade (niveau 0 → `li`, niveaux 1 et 2 → selon mapping/cascade) ;
+- les 9 puces portent le style attendu par la cascade (niveau 0 → `li`, niveaux 1 et 2 → selon mapping/cascade) ;
 - les 3 items `li_num` portent le style de liste **numérotée** (distinct de la puce) ;
-- la puce `* **Section avec sous-titre de liste**` produit bien un **`h2` synthétique** (style de titre), et **non** une puce ;
-- log : `M03-etape5: li0=.. li1=.. li2=.. li_num=3 h_synth=1`.
+- la puce `* **Sous-titre de liste en gras**` **reste une puce** (option 1) et reçoit un **style de liste**, jamais un style de titre ;
+- log : `M03-etape5: li0=.. li1=.. li2=.. li_num=3`.
 
-**Note** : aucun `li` de cette fixture n'est entièrement en gras au niveau > 0, donc la cascade « puce grasse imbriquée = puce normale » n'est pas éprouvée ici — à ajouter en fixture de bord si FJD le juge utile.
+**Note** : depuis l'option 1 (27/09/2026), la cascade « puce grasse ⇒ titre » n'existe plus : le gras d'une puce est du gras *inline* (étape 4) et **la puce garde son style de liste à tous les niveaux**.
 
 ### Étape 6 — Tableaux
 
@@ -510,6 +518,22 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 
 **Hors périmètre de l'étape 8** : les points 2 à 5 de la feuille de route pivot (shift-clic/calibrage de pages, reprise, menu `app.menuActions`, SDK C++) — suivis séparément.
 
+### Étape 9 — Intégration au menu InDesign (clôture du premier exercice)
+
+**Cadrage (FJD, 27/09)** : une fois l'étape 8 validée, cette étape ajoute un point d'entrée natif — un bouton dans `Fichier > Importer > Importer un MD` — qui déclenche le même script. C'est ce qui **clôt le premier exercice complet** du projet : pipeline fonctionnel de bout en bout, exposé proprement dans l'interface InDesign, sans plus nécessiter le Panneau Scripts. Tant que cette étape n'est pas terminée, la mission 04 (« Panneau Import MD », audit lien dynamique) **ne démarre pas** — chantiers strictement séquentiels.
+
+**Ce qu'il faut faire** — déjà identifié comme scripting pur, pas de SDK requis (feuille de route pivot, point 4) :
+- Utiliser `app.menuActions`/`ScriptMenuAction` pour créer une action de script personnalisée.
+- L'attacher au menu `Fichier > Importer` (ou au sous-menu le plus proche disponible via `app.menus` — vérifier par la doc officielle la structure exacte du menu Fichier/Importer avant de coder, comme d'habitude).
+- Le clic sur ce nouvel élément de menu doit déclencher exactement `main()`, sans dupliquer de logique.
+
+**Critère de réussite (test réel)** :
+- l'entrée « Importer un MD » apparaît dans `Fichier > Importer` (ou l'emplacement de menu le plus proche confirmé par la doc) ;
+- un clic dessus lance le script normalement, avec le même comportement que depuis le Panneau Scripts ;
+- aucune régression sur le lancement via le Panneau Scripts, qui doit continuer de fonctionner en parallèle.
+
+**Point à vérifier avant de coder** : est-ce qu'une entrée de menu créée par script persiste après un redémarrage d'InDesign, ou doit-elle être recréée à chaque lancement (via un script de démarrage) — à documenter au wiki une fois constaté.
+
 ## Règles non négociables
 - **Un commit git après chaque étape validée par test réel** — jamais après une simple simulation Node, jamais plusieurs étapes groupées dans un commit.
 - Simulation Node autorisée en amont de chaque étape (rapide à vérifier), mais ne remplace jamais le test réel InDesign avant de committer.
@@ -537,6 +561,8 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 | 26/09 | pivot 2 — shift-clic / calibrage de pages | ✅ **TRANCHÉ (option (a), acté par FJD)** | Le point 2 a été tranché **sur le comportement natif documenté d'InDesign**, après l'échec de la sonde (voir ligne suivante, conservée comme trace de méthode). Fondement : doc Adobe FR « Liaison de blocs de texte » (maj 7 août 2026) — *« Lorsque le pointeur de texte chargé est actif, vous pouvez tourner les pages, **créer de nouvelles pages** et effectuer un zoom avant ou arrière. »* ; *« un seul article puisse s'étendre sur plusieurs pages et **se poursuive automatiquement lorsqu'un bloc se remplit** »*. Plus Smart Text Reflow : *« automatically adds or removes pages as text changes »*. ⇒ Curseur chargé → création de pages = comportement **natif**. Le **shift-clic** sur curseur chargé (= autoflow) **crée les pages nécessaires**, sans code supplémentaire : **point 2 VALIDÉ, le gun reste la voie retenue** (alerte, choix A), **point 3 (reprise étapes 2 à 8) ouvert**. Réserve signalée : aucune page Adobe FR/EN accessible ne nomme littéralement le shift-clic (pages « Placer du texte »/« Flux de texte » en 404) — cette précision est actée par **connaissance établie du logiciel**. Aucun commit. |
 | 26/09 | pivot 2 — sonde (trace de méthode, retirée du raisonnement) | ❌ **SONDE INVALIDE — abandonnée** | Sonde deux temps `probe_pivot2_prepare.jsx` + `probe_pivot2_releve.jsx` (jetable, log `probe_pivot2.log`). **Défaut de protocole de mon fait** : le log montre `placeGuns.loaded_avant = false` au **second** lancer de TEMPS A (22:46:47), alors que le premier s'était terminé sur `loaded_apres = true` ⇒ **le gun ne survit pas à la fin du script**. FJD confirme : *aucune icône de chargement sur le curseur, le geste ne pouvait rien déposer*. Donc **au moment du geste, aucun gun chargé** — les chiffres TEMPS B (`pages_apres=13`, `chars=11 966`, `2 × 5 983`) viennent d'**ailleurs** (contenu préexistant, `frame[2]` porte `num√©rotations`, accent mojibaké = document sale réutilisé) et **ne sont pas attribuables** à notre `loadPlaceGun`. **Lecture « VALIDÉ » retirée.** Un script ne peut pas laisser un gun chargé pour un geste humain ultérieur ⇒ le mode deux-temps est **structurellement inapte**. Sonde **abandonnée**, chiffres **retirés du raisonnement**, conservés ici à titre de leçon : ne jamais conclure depuis un log non attribuable. |
 | 26/09 | 1 — RÉGRESSION ISOLÉE | ✅ **RÉSOLUE (voir ligne « 0bis » ci-dessus)** | Tests réels multiples (15:33-15:44) avaient montré un motif net et systématique (`paragraphs.length=1` en mode `TextFrame`, correct en mode `InsertionPoint`). Cause racine trouvée et corrigée à l'étape 0bis : détachement de la référence `story` après `story.contents = ""` — le texte réel vit dans `targetPoint.parentStory`, pas dans la poignée périmée. Correctif validé en réel (rejeu TextFrame 17:31-17:32, 3 et 85 blocs conformes). Cette ligne est conservée comme trace historique du diagnostic initial, la résolution complète est documentée à la ligne 0bis. |
+| 26/09 | 2 — Mapping des styles de paragraphe | ✅ **VALIDÉ EN RÉEL — commit `efaa80a`** | Mapping lu depuis le document via `loadMappingFromDocument()` ; application par style **relu** (jamais le nom demandé en aveugle) sur chaque bloc non-table en index croissant (`applyParagraphStyle(styleObj, true)`), repli sur le style **neutre** = `document.paragraphStyles.item(0)` (jamais un nom localisé en dur) si la clé est absente ou pointe un style inexistant, avec journalisation `M03-etape2: pas de style pour <tag>, neutre applique`. Fenêtre de vérification bornée par `targetPoint.paragraphs[0].index` (mode curseur) ou par les paragraphes du cadre. Log unique : `M03-etape2: blocs=N paragraphes attendus=N reels=R ecarts=E | mode=(curseur\|cadre) base=B story_total=S styles=A neutre=U`. Simulation Node en amont, puis **test réel concluant** (écarts=0, styles relus conformes). Commit isolé `efaa80a` (« M03 etape 2 : mapping styles OK »), conformément à la règle « un commit par étape validée ». |
+| 26/09 | 3 — Titres | 🟢 **CODÉ + GATES OK — test réel en attente** | Trois défauts diagnostiqués à l'étape 2 puis **arbitrés par FJD** : (1) 3 lignes non stylées côté Claude = blocs `li_num` dont le mapping pointait le neutre ⇒ **négligence de configuration, aucun changement de code** ; (2) table Gemini non détectée car située **dans** un fence ` ```markdown ` ⇒ **décision FJD** : détecter la table **dans** le fence et garder les autres lignes du fence en texte brut (**étape 6**) ; (3) `####` ChatGPT produit en `p` littéral ⇒ **décision FJD (26/09/2026)** : `####` et au-delà sont de **vrais titres**. **Code** : détection unifiée `/^(#{1,})\s+(.*)$/` (remplace les 3 matchs h1/h2/h3 figés, corrige aussi l'ordre de match) ; whitelist de démarrage de paragraphe rendue dynamique (`/^h\d+$/`, sinon un `h6`/`h7` serait absorbé comme continuation de `p`) ; 4 clés `h6`→`h9` ajoutées à `MARKDOWN_TAGS` en `optional: true` (absence de mapping non bloquante) ; `getLiStyleForIndentLevel` borné à 9 ; compteur `derives` pour les niveaux sans style mappé. **Fixture 03 réécrite** (h4 positif + h5 + **sondes H6/H7**), **oracle 03 régénéré** (21 blocs) et **oracle `chatgpt_convention` patché** (bloc #17 `p` → `h4`). **Révision du 27/09/2026 — option 1 (décision FJD)** : après constat en réel que 18 puces entièrement en gras de `programme_de_formation_indesign_ia_extendscript.md` étaient détournées en faux titres H3, la règle « puce entièrement en gras ⇒ titre synthétique » a été **SUPPRIMÉE** : **une puce reste une puce**. Le drapeau `synthetic`, la variable `currentTitleLevel` et le volet `synth` du log ont été retirés du code ; il n'existe plus qu'**une seule provenance de titre** (le vrai `#`). **Oracles impactés régénérés** (`deepseek_formation` : 18 blocs h3/h4 → `li` ; `gemini_charte` : 1 h4 → `li` ; `test_min_05_listes` : 1 h2 → `li`). **Non-régression hors-ligne : 12/12 fixtures conformes à leur oracle.** `node --check` OK ; FFFD=0 ; libellés de log M03 100 % ASCII. Panel synchronisée (`c8670bba…`). **Test réel FJD à effectuer avant commit.** |
 
 ## Référence
 - Ancienne version (à ne pas modifier tant que la nouvelle n'a pas atteint une couverture équivalente) : `import_md.jsx` lignes 965-1180, fonction `insertMarkdownWithStyles`.

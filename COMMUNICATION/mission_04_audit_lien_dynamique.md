@@ -1,7 +1,7 @@
 # Mission 04 — Audit : lien dynamique vers le Markdown source (UXP vs update() natif vs solution maison)
 
-**Statut** : 🔴 À FAIRE — mission d'AUDIT uniquement, aucun code attendu à ce stade
-**Ne touche pas** au périmètre de la mission 03 (étapes 2-8 en cours) — chantier strictement séparé, à traiter après ou en parallèle sans jamais mélanger les deux fils.
+**Statut** : 🔴 BLOQUÉE — en attente de la clôture complète de la mission 03 (étapes 4 à 8 + intégration menu natif). Ne pas démarrer avant.
+**Cadrage (FJD, 27/09)** : la mission 03 (pipeline complet + point d'entrée menu InDesign) est le **premier exercice** du projet, à finir intégralement avant d'ouvrir quoi que ce soit d'autre. Cette mission 04 ouvre le **second chapitre** — « Panneau Import MD » — dont le premier jalon est cet audit, strictement séquentiel après le volet 1, jamais en parallèle.
 
 ## Contexte et objectif
 
