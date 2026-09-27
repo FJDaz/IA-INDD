@@ -473,6 +473,38 @@ Preuve en réel : `baseParSoustraction=65` (= 86 − 21), puis `reels=21 ecarts=
 
 ---
 
+## Cas 28 — Un style de paragraphe appelé depuis un style de CELLULE est surclassé (invisible au panneau Styles de paragraphe)
+
+**Origine** : constat FJD du 27/09/2026, en test réel de l'étape 6 (tableaux). Symptôme : les cellules importées portaient un style de paragraphe **absent du panneau Styles de paragraphe** — impossible de le voir, donc impossible de le neutraliser par la voie habituelle. Verbatim FJD : *« les appels de styles de par sont faits depuis les styles de cellules, ils sont surclassés par des par standards par ailleurs absents de la section dans le panneau Styles de paragraphe. Le neutre doit passer aussi par style de cellule. »*
+
+**Mécanisme réel** : dans une cellule, l'ordre d'application est **TableStyle → CellStyle → ParagraphStyle (appliqué au texte) → CharacterStyle**. Un `CellStyle` **porte** un `appliedParagraphStyle` (propriété *read/write* de `CellStyle`, type `ParagraphStyle | String | NothingEnum`). Tant que le texte de la cellule n'a **pas** de `appliedParagraphStyle` propre, le style de paragraphe effectif est **celui appelé par le style de cellule** — et ce style n'apparaît pas dans la liste des styles de paragraphe visibles du document, ce qui le rend indétectable au panneau.
+
+**Conséquence pratique** : écrire du texte brut dans une cellule (`cell.texts[0].contents = "..."`) **ne suffit pas** à neutraliser. Il faut **poser explicitement** un `appliedParagraphStyle` sur le texte de chaque cellule.
+
+**Route retenue (actée par FJD)** : lire le style de paragraphe appelé par le style de cellule **du TableStyle appliqué**, via `tableStyle.bodyRegionCellStyle.appliedParagraphStyle` (et `headerRegionCellStyle` pour l'en-tête), puis le poser sur `cell.paragraphs[0].appliedParagraphStyle`. Repli **neutre** (`document.paragraphStyles.item(0)`) si : aucun style de tableau, style de tableau introuvable, style de cellule n'appelant rien, ou nom appelé inexistant — **jamais de style au hasard**.
+
+**Piège associé — `document.cellStyles` est une collection PLATE** : elle n'est **pas** hiérarchisée et ne permet donc **pas** de retrouver le style de cellule réellement appliqué à une région donnée. Chercher un `CellStyle` par nom dans `document.cellStyles` ne dit rien de la région (corps / en-tête / pied). La seule voie fiable est de **partir du TableStyle** (`bodyRegionCellStyle`, `headerRegionCellStyle`, `footerRegionCellStyle`, `headerColumnCellStyle`) — chacun étant de type `CellStyle`.
+
+**API utile confirmée (build InDesign 21.x)** : `Cell.appliedCellStyle` (`CellStyle | String`, read/write) ; `Cell.paragraphs` (**readonly**, mais les paragraphes qu'il contient acceptent l'écriture de `appliedParagraphStyle`) ; `Cell.clearCellStyleOverrides(clearingOverridesThroughRootCellStyle?)` → void ; **`CellStyle` n'a PAS de `clearCellStyleOverrides`** (méthodes disponibles : addEventListener, duplicate, extractLabel, getElements, insertLabel, move, remove, removeEventListener, toSource).
+
+**Preuve réelle (run 27/09/2026 22:25:46)** : `M03-etape6-detail: … erreurs=0 style_table=Table 1 style_cellule_para=appele:P Table cellules_style=18 cellules_neutre=0` ⇒ 18 cellules sur 18 portent le style appelé par le style de cellule, zéro repli neutre.
+
+**Leçon transversale** : la « neutralisation » d'un document InDesign ne s'arrête pas aux styles de paragraphe visibles. Chaque niveau de la hiérarchie de style (table → cellule → paragraphe → caractère) peut **appeler** un style du niveau inférieur ; ignorer un niveau, c'est laisser un style invisible agir. Un log de diagnostic qui **nomme le style réellement posé** (`style_cellule_para=appele:<nom>`) vaut mieux qu'une inspection visuelle du panneau, qui ne peut pas montrer ce qui n'y est pas listé.
+
+---
+
+## Cas 29 — Une sonde de vérification d'offset basée sur `indexOf` peut rendre un faux négatif
+
+**Origine** : étape 6, contrôle d'intégrité de l'ancrage des tables. Le log affichait `offset_verifie=FAUX(trouve=0,attendu=119)` alors que les ancrages étaient **corrects** (49 et 85 relatifs, identiques à un run propre antérieur).
+
+**Cause** : la sonde utilisait `story.contents.indexOf(sonde)`, qui renvoie la **première** occurrence de la chaîne dans tout le document. Si le document contient **déjà** le texte importé (cas fréquent en test, document réutilisé), la sonde est trouvée à l'offset **0** et non à l'offset attendu ⇒ le contrôle déclare un échec qui n'existe pas.
+
+**Leçon** : un contrôle de position doit chercher à partir de la position attendue — `contents.indexOf(sonde, offsetAttendu)` — ou mieux, **comparer directement** la tranche : `contents.substr(offsetAttendu, sonde.length) === sonde`. Une sonde de vérification qui peut produire un **faux négatif** est plus dangereuse qu'une absence de sonde : elle fait perdre du temps à chasser un bug inexistant, et elle érode la confiance dans le log.
+
+**Règle pratique** : distinguer explicitement, dans le log, un échec **structurel** (le texte n'est pas au bon endroit) d'une **limite de la mesure** (`trouve=0` avec `attendu>0` sur un document non neuf). Le champ `offsets_fiables` (calculé indépendamment, par égalité de longueurs) et le champ `offset_verifie` (mesure ponctuelle) doivent rester **séparés** : c'est le premier qui fait foi.
+
+---
+
 ## Piège structurel à retenir — deux copies du même script
 
 InDesign exécute les scripts depuis `~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/`, pas depuis le dossier de travail/repo. Toute correction faite sur le fichier source doit être recopiée vers cet emplacement avant test, sinon on corrige un fichier que le logiciel n'utilise jamais (piège rencontré le 23/09/2026, cf. mission_01).
