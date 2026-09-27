@@ -1293,15 +1293,16 @@ function insertMarkdownWithStyles(story, blocks, mapping) {
 }
 
 /**
- * MISSION 03 — reconstruction minimale, ÉTAPES 1 + 1bis + 2.
- * (COMMUNICATION/mission_03_reconstruction_minimale.md, décisions FJD 25-26/09)
+ * MISSION 03 — reconstruction minimale, ÉTAPES 1 à 6.
+ * (COMMUNICATION/mission_03_reconstruction_minimale.md, décisions FJD 25-27/09)
  *
  * Cette fonction est une COPIE ISOLÉE : l'ancienne insertMarkdownWithStyles()
  * ci-dessus reste inchangée tant que la nouvelle n'est pas validée bout en bout.
  *
  * Ce qu'elle fait — rien d'autre :
  *   1. Construire fullText = textes des blocs joints par "\r" (blocs "table"
- *      IGNORÉS à ce stade, cf. mission étape 6 : ils reviendront plus tard).
+ *      EXCLUS de ce texte : ils n'ont pas de .text et sont ancrés séparément à
+ *      l'étape 6, cf. plus bas).
  *   2. story.contents = "" puis UNE SEULE assignation à insertionPoints[-1]
  *      (mode cadre) ou à options.insertAt (mode curseur, story NON vidée).
  *   3. ÉTAPE 2 — appliquer à chaque paragraphe le style lu dans le mapping du
@@ -1309,20 +1310,24 @@ function insertMarkdownWithStyles(story, blocks, mapping) {
  *      base = index du paragraphe portant le curseur en mode curseur). Style
  *      neutre (jamais d'échec) si une clé manque ou pointe un style inexistant.
  *      Aucun nom de style n'est codé en dur : tout vient du mapping.
+ *   4. ÉTAPE 6 — ancrer les tables Markdown comme de VRAIES tables InDesign,
+ *      dans le paragraphe qui les précède (une table occupe UNE position de
+ *      caractère : elle ne crée aucun paragraphe, donc l'index stable des
+ *      paragraphes ci-dessus reste valide).
  *
- * Ce qu'elle ne fait PAS (volontairement) : aucune table (étape 6), aucun bloc
- * de code (étape 7). Les segments inline (gras/italique) sont traités à l'étape
- * 4 et la cascade d'indentation des listes à l'étape 5, toutes deux plus bas
- * dans cette fonction. Chaque couche est réintroduite une à une, avec test réel
- * InDesign + commit git à chaque étape validée — jamais plusieurs couches d'un
- * coup.
+ * Ce qu'elle ne fait PAS (volontairement) : aucun bloc de code (étape 7). Les
+ * segments inline (gras/italique) sont traités à l'étape 4 et la cascade
+ * d'indentation des listes à l'étape 5, toutes deux plus bas dans cette
+ * fonction. Chaque couche est réintroduite une à une, avec test réel InDesign +
+ * commit git à chaque étape validée — jamais plusieurs couches d'un coup.
  */
 function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
     try {
         // Étape 1 : textes des blocs non-table collectés puis joints par un seul
         // "\r" entre chaque (formulation fidèle au snippet de la mission ; les
         // blocs "table" n'ont pas de .text — ils seraient sérialisés "undefined" —
-        // et sont explicitement ignorés à ce stade, cf. étape 3).
+        // et sont exclus de ce texte : ils sont ancrés à leur place par l'API
+        // table d'InDesign à l'ÉTAPE 6, cf. plus bas).
         // ÉTAPE 4 : on pousse le texte PLAT du bloc (children concaténés), pas
         // block.text : les marqueurs inline sont ainsi RETIRÉS dès l'insertion
         // (aucun `**` résiduel visible), et les offsets des segments deviennent
@@ -1343,6 +1348,24 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         // (mode TextFrame/Story déjà validé à l'étape 1), le comportement reste
         // STRICTEMENT identique à celui validé et commité (f3f6c68).
         var insertAtCursor = !!(options && options.insertAt);
+
+        // ÉTAPE 6 — OFFSET DE BASE DES ANCRAGES DE TABLE.
+        // Les positions de table sont calculées en offsets RELATIFS au texte
+        // inséré (fullText). En mode CADRE, la story est vidée avant écriture
+        // donc l'offset absolu vaut l'offset relatif (base = 0). En mode
+        // CURSEUR la story n'est PAS vidée : le texte s'insère AU MILIEU d'elle,
+        // à partir de l'offset caractère du point d'insertion. Cet offset est
+        // relevé AVANT l'assignation — après, le point peut avoir bougé.
+        // `InsertionPoint.index` est documenté comme « the index of the text in
+        // the collection or parent object » ; le réel de l'étape 2 a confirmé
+        // qu'il s'agit bien d'un offset CARACTÈRE (671 pour 42 paragraphes, 1344
+        // pour 65). La valeur est VÉRIFIÉE plus bas par comparaison directe du
+        // contenu relu (log M03-etape6, mode curseur) : jamais utilisée en
+        // aveugle.
+        var baseCharOffset = 0;
+        if (insertAtCursor) {
+            try { baseCharOffset = options.insertAt.index; } catch (eBCO) { logError(eBCO, "etape6 offset de base (mode curseur)"); baseCharOffset = 0; }
+        }
 
         // Nombre de "\r" réellement présents dans fullText : c'est le SEUL
         // indicateur calculé en JS pur, donc totalement fiable, indépendant de
@@ -1876,6 +1899,229 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
             " debordements=" + segDebordements + " | blocs_avec_segments=" + segBlocksAvecSegments +
             " imbriques=" + segImbriques +
             (segImbriques > 0 ? " (italique prioritaire sur le gras : un seul style de caractere possible)" : ""));
+
+        // -------------------------------------------------------------------
+        // MISSION 03 — ÉTAPE 6 : TABLEAUX
+        // (COMMUNICATION/mission_03_reconstruction_minimale.md, décisions FJD 26-27/09)
+        //
+        // Route technique reprise TELLE QUELLE de l'ancienne
+        // insertMarkdownWithStyles() (L1049-1071), qui l'avait déjà éprouvée :
+        //   anchorPoint.tables.add({headerRowCount:1, bodyRowCount:rowCount-1,
+        //                           columnCount:columnCount})
+        //   newTable.rows[r].cells[c].texts[0].contents = <texte de cellule>
+        //   newTable.appliedTableStyle = <style mappé sur la clé "table">
+        //
+        // DIFFÉRENCE avec l'ancienne version : ici le texte a déjà été écrit en
+        // UNE SEULE assignation (étapes 1-5, validées et commitées), et l'index
+        // stable des paragraphes ne doit PAS bouger. Deux conséquences :
+        //   1. les tables sont ancrées APRÈS tout le stylage (étape 2, 4, 5) :
+        //      le snapshot `paraSnapshot` est déjà figé, donc rien n'est décalé ;
+        //   2. l'ancrage se fait par OFFSET CARACTÈRE calculé en JS pur, plus
+        //      par `insertionPoints[-1]` (qui empilait tout en fin de story).
+        //
+        // Offsets : la table se pose à la FIN du dernier paragraphe de texte
+        // écrit avant elle — soit, dans fullText, l'offset
+        //     sumLen(blocs texte avant) + (nbTextAvant - 1) séparateurs "\r"
+        // (nbTextAvant = 0 ⇒ offset 0 : la table ouvre le document).
+        // Une table s'ancre DANS le paragraphe courant, comme un caractère : on
+        // n'écrit ni "\r" avant ni après (un "\r" surnuméraire créerait un
+        // paragraphe vide parasite — wiki Cas 17/20).
+        //
+        // ORDRE DE CRÉATION : du DERNIER vers le PREMIER. Ancrer une table
+        // insère du texte dans la story, donc décale les offsets SUIVANTS ;
+        // en descendant, tous les offsets restants (plus petits) sont encore
+        // valides au moment de leur usage.
+        // -------------------------------------------------------------------
+        var tableSegments = [];   // {block, offsetRel, nbTextAvant} — ordre document
+        var textPartsBefore = 0;
+        var sumLenBefore = 0;
+        for (var tb = 0; tb < blocks.length; tb++) {
+            if (blocks[tb].type === "table") {
+                tableSegments.push({
+                    block: blocks[tb],
+                    offsetRel: (textPartsBefore === 0) ? 0 : (sumLenBefore + (textPartsBefore - 1)),
+                    nbTextAvant: textPartsBefore
+                });
+            } else {
+                sumLenBefore += getBlockPlainText(blocks[tb]).length;
+                textPartsBefore++;
+            }
+        }
+
+        // CONTRÔLE D'INTÉGRITÉ DES OFFSETS — jamais d'ancrage à l'aveugle.
+        // `liveContents` a été relevé AVANT le stylage (étapes 2/4/5). Or
+        // certains styles de paragraphe (puce automatique InDesign) peuvent
+        // INJECTER des caractères dans le flux au moment où on les applique
+        // (constat déjà documenté dans l'ancienne insertMarkdownWithStyles).
+        // Si c'est arrivé, les offsets calculés depuis fullText ne désignent
+        // plus les bons endroits. On RELIT donc la story MAINTENANT (juste
+        // avant le premier ancrage) et on exige que sa longueur vaille
+        // exactement base + fullText.length. En cas d'écart : ERREUR explicite
+        // dans le log (diagnostic direct, pas de correction à l'aveugle) —
+        // et on ancre quand même, pour ne pas masquer le problème derrière une
+        // absence de table (une absence se confondrait avec un bug d'ancrage).
+        var storyLenNow = -1;
+        try { storyLenNow = liveStory.contents.length; } catch (eSL) { storyLenNow = -1; }
+        var longueurAttendue = baseCharOffset + fullText.length;
+        var offsetFiable = (storyLenNow === longueurAttendue);
+        if (!offsetFiable) {
+            logError({ message: "Longueur de story inattendue : " + storyLenNow + " au lieu de base(" + baseCharOffset + ") + fullText(" + fullText.length + ") = " + longueurAttendue + " — le stylage a modifie le flux, les ancrages de table peuvent etre decales" }, "etape6/integrite offsets");
+        }
+
+        // Contrôle de l'offset de base : on vérifie que le texte inséré commence
+        // BIEN à baseCharOffset dans la story. La sonde est tronquée au premier
+        // "\r" ou "\n" — ces deux caractères ne se comparent pas littéralement
+        // au contenu relu ("\n" assigné devient un FORCED_LINE_BREAK InDesign),
+        // et une sonde contenant un "\r" ferait échouer l'indexOf à tort.
+        var offsetCheck = "n/a";
+        var sonde = fullText;
+        for (var sc = 0; sc < fullText.length; sc++) {
+            var scCh = fullText.charAt(sc);
+            if (scCh === "\r" || scCh === "\n") { sonde = fullText.substring(0, sc); break; }
+        }
+        if (sonde.length > 24) sonde = sonde.substring(0, 24);
+        if (sonde.length >= 4) {
+            var sondeFound = -1;
+            try { sondeFound = liveStory.contents.indexOf(sonde); } catch (eSF) { sondeFound = -1; }
+            offsetCheck = (sondeFound === baseCharOffset) ? "true" : ("FAUX(trouve=" + sondeFound + ",attendu=" + baseCharOffset + ")");
+        } else {
+            offsetCheck = "n/a(sonde trop courte)";
+        }
+
+        var tablesCreated = 0;
+        var tableCellsTotal = 0;
+        var tableErrors = 0;
+        var cellStyleAppliedCount = 0;  // cellules stylées par le style de cellule
+        var cellNeutralCount = 0;       // cellules retombées sur le neutre
+        var cellParaDiag = "aucune table";   // diagnostic (dernière table traitée)
+        var tableDims = [];      // indexé par position de table (ordre document)
+        var tableAnchors = [];   // indexé par position de table (ordre document)
+        for (var ts = tableSegments.length - 1; ts >= 0; ts--) {
+            var tBlock = tableSegments[ts].block;
+            var rowCount = 0;
+            var columnCount = 0;
+            try { rowCount = tBlock.rows.length; } catch (eTR) { rowCount = 0; }
+            if (rowCount > 0) { try { columnCount = tBlock.rows[0].length; } catch (eTC) { columnCount = 0; } }
+            if (rowCount <= 0 || columnCount <= 0) {
+                tableErrors++;
+                logError({ message: "Bloc table vide ou malforme (table #" + ts + " : " + rowCount + " ligne(s), " + columnCount + " colonne(s))" }, "etape6/table");
+                continue;
+            }
+            var absOffset = baseCharOffset + tableSegments[ts].offsetRel;
+            try {
+                var anchorPoint = null;
+                try { anchorPoint = liveStory.insertionPoints[absOffset]; } catch (eAP) { anchorPoint = null; }
+                if (!anchorPoint) {
+                    tableErrors++;
+                    logError({ message: "Point d'ancrage introuvable a l'offset " + absOffset + " (story.contents.length=" + liveContents.length + ") — table non creee" }, "etape6/ancrage");
+                    continue;
+                }
+                var newTable = anchorPoint.tables.add({
+                    headerRowCount: 1,
+                    bodyRowCount: rowCount - 1,
+                    columnCount: columnCount
+                });
+
+                // Style de tableau d'abord : c'est lui qui porte les styles de
+                // cellule de région (bodyRegionCellStyle / headerRegionCellStyle).
+                var tableStyleObj = null;
+                var tableStyleName = mapping["table"];
+                if (tableStyleName) {
+                    tableStyleObj = findTableStyleByName(tableStyleName);
+                    if (tableStyleObj) {
+                        newTable.appliedTableStyle = tableStyleObj;
+                    } else {
+                        logError({ message: "Style de tableau introuvable : " + tableStyleName }, "etape6/tableStyle");
+                    }
+                }
+
+                // ÉTAPE 6 — STYLE DE PARAGRAPHE DES CELLULES (demande FJD 27/09).
+                // Les styles de paragraphe APPELÉS DEPUIS un style de cellule sont
+                // surclassés (ils n'apparaissent pas au panneau Styles de paragraphe).
+                // La neutralisation doit donc passer par le style de cellule : on lit
+                // le style de paragraphe que ce style de cellule appelle, et on le pose
+                // TEL QUEL sur le texte de chaque cellule ; s'il n'appelle rien (ou si
+                // l'API n'expose pas d'accesseur exploitable), repli sur le neutre.
+                //
+                // Cell.appliedCellStyle est une propriété STRING (nom) : pour atteindre
+                // CellStyle.appliedParagraphStyle il faut l'OBJET du style de cellule.
+                // On l'obtient par le TableStyle (bodyRegionCellStyle) — doc.cellStyles
+                // est une collection PLATE, non hiérarchisée, donc inutilisable pour
+                // retrouver le style de cellule réellement appliqué par région.
+                var cellParaForThisTable = neutralPara;   // repli neutre (paragraphStyles.item(0))
+                var cellParaSource = "neutre";
+                cellParaDiag = "aucun style de tableau";
+                if (tableStyleObj) {
+                    cellParaDiag = "pas_de_region_cell";
+                    try {
+                        var regionCellStyle = tableStyleObj.bodyRegionCellStyle;
+                        if (regionCellStyle) {
+                            cellParaDiag = "sans_appel";
+                            var calledParaName = "";
+                            try { calledParaName = safeStyleName(regionCellStyle.appliedParagraphStyle, ""); } catch (eCP2) { calledParaName = ""; }
+                            if (calledParaName) {
+                                var calledParaObj = findParagraphStyleByName(calledParaName);
+                                if (calledParaObj) {
+                                    cellParaForThisTable = calledParaObj;
+                                    cellParaSource = "style_cellule";
+                                    cellParaDiag = "appele:" + calledParaName;
+                                } else {
+                                    cellParaDiag = "appele_introuvable:" + calledParaName;
+                                }
+                            }
+                        }
+                    } catch (eRC) { logError(eRC, "etape6 style de cellule de region"); }
+                }
+
+                for (var r = 0; r < rowCount; r++) {
+                    for (var cIdx = 0; cIdx < columnCount; cIdx++) {
+                        var cellText = tBlock.rows[r][cIdx] || "";
+                        var cellObj = newTable.rows[r].cells[cIdx];
+                        cellObj.texts[0].contents = cellText;
+                        tableCellsTotal++;
+                        // Neutralisation par style de cellule : on pose sur le texte le
+                        // style de paragraphe appelé par le style de cellule (à défaut le
+                        // neutre). Sans cela, le style de paragraphe effectif des cellules
+                        // reste celui du style de cellule, hors panneau.
+                        try {
+                            var cellParaObj = cellObj.paragraphs[0];
+                            if (cellParaObj) {
+                                cellParaObj.appliedParagraphStyle = cellParaForThisTable;
+                                if (cellParaSource === "style_cellule") cellStyleAppliedCount++; else cellNeutralCount++;
+                            }
+                        } catch (eCellPara) {
+                            tableErrors++;
+                            logError(eCellPara, "etape6/appliedParagraphStyle cellule #" + ts + "[" + r + "][" + cIdx + "]");
+                        }
+                    }
+                }
+                tablesCreated++;
+                tableDims[ts] = rowCount + "x" + columnCount;
+                tableAnchors[ts] = absOffset;
+            } catch (eTable) {
+                tableErrors++;
+                logError(eTable, "etape6/table #" + ts);
+            }
+        }
+
+        // Log de critère de réussite — ligne attendue par la mission, verbatim.
+        var dimsParts = [];
+        for (var dp = 0; dp < tableDims.length; dp++) {
+            if (tableDims[dp]) dimsParts.push(tableDims[dp]);
+        }
+        logToFile("M03-etape6: tables=" + tablesCreated + " dims=" + dimsParts.join(",") +
+            " cellules=" + tableCellsTotal + " paragraphes_hors_table=" + styleBlocks.length);
+        var anchorsParts = [];
+        for (var ap = 0; ap < tableAnchors.length; ap++) {
+            if (tableAnchors[ap] !== undefined && tableAnchors[ap] !== null) anchorsParts.push(tableAnchors[ap]);
+        }
+        logToFile("M03-etape6-detail: mode=" + (insertAtCursor ? "curseur" : "cadre") +
+            " base_offset=" + baseCharOffset + " ancrages=[" + anchorsParts.join(",") + "]" +
+            " erreurs=" + tableErrors + " style_table=" + (mapping["table"] || "(aucun)") +
+            " style_cellule_para=" + cellParaDiag +
+            " cellules_style=" + cellStyleAppliedCount + " cellules_neutre=" + cellNeutralCount +
+            " story_len=" + storyLenNow + " fullText_len=" + fullText.length +
+            " offsets_fiables=" + offsetFiable + " offset_verifie=" + offsetCheck);
 
         // Compteur UNIQUE (spec : « paragraphes attendus / réels »). En mode
         // cadre, base=0 et la story ne contient QUE notre import ⇒ reels doit
