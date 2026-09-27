@@ -478,6 +478,35 @@ function parseInlineMarkdown(text) {
     return elements;
 }
 
+/**
+ * MISSION 03 — ÉTAPE 4. Texte "plat" d'un bloc, marqueurs inline RETIRÉS.
+ *
+ * `parseInlineMarkdown` CONSOMME les marqueurs (`**`, `*`, `__`, `_` en bordure
+ * de mot) : ils n'apparaissent plus dans les `children`. Le texte à insérer
+ * dans InDesign doit donc être reconstruit par concaténation des `children`,
+ * et non depuis `block.text` qui, lui, les contient encore.
+ *
+ * Exception assumée : un bloc `code` n'est JAMAIS parsé en inline (décision de
+ * `parseMarkdown`, cf. commentaire de la deuxième passe) — son texte est rendu
+ * TEL QUEL, marqueurs compris : un `**` dans du code reste littéral. Un bloc
+ * `table` n'a pas de `.text` (son contenu est dans `.rows`).
+ *
+ * Corollaire : un bloc dont le texte n'était QUE des marqueurs (ex. `**` seul)
+ * donne un texte vide — donc un paragraphe vide. C'est le comportement juste :
+ * le marqueur a été consommé, il ne doit pas rester visible.
+ */
+function getBlockPlainText(block) {
+    if (!block) return "";
+    if (block.type === "code") return block.text || "";
+    if (block.type === "table") return "";
+    if (!block.children) return block.text || "";
+    var plain = "";
+    for (var i = 0; i < block.children.length; i++) {
+        plain += ("" + block.children[i].text);
+    }
+    return plain;
+}
+
 // ============================================================================
 // GESTION DES STYLES
 // ============================================================================
@@ -1220,11 +1249,11 @@ function insertMarkdownWithStyles(story, blocks, mapping) {
  *      neutre (jamais d'échec) si une clé manque ou pointe un style inexistant.
  *      Aucun nom de style n'est codé en dur : tout vient du mapping.
  *
- * Ce qu'elle ne fait PAS (volontairement) : aucun segment inline (gras/italique
- * — étape 4), aucune table (étape 6), aucun bloc de code (étape 7), aucun
- * relief de liste li2/li3 (étape 5). Chaque couche est réintroduite une à une,
- * avec test réel InDesign + commit git à chaque étape validée — jamais
- * plusieurs couches d'un coup.
+ * Ce qu'elle ne fait PAS (volontairement) : aucune table (étape 6), aucun bloc
+ * de code (étape 7), aucun relief de liste li2/li3 (étape 5). Les segments
+ * inline (gras/italique) sont traités à l'étape 4, plus bas dans cette fonction.
+ * Chaque couche est réintroduite une à une, avec test réel InDesign + commit
+ * git à chaque étape validée — jamais plusieurs couches d'un coup.
  */
 function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
     try {
@@ -1232,10 +1261,15 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         // "\r" entre chaque (formulation fidèle au snippet de la mission ; les
         // blocs "table" n'ont pas de .text — ils seraient sérialisés "undefined" —
         // et sont explicitement ignorés à ce stade, cf. étape 3).
+        // ÉTAPE 4 : on pousse le texte PLAT du bloc (children concaténés), pas
+        // block.text : les marqueurs inline sont ainsi RETIRÉS dès l'insertion
+        // (aucun `**` résiduel visible), et les offsets des segments deviennent
+        // exactement les offsets cumulés des children. Les blocs `code` gardent
+        // leur texte brut (marqueurs compris) : voir getBlockPlainText().
         var textParts = [];
         for (var i = 0; i < blocks.length; i++) {
             if (blocks[i].type === "table") continue;
-            textParts.push(blocks[i].text);
+            textParts.push(getBlockPlainText(blocks[i]));
         }
         var blockCount = textParts.length;
         var fullText = textParts.join("\r");
@@ -1560,6 +1594,149 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         logToFile("M03-etape3: titres reels [" + (hRealStr ? hRealStr.replace(/\s+$/, "") : "aucun") +
             "] maxMappe=h" + maxMappedHeading +
             " derives=" + deriveTotal + (hDeriveStr ? " [" + hDeriveStr.replace(/\s+$/, "") + "]" : ""));
+
+        // -------------------------------------------------------------------
+        // MISSION 03 — ÉTAPE 4 : SEGMENTS INLINE (GRAS / ITALIQUE)
+        // (COMMUNICATION/mission_03_reconstruction_minimale.md, décision FJD)
+        //
+        // Le texte inséré est déjà SANS marqueurs (fullText est construit sur
+        // getBlockPlainText). Reste à appliquer le style de CARACTÈRE mappé sur
+        // la plage de caractères de chaque segment.
+        //
+        // OFFSETS : relatifs au paragraphe, 0 = premier caractère. C'est
+        // l'offset EXACT du segment dans la story, parce qu'un marqueur inline
+        // ne traverse jamais un "\r" : le découpage en blocs a eu lieu AVANT
+        // parseInlineMarkdown, donc chaque bloc est un paragraphe, et l'offset
+        // absolu dans la story vaut simplement (base + rang du bloc) pour le
+        // paragraphe, et l'offset cumulé des children pour le caractère.
+        //
+        // ORDRE DES PASSES — le gras d'abord, l'italique ENSUITE. Un caractère
+        // à la fois gras ET italique ne peut porter qu'UN seul
+        // appliedCharacterStyle (il n'existe pas de style combiné dans le
+        // mapping) : l'italique l'emporte, ce qui PRÉSERVE LE CONTRASTE VISUEL
+        // voulu par l'auteur (laisser le gras seul rendrait le segment
+        // identique à son voisinage). Le recouvrement est compté et journalisé
+        // (`imbriques`) : ce n'est pas un arbitrage silencieux.
+        //
+        // HORS PÉRIMÈTRE : blocs `code` (texte jamais interprété) et `table`
+        // (cellules non gérées, étape 6).
+        // -------------------------------------------------------------------
+        var boldStyleName = (mapping && mapping["bold"]) ? mapping["bold"] : null;
+        var italicStyleName = (mapping && mapping["italic"]) ? mapping["italic"] : null;
+        var boldCharStyle = null;
+        var italicCharStyle = null;
+        if (boldStyleName) { try { boldCharStyle = findCharacterStyleByName(boldStyleName); } catch (eBCS) { logError(eBCS, "etape4 findCharacterStyleByName bold"); } }
+        if (italicStyleName) { try { italicCharStyle = findCharacterStyleByName(italicStyleName); } catch (eICS) { logError(eICS, "etape4 findCharacterStyleByName italic"); } }
+        if (boldStyleName && !boldCharStyle) logToFile("M03-etape4: style de caractere gras introuvable ('" + boldStyleName + "') — segments gras ignores");
+        if (italicStyleName && !italicCharStyle) logToFile("M03-etape4: style de caractere italique introuvable ('" + italicStyleName + "') — segments italiques ignores");
+        if (!boldStyleName) logToFile("M03-etape4: cle 'bold' absente du mapping — segments gras ignores");
+        if (!italicStyleName) logToFile("M03-etape4: cle 'italic' absente du mapping — segments italiques ignores");
+
+        var segApplied = 0;
+        var segImbriques = 0;
+        var segDebordements = 0;
+        var segResiduels = 0;
+        var segBlocksAvecSegments = 0;
+
+        if (baseIndexKnown) {
+            for (var sb2 = 0; sb2 < styleBlocks.length; sb2++) {
+                var sBloc = styleBlocks[sb2];
+                if (sBloc.type === "code" || sBloc.type === "table") continue;
+                var sChildren = sBloc.children;
+                if (!sChildren || sChildren.length === 0) continue;
+
+                var sPlain = getBlockPlainText(sBloc);
+                var sPlainLen = sPlain.length;
+                // Marqueurs non consommés : un `*` restant dans le texte plat
+                // signale un marqueur orphelin (appariement impossible).
+                // Les `_` ne sont PAS comptés : `mot_gras_isole` en contient
+                // légitimement deux et doit rester intact (contrôle FJD).
+                for (var sr = 0; sr < sPlainLen; sr++) {
+                    if (sPlain.charAt(sr) === "*") segResiduels++;
+                }
+
+                var sPara = paraSnapshot[baseParaIndex + sb2];
+                if (!sPara || sPlainLen === 0) continue;
+
+                // 1. Plages (offsets relatifs au paragraphe).
+                var sRuns = [];
+                var sCursor = 0;
+                var sHasSeg = false;
+                for (var sc = 0; sc < sChildren.length; sc++) {
+                    var sChild = sChildren[sc];
+                    var sLen = ("" + sChild.text).length;
+                    if (sLen > 0) {
+                        var sBold = !!sChild.isBold;
+                        var sItalic = !!sChild.isItalic;
+                        sRuns.push({ start: sCursor, end: sCursor + sLen, bold: sBold, italic: sItalic });
+                        if (sBold || sItalic) sHasSeg = true;
+                        if (sBold && sItalic) segImbriques += sLen;
+                    }
+                    sCursor += sLen;
+                }
+                if (!sHasSeg) continue;
+                segBlocksAvecSegments++;
+
+                // 2. Application — passe gras, puis passe italique (cf. supra).
+                for (var passB = 0; passB < 2; passB++) {
+                    var passStyle = (passB === 0) ? boldCharStyle : italicCharStyle;
+                    var passFlag = (passB === 0) ? "bold" : "italic";
+                    if (!passStyle) continue;
+                    for (var sa = 0; sa < sRuns.length; sa++) {
+                        var aRun = sRuns[sa];
+                        if (!aRun[passFlag]) continue;
+                        if (aRun.end - 1 < aRun.start) continue;
+                        try {
+                            sPara.characters.itemByRange(aRun.start, aRun.end - 1).appliedCharacterStyle = passStyle;
+                            segApplied++;
+                        } catch (eApplySeg) {
+                            segDebordements++;
+                            logError(eApplySeg, "etape4 applyCharacterStyle bloc #" + sb2 + " [" + aRun.start + "," + (aRun.end - 1) + "]");
+                        }
+                    }
+                }
+
+                // 3. Contrôle : relecture des caractères du paragraphe. Un
+                //    débordement = un caractère stylé qui ne devrait pas l'être
+                //    (ou l'inverse). Attendus : italique = toutes les plages
+                //    italiques ; gras = les plages grasses NON italiques
+                //    (l'italique l'emportant sur le recouvrement).
+                var expBold = 0;
+                var expItalic = 0;
+                for (var se = 0; se < sRuns.length; se++) {
+                    var eRun = sRuns[se];
+                    var eLen = eRun.end - eRun.start;
+                    if (eRun.italic) expItalic += eLen;
+                    if (eRun.bold && !eRun.italic) expBold += eLen;
+                }
+                var actBold = 0;
+                var actItalic = 0;
+                var sRange = null;
+                try { sRange = sPara.characters.itemByRange(0, sPlainLen - 1); } catch (eSR) { logError(eSR, "etape4 plage de relecture"); }
+                if (sRange) {
+                    var sChars = [];
+                    try { sChars = sRange.characters.everyItem().getElements(); } catch (eSC2) { logError(eSC2, "etape4 relecture characters"); }
+                    for (var sk = 0; sk < sChars.length; sk++) {
+                        var sName = safeStyleName(sChars[sk].appliedCharacterStyle, "?");
+                        if (boldStyleName && sName === boldStyleName) actBold++;
+                        if (italicStyleName && sName === italicStyleName) actItalic++;
+                    }
+                }
+                if (actBold !== expBold || actItalic !== expItalic) {
+                    segDebordements++;
+                    logToFile("M03-etape4: ECART bloc #" + sb2 + " type=" + sBloc.type +
+                        " attendu(gras=" + expBold + " ital=" + expItalic + ") relu(gras=" + actBold + " ital=" + actItalic + ")");
+                } else {
+                    logToFile("M03-etape4: bloc #" + sb2 + " type=" + sBloc.type + " paraIndex=" + (baseParaIndex + sb2) +
+                        " gras=" + expBold + " ital=" + expItalic + " relu conforme");
+                }
+            }
+        }
+
+        logToFile("M03-etape4: segments appliques=" + segApplied + " residuels=" + segResiduels +
+            " debordements=" + segDebordements + " | blocs_avec_segments=" + segBlocksAvecSegments +
+            " imbriques=" + segImbriques +
+            (segImbriques > 0 ? " (italique prioritaire sur le gras : un seul style de caractere possible)" : ""));
 
         // Compteur UNIQUE (spec : « paragraphes attendus / réels »). En mode
         // cadre, base=0 et la story ne contient QUE notre import ⇒ reels doit
