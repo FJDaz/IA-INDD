@@ -510,10 +510,15 @@ Chaque étape ajoute **une seule couche** sur la base de la précédente déjà 
 
 **Ce que l'étape doit faire** : rejouer les 6 fichiers **en réel**, sur les **deux points d'entrée** (curseur de texte et cadre sélectionné), et comparer le résultat (nombre de paragraphes, styles, segments, tables, code) à l'oracle correspondant. C'est aussi le moment du **nettoyage des logs de diagnostic temporaires** (cf. Règles non négociables).
 
+**Ménage explicite du fichier (ajouté 27/09, FJD — `import_md.jsx` a dépassé 2400 lignes)** : une fois l'ensemble des étapes validées bout en bout sur `insertMarkdownWithStyles_v2()`, **supprimer intégralement l'ancienne fonction `insertMarkdownWithStyles()` (ligne ~1017-1258, ~240 lignes)** — elle n'a plus lieu d'exister, `MINIMAL_MODE` peut aussi être retiré (la branche `else` de `main()` qui l'appelle disparaît avec elle). Retirer également toutes les sondes temporaires (`M03-sonde`, `M03-sonde2`, `M03-carte`, etc.) qui ont servi au diagnostic mais n'ont pas vocation à rester en production. Gain mécanique attendu : plusieurs centaines de lignes, sans risque puisque `_v2` aura alors une couverture strictement supérieure à l'ancienne version.
+
+**Question ouverte, à ne pas trancher avant l'étape 8** : au vu de la taille du fichier, une scission en plusieurs fichiers `.jsx`/modules (parseur, gestion des styles, dialogue, insertion DOM) pourrait être envisagée — cf. wiki Cas 27 (séparation logique pure / DOM), qui donne déjà une frontière naturelle. Non tranché : à évaluer une fois le ménage simple fait, seulement si la taille reste un problème réel après retrait du code mort.
+
 **Critère de réussite (test réel)** :
 - 6/6 fichiers importés sans erreur, sans `REPLI`, sans `DIVERGENCE`, sans `ECART DOM/JS` ;
 - pour chacun : `paragraphes réels == attendus` (oracle) et styles conformes ;
 - aucun log de diagnostic temporaire résiduel dans le livrable ;
+- ancienne fonction `insertMarkdownWithStyles()` et `MINIMAL_MODE` retirés du fichier ;
 - commit final `M03 étape 8 : non-régression complète`.
 
 **Hors périmètre de l'étape 8** : les points 2 à 5 de la feuille de route pivot (shift-clic/calibrage de pages, reprise, menu `app.menuActions`, SDK C++) — suivis séparément.
