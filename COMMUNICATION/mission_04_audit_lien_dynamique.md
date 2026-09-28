@@ -1,7 +1,8 @@
-# Mission 04 — Audit : lien dynamique vers le Markdown source (UXP vs update() natif vs solution maison)
+# Mission 04 — Audit : bot pilote InDesign (GREP, gabarits PDF, suivi fabrication) — pont de transport, ex-« lien dynamique »
 
-**Statut** : 🟡 PARTIELLE (28/09/2026) — **préambule cross-platform traité, verdict RATIFIÉ par FJD** ; **complément d'audit documentaire intégré le 28/09** (3 mécanismes manquants + 1 affirmation trop forte corrigée, cf. « Complément d'audit documentaire » ci-dessous) ; **points 1 à 4 non commencés** ; **sonde runtime ouverte en sous-mission** (`mission_04bis_sonde_lien_runtime.md`).
-**Cadrage (FJD, 27/09)** : la mission 03 (pipeline complet + point d'entrée menu InDesign) était le **premier exercice** du projet. Cette mission 04 ouvre le **second chapitre** — « Panneau Import MD ».
+**Statut** : 🟡 PARTIELLE (28/09/2026) — **préambule cross-platform traité, verdict RATIFIÉ par FJD** ; **complément d'audit documentaire intégré** (3 mécanismes de lien manquants + 1 affirmation trop forte corrigée) ; **recadrage de cible acté (FJD, 28/09)** — la mission porte désormais sur le **pont de pilotage d'un bot**, pas sur un panneau d'affichage de liens (le sujet lien/`Link` reste pertinent comme *option* de repli, cf. point 3 révisé) ; **point 2 réécrit par l'Architecte en conséquence** (28/09) ; **points 1, 2, 3, 4 non commencés** (le point 2 a une spec révisée, aucune mesure) ; **sonde runtime ouverte en sous-mission** (`mission_04bis_sonde_lien_runtime.md`).
+**Cadrage (FJD, 27/09)** : la mission 03 (pipeline complet + point d'entrée menu InDesign) était le **premier exercice** du projet. Cette mission 04 ouvre le **second chapitre**.
+**Recadrage (FJD, 28/09)** : l'intention réelle n'est pas un panneau qui affiche du Markdown mis en forme, mais un **bot qui pilote InDesign** — génère et lance des requêtes GREP sur des scopes resserrés, interprète des gabarits PDF de couvertures, interprète des messages de suivi de fabrication. Le point dur devient le **pont** (exécuter du code dans InDesign depuis un process externe), pas l'UI.
 
 ## Préambule OBLIGATOIRE — cross-platform Windows/macOS (ajouté 28/09/2026, FJD)
 
@@ -215,18 +216,35 @@ Classes associées et volumétrie relevée : `LinkedStoryOption` (**14 membres**
 - Est-ce que le style appliqué après le premier import survit à `update()`, ou est-il écrasé par un ré-import brut ?
 - Documenter la réponse avec preuve réelle (log + constat visuel), pas seulement par déduction de la doc.
 
-### 2. Vérifier la compatibilité UXP avec notre code existant
-- Un plugin UXP peut-il réutiliser notre `parseMarkdown()`/logique de mapping actuelle (JavaScript proche d'ES5/ES6), ou faut-il tout réécrire dans l'environnement UXP ?
-- Un plugin UXP peut-il coexister avec un script ExtendScript classique sur le même document (par exemple : le script `.jsx` actuel continue de faire l'import, un panneau UXP séparé ne fait que le suivi de lien et le déclenchement de mise à jour) ?
-- Un panneau UXP peut-il détecter qu'un fichier source a changé sur disque (watcher de fichier, ou lecture de timestamp à l'ouverture du panneau) ?
-- Quel est le coût réel de mise en place (uniquement en ampleur de développement, pas en jugement de valeur) : structure de projet UXP, outillage (UXP Developer Tool), courbe d'apprentissage pour quelqu'un qui connaît déjà ExtendScript.
+### 2. RÉVISÉ le 28/09/2026 (Architecte, suite au recadrage FJD) — Vérifier le pont de pilotage, pas la compatibilité d'un panneau d'affichage
+
+**Ce que ce point vérifiait avant recadrage** (périmé, conservé en historique) : compatibilité d'un panneau UXP d'affichage de liens avec le code ExtendScript existant.
+
+**Ce qu'il vérifie maintenant** : FJD a précisé que la cible n'est pas un panneau qui affiche des liens, mais un **bot qui pilote InDesign** — génère et lance des requêtes GREP sur des scopes resserrés, interprète des gabarits PDF de couvertures, interprète des messages de suivi de fabrication. Le point dur n'est donc plus « UXP peut-il afficher un lien », mais **« comment un process externe (le bot) exécute-t-il des actions dans InDesign »** — c'est une question de **transport/pont**, pas d'UI.
+
+Sous-questions à trancher par mesure, pas par lecture seule (cf. recherche déjà engagée par DS dans le ROADMAP, section Mission 04) :
+- **`app.doScript()` est-il exposé côté UXP**, et avec quelle signature — permettrait d'exécuter du code ExtendScript classique déclenché depuis un plugin UXP, donc depuis le bot.
+- **`findGrep` (recherche/remplacement GREP) est-il disponible dans le DOM UXP** — condition nécessaire pour le premier cas d'usage cité par FJD (requêtes GREP sur scopes resserrés).
+- **Le pont réseau UXP (WebSocket/`fetch`) est-il fiable pour ce projet** — DS a déjà trouvé un bug WebSocket **spécifique à Windows InDesign** (versions 20 à 2025, corrigé en InDesign 2026 seulement) : à characteriser précisément (quelle version InDesign minimale viser côté Windows, ou repli nécessaire si la cible de déploiement inclut une version antérieure à 2026).
+- **Statut réel de CEP** (Chromium Embedded Extension) comme pont alternatif — en fin de vie annoncée, à confirmer si c'est encore une option viable ou définitivement à écarter.
+- **Alternative sans pont réseau** : polling fichier ExtendScript pur (le bot écrit des fichiers, un script InDesign les lit périodiquement ou au déclenchement) — reprend et renforce le mécanisme déjà évoqué au point 3 ci-dessous, qui devient d'autant plus pertinent que le pont réseau s'avère fragile côté Windows.
+- Quel est le coût réel de chaque option (ampleur de développement, pas jugement de valeur) : structure de projet UXP + pont réseau, vs script ExtendScript avec polling fichier, vs CEP si encore viable.
+
+**Conséquence sur l'architecture UI** : puisque la cible n'est plus un panneau d'affichage riche, la question « UXP avec ou sans WebView » perd une partie de son enjeu — un bot pilote, il n'a pas besoin d'une interface HTML complexe. Ça ne disqualifie pas WebView pour autant si un jour une UI de supervision du bot est voulue, mais ce n'est plus le critère dimensionnant du choix technique.
 
 ### 3. Vérifier si un mécanisme "maison" (sans UXP, sans `place()`/`Link` natif) est réaliste
 - Le script ExtendScript actuel pourrait-il, à chaque lancement, comparer un timestamp/hash du `.md` source (stocké dans les métadonnées du document InDesign, comme le mapping l'est déjà via `saveMappingToDocument()`/`loadMappingFromDocument()`) à l'état du fichier sur disque, et alerter l'utilisateur par une simple boîte de dialogue si le fichier a changé depuis le dernier import ?
 - Ce mécanisme n'aurait pas l'icône native du panneau Liens, mais serait scriptable à 100% en ExtendScript pur, sans nouveau framework à apprendre.
 
-### 4. Recommandation
-Une fois les 3 points ci-dessus vérifiés (pas avant), formuler une recommandation argumentée : quelle option (lien natif + UXP, lien natif + `update()` malgré ses limites, mécanisme maison en ExtendScript pur) est la plus réaliste pour ce projet, en tenant compte de l'ampleur du chantier déjà en cours (mission 03) et du fait que ce projet est piloté par FJD seul avec des Ouvriers IA, pas une équipe de développement dédiée.
+### 4. Recommandation — RÉVISÉ le 28/09/2026 (Architecte, suite au recadrage)
+
+Une fois les points 1 à 3 vérifiés par mesure (pas avant), formuler une recommandation argumentée sur le **pont de pilotage** à retenir pour le bot, parmi les options identifiées à ce jour :
+- **Pont réseau UXP** (WebSocket/`fetch`) — fragile historiquement sous Windows (bug corrigé seulement en InDesign 2026), à ne retenir que si la cible de déploiement exclut les versions antérieures, ou si un repli est prévu.
+- **`app.doScript()` depuis UXP**, si sa disponibilité est confirmée — permettrait d'exécuter de l'ExtendScript classique déclenché par le bot sans dépendre d'un pont réseau propre.
+- **Polling fichier ExtendScript pur** (point 3, renforcé par la fragilité du pont réseau) — le bot écrit des fichiers, un script InDesign les lit périodiquement ; aucune dépendance à UXP ni à un transport réseau, mais latence de polling à accepter.
+- **CEP**, seulement si son statut de fin de vie n'empêche pas un usage à l'horizon de ce projet.
+
+La recommandation doit tenir compte de l'ampleur du chantier déjà en cours (mission 03) et du fait que ce projet est piloté par FJD seul avec des Ouvriers IA, pas une équipe de développement dédiée — privilégier l'option la plus simple à maintenir et la moins exposée aux régressions cross-platform déjà documentées (Cas 38 du wiki), sauf si un besoin fonctionnel précis impose le pont réseau.
 
 ## Méthode de travail attendue
 - Même rigueur que sur la mission 03 : vérifier la doc officielle avec citation exacte avant toute affirmation, test réel avant toute conclusion, ne jamais deviner un comportement.
