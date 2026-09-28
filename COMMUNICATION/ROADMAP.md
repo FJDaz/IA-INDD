@@ -94,7 +94,7 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ## Mission 04 — Audit : lien dynamique vers le Markdown source (UXP vs update() natif vs solution maison)
 
-**Statut** : 🟡 PARTIELLE (28/09/2026) — **étape 1 (préambule cross-platform) traitée et ratifiée par FJD** ; **complément d'audit documentaire intégré le 28/09** (3 mécanismes de lien + 2 faits négatifs, cf. fichier détaillé) ; **sonde runtime ouverte en sous-mission** (`mission_04bis_sonde_lien_runtime.md`) ; **points 1 à 4 non commencés** ; **cible recadrée par FJD** (bot pilote + pont, cf. ci-dessous, qui déplace les prémisses du point 2 — révision du libellé à faire par l'Architecte).
+**Statut** : 🟡 PARTIELLE (28/09/2026) — **étape 1 (préambule cross-platform) traitée et ratifiée par FJD** ; **complément d'audit documentaire intégré** (3 mécanismes de lien + 2 faits négatifs, cf. fichier détaillé) ; **sonde runtime ouverte en sous-mission** (`mission_04bis_sonde_lien_runtime.md`) ; **cible recadrée par FJD** (bot pilote InDesign + pont de transport, pas un panneau d'affichage) ; **point 2 réécrit par l'Architecte** (28/09) autour des 4 ponts candidats (`app.doScript()` UXP, `findGrep` UXP, pont réseau WebSocket — fragile sous Windows jusqu'à InDesign 2026 —, polling fichier ExtendScript) ; **point 4 (recommandation) mis à jour en cohérence** ; **points 1 à 4 : aucune mesure encore effectuée**.
 
 **Fichier détaillé** : [mission_04_audit_lien_dynamique.md](mission_04_audit_lien_dynamique.md)
 
