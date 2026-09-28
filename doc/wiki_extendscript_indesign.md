@@ -31,6 +31,60 @@ Quand un même symptôme persiste après plusieurs correctifs réels et vérifi�
 
 ---
 
+## Table des matières par thème
+
+Index de navigation rapide (34 cas au 28/09/2026) — utile pour ne charger/scanner que la section pertinente plutôt que tout le fichier avant une nouvelle mission. Les liens pointent vers les ancres de titre (`## Cas NN — ...`).
+
+**Langage ExtendScript (ES3, absences d'API standard)**
+- [Cas 01](#cas-01--char-est-un-mot-réservé) — `char` mot réservé
+- [Cas 02](#cas-02--appactivewindowalert-nexiste-pas) — `app.activeWindow.alert()` inexistant
+- [Cas 03](#cas-03--new-window-avec-un-objet-de-config) — `new Window({...})` config
+- [Cas 04](#cas-04--collectioneveryitem-itéré-avec-un-for-classique) — `everyItem()` + `for` classique
+- [Cas 07](#cas-07--json-nexiste-pas-nativement-en-extendscript) — pas de `JSON` natif
+- [Cas 08](#cas-08--arrayprototypeindexof-nexiste-pas-nativement-en-extendscript) — pas d'`Array.indexOf`
+- [Cas 33](#cas-33--global-ne-transporte-pas-détat-du-script-vers-lévénement-quil-a-câblé) — `$.global` ne transporte pas d'état
+
+**Modèle texte InDesign (Story/Paragraph/InsertionPoint)**
+- [Cas 09](#cas-09--insertionpoints-1paragraphsadd-nexiste-pas) — pas de `paragraphs.add()`
+- [Cas 10](#cas-10--fusionner-des-lignes-de-texte-avec-n-avant-insertion-indesign) — fusion de lignes avec `\n`
+- [Cas 12](#cas-12--comptage-de-caractères-js-length-désynchronisé-du-comptage-indesign-sur-unicode-composé) — comptage Unicode composé désynchronisé
+- [Cas 13](#cas-13--textframe-temporaire--copie-caractère-par-caractère--pattern-fragile-à-éviter) — copie caractère par caractère fragile
+- [Cas 14](#cas-14---sur-insertionpointcontents--pattern-non-documenté-à-éviter) — `+=` sur `InsertionPoint.contents`
+- [Cas 16](#cas-16--un-nouveau-paragraphe-hérite-du-startparagraph-saut-de-colonnecadrepage-du-texte-précédent) — héritage de `startParagraph`
+- [Cas 17](#cas-17--réassignation-répétée-de-insertionpoints-1contents-dans-une-boucle--curseur-non-fiable) — curseur non fiable en boucle
+- [Cas 20](#cas-20--écriture-par-segments-avec-une-seule-assignation-et-une-table-nest-pas-un-paragraphe) — écriture par segments, table ≠ paragraphe
+- [Cas 22](#cas-22--storyparagraphsi-invalide-en-cours-de-boucle--utiliser-getelements) — `paragraphs[i]` invalide en boucle
+- [Cas 23](#cas-23--storyparagraphslength-peut-valoir-0-après-une-assignation-explicite-de-chaîne-vide) — `paragraphs.length` peut valoir 0
+- [Cas 24](#cas-24--la-story-capturée-avant-le-vidage-se-détache--le-compteur-de-diagnostic-ment) — la story capturée se détache
+- [Cas 26](#cas-26--paragraphindex-nest-pas-un-index-de-paragraphe) — `.index` n'est pas un index de paragraphe
+- [Cas 29](#cas-29--une-sonde-de-vérification-doffset-basée-sur-indexof-peut-rendre-un-faux-négatif) — sonde `indexOf` faux négatif
+
+**Styles (paragraphe/caractère/objet/table/cellule)**
+- [Cas 05](#cas-05--duck-typing-sur-les-groupes-de-styles-paragraphstylegroup-vs-characterstylegroup) — duck-typing groupes de styles
+- [Cas 06](#cas-06--documentlabels-traité-comme-une-collection-énumérable) — `document.labels` non énumérable
+- [Cas 25](#cas-25--une-valeur-par-défaut--qui-rend-service--applique-un-style-sans-geste-de-lutilisateur) — valeur par défaut silencieuse
+- [Cas 28](#cas-28--un-style-de-paragraphe-appelé-depuis-un-style-de-cellule-est-surclassé-invisible-au-panneau-styles-de-paragraphe) — style de cellule surclasse le style de paragraphe
+
+**Parsing Markdown / logique métier du script**
+- [Cas 19](#cas-19--marqueurs-markdown-ambigus-underscore--distinguer-syntaxe-et-texte-normal-par-bordure-de-mot) — ambiguïté underscore
+- [Cas 21](#cas-21--dialectes-markdown--un-item-de-liste-entièrement-en-gras-peut-être-un-titre-déguisé) — puce en gras = faux titre (abandonné depuis, cf. mission 03)
+
+**Table InDesign (création par API)**
+- [Cas 00](#cas-00--créer-et-remplir-une-table-indesign-par-script-pattern-validé-23092026) — pattern de création de table
+
+**Menus (`ScriptMenuAction`, intégration native — mission 03 étape 9)**
+- [Cas 30](#cas-30--lesperluette-daccélérateur-dans-les-title-de-menus-fichier-imporrter) — esperluette d'accélérateur
+- [Cas 31](#cas-31--déclencheur-dune-scriptmenuaction--seul-un-gestionnaire-de-type-file-survit-à-la-fin-du-script) — seul un handler `File` survit
+- [Cas 32](#cas-32--cheminexists-sur-une-chaîne-renvoie-undefined--la-sonde-qui-crie-au-loup) — `.exists` sur une chaîne
+- [Cas 34](#cas-34--une-scriptmenuaction-créée-au-runtime-ne-survit-pas-au-redémarrage-dindesign) — pas de persistance au redémarrage
+- [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite) — `Startup Scripts` et barre de menus
+
+**Méthode et diagnostic (transversal, pas un bug d'API)**
+- [Cas 18](#cas-18--logging-systématique-plutôt-que-dépendre-du-dialogue-derreur-indesign) — logging systématique
+- [Cas 27](#cas-27--séparation-stricte-code-maison--dom-indesign-pourquoi-le-sandbox-node-ne-peut-jamais-suffire) — séparation logique pure / DOM
+
+---
+
 ## Cas 00 — Créer et remplir une table InDesign par script (pattern validé, 23/09/2026)
 
 **Contexte** : ajout du support des tableaux Markdown (`| a | b |`) — jamais fait auparavant sur ce projet, fonctionnel dès le premier test réel.
@@ -502,6 +556,353 @@ Preuve en réel : `baseParSoustraction=65` (= 86 − 21), puis `reels=21 ecarts=
 **Leçon** : un contrôle de position doit chercher à partir de la position attendue — `contents.indexOf(sonde, offsetAttendu)` — ou mieux, **comparer directement** la tranche : `contents.substr(offsetAttendu, sonde.length) === sonde`. Une sonde de vérification qui peut produire un **faux négatif** est plus dangereuse qu'une absence de sonde : elle fait perdre du temps à chasser un bug inexistant, et elle érode la confiance dans le log.
 
 **Règle pratique** : distinguer explicitement, dans le log, un échec **structurel** (le texte n'est pas au bon endroit) d'une **limite de la mesure** (`trouve=0` avec `attendu>0` sur un document non neuf). Le champ `offsets_fiables` (calculé indépendamment, par égalité de longueurs) et le champ `offset_verifie` (mesure ponctuelle) doivent rester **séparés** : c'est le premier qui fait foi.
+
+---
+
+## Cas 30 — L'esperluette d'accélérateur dans les `title` de menus (`&Fichier`, `I&mporter...`)
+
+**Origine** : étape 9 (intégration au menu InDesign), sonde `tools/probe_menu2.jsx` exécutée en réel le 28/09/2026 (InDesign 21.6.0.57 fr_FR). La sonde cherchait le menu Fichier avec un filtre écrit au clair : `path.indexOf("Main/Fichier") === 0`. Résultat du journal : `CIBLE = INTROUVABLE`, puis `(pas de cible : essai d'ajout non execute)`. **La cible existait bel et bien** — c'est le filtre qui ne pouvait pas la reconnaître.
+
+**Mécanisme réel** : les `title` de menus et d'items InDesign portent les **esperluettes d'accélérateur** du libellé (le caractère souligné sous Windows, pour la navigation Alt). Mesures brutes du journal de la sonde 2 :
+
+```
+MENU d=1 | path=Main/&Fichier | name=Fichier | title=&Fichier | items=29 | submenus=6
+ITEM path=Main/&Fichier [10] name=Importer... | title=I&mporter... | action=Importer...
+```
+
+Deux conséquences immédiates, toutes deux mesurées :
+
+1. **Les `title` ne sont pas comparables au clair** : `"Fichier" !== "&Fichier"`. La sonde 2 construisait ses chemins (`path`) à partir des `title`, d'où des chemins réels du type `Main/&Fichier` ; un filtre écrit `Main/Fichier` ne matche donc **jamais**.
+2. **Une recherche de sous-chaîne échoue aussi** : `"I&mporter...".indexOf("Importer") === -1`. Chercher « Importer » dans le `title` de l'item « Importer… » ne le trouve pas — l'esperluette est **au milieu du mot**.
+
+L'esperluette ne se limite pas au premier caractère (relevé sur les 6 sous-menus réels de Fichier) : `&Nouveau`, `Ouvrir une composition &récente`, `Paramètres prédéfinis Ado&be PDF`, `Param&ètres prédéfinis du document`, `Paramètres utilisateur`, `Impressions pr&édéfinies`. Elle peut donc tomber **n'importe où** dans le libellé, y compris à l'intérieur d'un mot.
+
+**Ce que dit la doc officielle** (`indesignjs.de/indesignapi/indesign/`, export du modèle objet Adobe InDesign 2026, propriété `title` de `MenuAction` / `MenuItem` / `ScriptMenuAction`) : *« The title includes any ampersand characters (&), which are used to tell the Windows OS to underline the following character in the name for use with the Alt key to navigate to a menu item. Double ampersands are used to display an actual ampersand character in the name. The Mac OS ignores and removes the extra ampersand characters. »*
+
+**Piège de lecture de cette citation** : « The Mac OS ignores and removes the extra ampersand characters » décrit l'**affichage** (macOS ne souligne rien), **pas la valeur de la propriété**. Mesure réelle sur macOS fr_FR : `title` renvoie bien `&Fichier` et `I&mporter...`, esperluettes **incluses**. On ne peut donc pas s'appuyer sur cette phrase pour croire la propriété nettoyée.
+
+**Où trouver la valeur propre** : la propriété `name` du même objet ne porte pas l'esperluette (`name=Fichier` face à `title=&Fichier` ; `name=Importer...` face à `title=I&mporter...`). Elle reste liée au contexte : pour la barre de menus elle vaut `Main` tel quel, et `translateKeyString('$ID/TouchMenuFile')` renvoie `Fichier` — sans esperluette non plus.
+
+**Preuve réelle (sonde 2, 28/09/2026)** : `app.menus.length = 151`, une seule barre de menus (`Main`, 11 sous-menus) ; les chemins mesurés sous `Main` sont `Main/&Fichier`, `Main/&Edition`, `Main/&Page`, `Main/&Texte` ; `Main/&Fichier` expose `items=29 submenus=6` et l'item `[10] name=Importer... | title=I&mporter...` est un **item direct**, pas un sous-menu.
+
+**Leçon** : ne **jamais** comparer, filtrer, indexer ou construire un chemin à partir d'un `title` de menu InDesign tel quel. Normaliser d'abord : `String(title).replace(/&/g, "")`. Le réflexe vaut pour les tests d'égalité comme pour les `indexOf`, les expressions régulières et les clés de dictionnaire.
+
+**Limite connue de cette normalisation** : `replace(/&/g, "")` retire aussi les esperluettes **littérales** (notées `&&` dans le libellé, cf. citation ci-dessus). Acceptable ici — aucun libellé de l'arbre mesuré n'en contient — mais à garder en tête si un libellé InDesign venait à afficher un `&` voulu.
+
+**Portée au-delà du cas** : ce faux négatif est **silencieux** — la sonde s'arrête « proprement » en déclarant la cible introuvable, ce qui laisse croire à une absence d'API ou à un bug d'InDesign alors que seul le code de recherche est fautif (même famille que le **Cas 29**, où une sonde rendait un faux négatif crédible). Règle : quand une sonde déclare une cible « introuvable » alors qu'un humain la voit dans le menu, **dumper la valeur brute** (`name` **et** `title`) avant toute conclusion.
+
+---
+
+## Cas 31 — Déclencheur d'une `ScriptMenuAction` : seul un gestionnaire de type `File` survit à la fin du script
+
+**Origine** : étape 9 (intégration au menu InDesign). L'entrée de menu était bien **créée** (`menu='Fichier' items 29 -> 30` au journal) mais un **clic réel ne lançait rien**. Le gestionnaire câblé était une **fonction du script** : `action.addEventListener("onInvoke", onMenuImportMdInvoke)`.
+
+**Diagnostic — c'est la sonde `tools/probe_menu3.jsx` qui tranche, par une double mesure** (journal `probe_menu3.log`, InDesign 21.6.0.57 fr_FR, 28/09/2026).
+
+**Mesure A — appel programmatique `action.invoke()` PENDANT l'exécution du script : les quatre formes de gestionnaire répondent.** Extraits verbatim du journal (horodatage conservé, seuls les chemins longs sont abrégés par `…` ; le reste est brut) :
+
+```
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] --- 7) test automatique action.invoke() (sans clic) ---
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] invoke() sur S3-A : AVANT
+Mon Sep 28 2026 04:09:06 GMT+0200 [S3-A] FONCTION DU SCRIPT + ON_INVOKE : DECLENCHE | typeof main=function | typeof PROBE_LOG_PATH=string | typeof findSubmenuByTitle=function | typeof LINES=object | $.fileName=…/probe_menu3.jsx | $.global.__S3_MARKER=string
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] invoke() sur S3-A : APRES (aucune erreur)
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] invoke() sur S3-B : AVANT
+Mon Sep 28 2026 04:09:06 GMT+0200 [S3-B] FONCTION DU SCRIPT + BEFORE_INVOKE : DECLENCHE | typeof main=function | typeof PROBE_LOG_PATH=string | typeof LINES=object | $.fileName=…/probe_menu3.jsx
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] invoke() sur S3-B : APRES (aucune erreur)
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] invoke() sur S3-C : AVANT
+Mon Sep 28 2026 04:09:06 GMT+0200 [S3-C] FONCTION AUTONOME (new Function) : DECLENCHE | typeof main=function | typeof $.global.__S3_MARKER=string | $.fileName=…/probe_menu3.jsx
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] invoke() sur S3-C : APRES (aucune erreur)
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] invoke() sur S3-D : AVANT
+Mon Sep 28 2026 04:09:06 GMT+0200 [S3-D] FICHIER GESTIONNAIRE (handler: File) : DECLENCHE | $.fileName=…/probe_menu3_file_handler.jsx | typeof app=object | typeof main=function | typeof logToFile=undefined | typeof $.global.__S3_MARKER=string
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] invoke() sur S3-D : APRES (aucune erreur)
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] --- fin du test automatique ---
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] RAPPEL : ces lignes ne disent rien du CLIC ; il reste
+Mon Sep 28 2026 04:09:06 GMT+0200 [SONDE] a cliquer [S3-A], [S3-B], [S3-C], [S3-D] dans le menu.
+```
+
+Le câblage `addEventListener` est donc **correct pour les quatre** — et `invoke()` est utilisable comme **autotest de câblage**, sans intervention humaine. Noter que la sonde **énonce elle-même sa limite** (deux dernières lignes ci-dessus) : ces mesures ne disent rien du clic. C'est exactement la bonne posture de sonde — séparer ce qu'elle prouve de ce qu'elle ne prouve pas, pour que personne ne lise dans le log plus qu'il ne contient.
+
+**Mesure B — clic RÉEL de l'utilisateur, APRÈS la fin du script : seule la forme `File` écrit.** Verbatim (deux clics, mêmes lignes, chemins abrégés par `…`) :
+
+```
+Mon Sep 28 2026 04:10:06 GMT+0200 [S3-D] FICHIER GESTIONNAIRE (handler: File) : DECLENCHE | $.fileName=…/probe_menu3_file_handler.jsx | typeof app=object | typeof main=undefined | typeof logToFile=undefined | typeof $.global.__S3_MARKER=undefined
+Mon Sep 28 2026 04:10:19 GMT+0200 [S3-D] FICHIER GESTIONNAIRE (handler: File) : DECLENCHE | $.fileName=…/probe_menu3_file_handler.jsx | typeof app=object | typeof main=undefined | typeof logToFile=undefined | typeof $.global.__S3_MARKER=undefined
+```
+
+Au clic, **aucune ligne `[S3-A]`, `[S3-B]` ni `[S3-C]`** n'est écrite après la fin du script, alors que le fait d'écrire au journal a été prouvé possible au même instant, sur le **même chemin** et en **même mode append**, par `[S3-D]` (le fichier gestionnaire écrit dans `probe_menu3.log`, le même journal que les fonctions). Les trois gestionnaires « fonction » sont donc **bel et bien morts** après la sortie du script ; ce n'est pas une écriture qui échouerait silencieusement.
+
+**Ce que la lecture du journal révèle en plus, et qui est capital** : au clic, `typeof app = object` mais `typeof main = undefined`, `typeof logToFile = undefined`. Le moteur qui exécute le clic ne **partage rien** avec celui qui a enregistré l'entrée — les variables du script ont disparu avec lui. Une fonction gestionnaire est une **fermeture** sur ces variables ; elle ne peut pas survivre à leur disparition.
+
+**Ce que dit la doc officielle** — `ScriptMenuAction.addEventListener(eventType, handler, captures?)` (URL `https://www.indesignjs.de/indesignapi/indesign/ScriptMenuAction.html`, export du modèle objet Adobe InDesign 2026 (21.5.1.73), consultée le 28/09/2026) :
+
+- `eventType` (String) : « The event type. »
+- `handler` (**File | JavaScriptFunction**) : « The event handler. **Can accept: File or JavaScript Function.** »
+- `captures?` (Boolean) : « This parameter is obsolete. »
+- `ScriptMenuAction.ON_INVOKE` : « Dispatched when the ScriptMenuAction is invoked. This event does not bubble. This event is not cancelable. »
+- `ScriptMenuAction.invoke()` : « Invoke the action. » — `ScriptMenuAction.remove()` : « Deletes the ScriptMenuAction. »
+
+La doc annonce **deux formes acceptées** ; elle ne dit **pas** laquelle survit. C'est la mesure qui tranche : **`File`**. La doc décrit la signature, jamais la durée de vie — ne pas confondre les deux.
+
+⚠️ **URL à ne plus citer** : `https://www.indesignjs.de/extendscriptAPI/indesign/ScriptMenuAction.html` renvoie **HTTP 404** (vérifié deux fois le 28/09/2026). Le miroir valide est `/indesignapi/indesign/`.
+
+**Solution retenue** (un seul fichier, zéro logique dupliquée) : le gestionnaire de l'entrée est **`new File(<chemin absolu de ce script>)`**. Cliquer l'entrée **réexécute le script**, dont les deux dernières instructions sont :
+
+```javascript
+registerMenuEntry();   // déjà conforme -> sans effet (cf. ci-dessous)
+main();                // le clic déclenche EXACTEMENT main()
+```
+
+`$.fileName` est renseigné même quand InDesign exécute le script comme gestionnaire (mesuré : `[S3-D] … | $.fileName=…/probe_menu3_file_handler.jsx` dans les lignes de clic ci-dessus). Il arrive sous forme **encodée et abrégée** — verbatim de l'en-tête du journal de la sonde 3 :
+
+```
+$.fileName = ~/Library/Preferences/Adobe%20InDesign/Version%2021.0/fr_FR/Scripts/Scripts%20Panel/probe_menu3.jsx
+```
+
+`new File($.fileName).fsName` le **décode** en chemin absolu utilisable. Preuve verbatim (même en-tête, comparaison du chemin dérivé au chemin réel tapé en dur dans la sonde) :
+
+```
+journal = ~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/probe_menu3.log
+journal (chemin en dur) = ~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/probe_menu3.log
+les deux chemins coincident = true
+```
+
+**Corollaire de code indispensable — l'enregistrement doit être non destructif quand l'entrée est déjà conforme.** Puisque le clic réexécute le script, une `registerMenuEntry()` qui retire systématiquement l'action avant de la recréer **détruirait l'objet même qui est en train d'être invoqué**. La vérification de conformité (une seule entrée, à sa place, une seule action) doit donc passer **avant tout retrait**, et sortir en `return true` sans rien toucher. Ligne de journal correspondante (format du script, à constater au prochain run réel) :
+
+```
+M03-etape9: entree de menu deja conforme -> rien a faire | menu='Fichier' items=N | index=I | scriptMenuActions=1
+```
+
+**Leçon transversale** : « la doc documente un paramètre » ne veut pas dire « toutes les valeurs du paramètre sont équivalentes ». Pour un **déclencheur durable**, la question n'est pas « est-ce accepté ? » mais « **qu'est-ce qui survit à la fin du script ?** » — et cette question ne se règle que par une mesure discriminante : provoquer **le même effet** (ici : déclencher) par **deux voies différentes** (ici : `invoke()` puis un vrai clic) et comparer. Ici, `invoke()` a menti par optimisme : tout marchait ; le clic a révélé la vérité. Un test programmatique ne remplace jamais le geste réel de l'utilisateur.
+
+**Persistance — deux questions distinctes, toutes deux désormais MESURÉES** :
+
+| Question | Réponse mesurée | Preuve |
+|---|---|---|
+| L'entrée survit-elle à la **fin du script** ? | **OUI** | le clic l'atteint (`[S3-D]`, sonde 3) ; l'entrée créée à 04:35:52 est cliquée à 04:36:00 et 04:36:57 |
+| L'entrée survit-elle à un **redémarrage d'InDesign** ? | **NON** | constaté par FJD le 28/09 → **voir Cas 34** |
+
+⇒ L'entrée doit être **recréée à chaque lancement** d'InDesign — c'est la piste de recréation automatique instruite au **Cas 34** (citation Adobe first-party) et au **Cas 35** (dossier réellement présent sur le poste).
+
+⚠️ **Correction du 28/09 (une mesure antérieure était fausse).** Une version précédente de cette ligne affirmait « le dossier `Scripts/Startup Scripts` **n'existe pas** sur ce poste (mesuré `existe = false` sur les deux chemins candidats) ». Cette affirmation était **partiellement fausse**, et le journal brut (`/tmp/probe_menu.clean.log`, lignes 175-176) le prouve :
+
+```
+dossier 'Startup Scripts' = ~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Startup Scripts | existe = false
+dossier app 'Scripts/Startup Scripts' = /Applications/Scripts/Startup Scripts | existe = false
+```
+
+- **Candidat 1 (préférences utilisateur)** : chemin correct, `false` **significatif** → le dossier est réellement absent côté utilisateur.
+- **Candidat 2 (dossier d'application)** : le chemin imprimé est `/Applications/Scripts/Startup Scripts`, c'est-à-dire **faux**. Le code de la sonde (`tools/probe_menu.jsx`, ligne 152) le construisait avec `app.filePath.parent.fsName`, or `app.filePath` ne vaut pas ce qu'on croyait : `.parent` retombe sur `/Applications`. Le `false` de cette ligne est donc un **artefact de chemin**, pas une mesure — **exactement la même classe de faute que le Cas 32** (`exists` interrogé sur un objet qui n'est pas un `File`/`Folder`).
+
+Le dossier d'application **existe bel et bien** : `/Applications/Adobe InDesign 2026/Scripts/startup scripts` (nom exact sur disque en minuscules, vérifié octet par octet avec `od -c`). Détail complet au **Cas 35**.
+
+**Leçon ajoutée** : un `false` n'est une mesure que si le **chemin testé** est lui-même vérifié. Un `existe = false` sur un chemin fabriqué de travers est un faux négatif silencieux — il faut **lire le chemin imprimé**, pas le booléen. Corollaire : ici le journal *imprimait* le chemin fautif, la faute était donc visible à l'œil nu ; la lire est ce qui a manqué.
+
+---
+
+## Cas 32 — `chemin.exists` sur une **chaîne** renvoie `undefined` : la sonde qui crie au loup
+
+**Origine** : sonde 3, contrôle de présence du script compagnon avant le test `File`. Le chemin était construit comme une **chaîne**. Extraits verbatim de `tools/probe_menu3.jsx` (lignes 32, 343 et 344) :
+
+```javascript
+var COMPANION_PATH = new File($.fileName).parent.fsName + "/probe_menu3_file_handler.jsx";
+   ...
+   p("compagnon = " + COMPANION_PATH + " | existe = " + COMPANION_PATH.exists);
+   if (!COMPANION_PATH.exists) {
+```
+
+Le journal conclut, verbatim (en-tête de `probe_menu3.log`) :
+
+```
+compagnon = ~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/probe_menu3_file_handler.jsx | existe = undefined
+
+!!! ATTENTION : le compagnon probe_menu3_file_handler.jsx est ABSENT.
+!!! L'entree [S3-D] ne pourra pas fonctionner. Ce n'est pas bloquant
+!!! pour les tests A, B et C.
+```
+
+⇒ branchement sur la branche « absent » ⇒ avertissement **« compagnon ABSENT »** — alors que le fichier était **présent** et a pleinement fonctionné (`[S3-D]` s'est déclenché, au clic comme à l'`invoke()`). La sonde a donc averti d'une panne imaginaire, tout en continuant.
+
+**Mécanisme** : `.exists` est une propriété d'**objet `File`**, pas de `String`. Lue sur une chaîne, elle vaut `undefined` — **sans lever d'erreur, sans avertissement**. Le test `if (chaîne.exists)` est donc toujours faux, en silence.
+
+**Règle** : toujours **matérialiser** un chemin en objet avant de lui lire une propriété de fichier, et comparer explicitement à `true` :
+
+```javascript
+var f = new File(chemin);           // objet File, pas String
+if (f.exists === true) { ... }      // verification explicite
+```
+
+**Famille** : **Cas 29** et **Cas 30** — une sonde qui rend un **faux négatif** coûte plus cher qu'aucune sonde : elle envoie chasser un bug inexistant et **érode la confiance dans le journal**, qui est la seule preuve acceptée sur ce projet. Corollaire : quand une sonde signale une absence inattendue, **dumper la valeur et son type** (`existe=undefined`, `typeof = string`) avant de conclure quoi que ce soit.
+
+---
+
+## Cas 33 — `$.global` ne transporte PAS d'état du script vers l'événement qu'il a câblé
+
+**Origine** : sonde 3. Pendant l'enregistrement, un marqueur était posé dans le global — extrait verbatim de `tools/probe_menu3.jsx` (ligne 407) :
+
+```javascript
+try { $.global.__S3_MARKER = "pose-par-la-sonde3"; } catch (eg) {}
+```
+
+**Mesures croisées** :
+
+| Moment d'exécution | Lecture du marqueur |
+|---|---|
+| Pendant le script (gestionnaires appelés par `invoke()`) | `typeof $.global.__S3_MARKER = string` |
+| Au clic réel, après la fin du script (dans `[S3-D]`) | `typeof $.global.__S3_MARKER = undefined` |
+
+**Conclusion** : on **ne peut pas** transmettre une fonction, un objet ou une donnée par `$.global` pour la retrouver au moment où l'utilisateur active réellement l'entrée de menu. Le global du script ne franchit pas la frontière « fin du script → événement ».
+
+**Portée — complément direct du Cas 31** : c'était précisément la parade tentée pour garder une fonction gestionnaire vivante (`$.global.__M03_MENU_HANDLER = onMenuImportMdInvoke`) ; elle est **sans effet**, et la ligne a été **supprimée** du script. La seule chose qui traverse la frontière est le **fichier** désigné comme gestionnaire (`File`) et les objets persistants du DOM InDesign (l'entrée de menu elle-même, les actions de script). Règle pratique : **pour tout déclencheur durable, viser un `File` dès la conception** — ne pas tenter `$.global`, `new Function`, ni une fermeture.
+
+---
+
+## Cas 34 — Une `ScriptMenuAction` créée au runtime ne survit PAS au redémarrage d'InDesign
+
+**Origine** : étape 9, question posée **avant même d'écrire le code** (« est-ce qu'une entrée de menu créée par script persiste après un redémarrage d'InDesign, ou doit-elle être recréée à chaque lancement ? »). Question tranchée par la mesure, pas par supposition.
+
+**Le test réel du 28/09 a d'abord validé les trois critères** — preuve verbatim, journal `import_md_errors.log`, `InDesign 21.6.0.57 fr_FR` :
+
+```
+[Mon Sep 28 2026 04:35:52 GMT+0200] M03-etape9: entree de menu creee -> 'Importer un MD' apres 'Importer...'
+   | menu='Fichier' items 34 -> 35 | declencheur=File ~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/import_md.jsx (exists=true) | eventType=onInvoke | scriptMenuActions=8
+```
+
+**Clic n° 1 (04:36:00 → 04:36:11)** — la ligne de conformité, puis `main()` :
+
+```
+[Mon Sep 28 2026 04:36:00 GMT+0200] M03-etape9: entree de menu deja conforme -> rien a faire | menu='Fichier' items=35 | index=11 | scriptMenuActions=1
+[Mon Sep 28 2026 04:36:00 GMT+0200] M03-etape1bis: mode=InsertionPoint | paragraphes avant=0
+[Mon Sep 28 2026 04:36:00 GMT+0200] PIVOT unifie: selection.length=1 | mode detecte=curseur
+...
+[Mon Sep 28 2026 04:36:07 GMT+0200] showConfigurationDialog: construction des boutons
+...
+[Mon Sep 28 2026 04:36:11 GMT+0200] M03-etape2: blocs=63 paragraphes attendus=63 reels=63 ecarts=0 | mode=curseur base=0 story_total=63 styles=63 neutre=0 baseIndexConnu=true avant_fenetre=0 apres_fenetre=0
+```
+
+**Clic n° 2 (04:36:57 → 04:37:15)** — même conformité, puis une **seconde** insertion qui s'ajoute à la première (`base=63 story_total=102`) :
+
+```
+[Mon Sep 28 2026 04:36:57 GMT+0200] M03-etape9: entree de menu deja conforme -> rien a faire | menu='Fichier' items=35 | index=11 | scriptMenuActions=1
+[Mon Sep 28 2026 04:36:57 GMT+0200] M03-etape1bis: mode=InsertionPoint | paragraphes avant=63
+...
+[Mon Sep 28 2026 04:37:15 GMT+0200] M03-etape2: blocs=39 paragraphes attendus=39 reels=39 ecarts=0 | mode=curseur base=63 story_total=102 styles=39 neutre=0 baseIndexConnu=true avant_fenetre=63 apres_fenetre=0
+```
+
+⇒ Le chemin `File` fonctionne, **deux fois de suite** : clic → réexécution → conformité (aucune destruction, `items=35` inchangé, `index=11` inchangé) → `main()` → pipeline complet jusqu'au dialogue, puis insertion. Le `paragraphes avant=63` du 2ᵉ clic **prouve** que le 1ᵉʳ clic avait bien inséré son contenu (le réimport s'est empilé : `base=63`, `story_total=102`).
+
+**Le 4ᵉ point, en revanche, a échoué** : après **redémarrage d'InDesign, l'entrée a disparu** (constaté par FJD le 28/09).
+
+⚠️ **Ne pas confondre « créée par script » et « persistante ».** Ce qui est mesuré maintenant, séparément :
+
+| Frontière | L'entrée traverse ? |
+|---|---|
+| fin du script d'enregistrement → session en cours | **OUI** (clic atteint, Cas 31) |
+| fin de session → redémarrage d'InDesign | **NON** |
+
+**Ce que dit la doc officielle — et ce qu'elle ne dit pas** (source : `https://www.indesignjs.de/indesignapi/indesign/ScriptMenuAction.html`, build 2026 / 21.5.1) : la description de `remove()` est « Deletes the ScriptMenuAction. » ; `addEventListener`, `invoke` et `remove` sont documentés, la **durée de vie** ne l'est **nulle part**. La doc décrit l'API, jamais la persistance — comme pour le paramètre `handler` au Cas 31, la réponse est dans la mesure.
+
+**Conséquences pratiques** — l'entrée doit être **recréée à chaque lancement** d'InDesign. Deux voies, dont la première est désormais **mesurée** :
+
+1. **script de démarrage** — mécanisme **documenté par Adobe** (read-me livré avec l'application, citation verbatim au **Cas 35**) : un script déposé dans le sous-dossier `Startup Scripts` du dossier `Scripts` s'exécute une fois à chaque lancement. **Mesuré le 28/09/2026 (Cas 35)** : le dossier **existe** des deux côtés (`/Applications/Adobe InDesign 2026/Scripts/startup scripts/` — `root:admin`, ne contenant que `ForceDirectory.txt` — et `~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Startup Scripts/`) ; la balise « ce dossier **n'existe pas** » d'une version antérieure de ce cas était un **artefact de chemin** (cf. Cas 32 : un `false` n'est une mesure que si le chemin testé est lui-même vérifié — lire le chemin imprimé, pas le booléen). Le script du dossier **utilisateur** est réellement exécuté au lancement, la barre de menus y est **déjà construite** (`menus.length = 151`, `Fichier` à 29 entrées, `Importer...` à l'index 10, `documents.length = 0`), une entrée peut y être **créée** et un **clic réel** la rejoue ⇒ **aucun report sur `afterOpen` n'est nécessaire**. Piège d'architecture associé : `import_md.jsx` se termine par `main();`, donc le chargeur doit **enregistrer** une entrée dont le gestionnaire est `new File(<chemin de import_md.jsx>)` et **ne jamais exécuter** ce fichier — sinon la boîte de dialogue s'ouvre à chaque lancement ;
+2. **premier lancement manuel assumé** — l'entrée se crée au premier passage par le Panneau Scripts, puis vit pour la session. Aucun artefact supplémentaire, mais **la promesse « sans plus nécessiter le Panneau Scripts » n'est alors tenue qu'après ce premier lancement**.
+
+**Leçon transversale** : « ça marche pendant que je travaille » et « ça survit à un redémarrage » sont **deux propriétés différentes** — et elles ne se testent pas en même temps. Le test qui les distingue (redémarrer l'application) est **grossier, lent, manuel et hors du code** ; c'est précisément pour ça qu'il faut le faire, et tôt. Une entrée de menu créée dynamiquement vit dans l'**état de l'application**, pas dans le **document** ni sur le **disque** : rien, par défaut, ne la ressuscite.
+
+**Règle** : pour tout élément d'interface créé par script (entrée de menu, action, panneau), se poser la question **« qui le recrée au prochain démarrage ? »** au moment de la conception, et vérifier par un redémarrage **réel** — jamais par déduction.
+
+---
+
+## Cas 35 — Un script déposé dans `Startup Scripts` est bien exécuté au lancement, et la barre de menus y est DÉJÀ construite
+
+**Origine** : le Cas 34 laissait la voie 1 (« script de démarrage ») explicitement **non mesurée** (« cette affirmation n'est PAS mesurée ici… ce dossier n'existe pas… à instruire par une sonde avant toute affirmation »). La sonde a été écrite et exécutée le 28/09/2026.
+
+**Ce que dit la doc Adobe — verbatim**, cité depuis le read-me **livré avec l'application** (autorité de première partie, pas un blog ni un forum) : `/Applications/Adobe InDesign 2026/Documentation/fr_FR/Lisez-moi Scripts InDesign 2026.pdf`, section « Problèmes connus liés à l'élaboration de scripts InDesign » → « Emplacement des scripts de lancement JavaScript », p. 10 :
+
+> Les scripts de lancement utilisateur doivent être placés au même emplacement que les scripts de lancement InDesign (où ils **s'exécutent une seule fois à chaque lancement de l'application**), et non à l'emplacement où se trouvent les scripts d'initialisation de moteur ExtendScript (où ils sont exécutés à chaque initialisation d'un moteur). Pour exécuter les scripts au lancement du logiciel InDesign, placez-les dans le sous-dossier **Startup Scripts** (Scripts de lancement) du dossier **Scripts, situé dans le dossier d'application InDesign**. (**Si ce dossier n'existe pas, créez-le.**)
+
+Formulation **identique** dans les read-me 2024, 2025 et 2026. Détail d'extraction : dans le PDF, l'espace de `Startup Scripts` est un **U+00A0** (insécable) — un `grep 'Startup Scripts'` avec espace ordinaire ne le trouve pas, `grep -E 'Startup\s+Scripts'` si. Le texte extrait est conservé dans `/tmp/indd_readme_scripts.txt`.
+
+**Les deux inconnues que seule une mesure pouvait lever** :
+
+1. un script déposé dans un dossier `Startup Scripts` est-il **réellement** exécuté au lancement sur ce poste ?
+2. à cet instant précis, la barre de menus (`app.menus`, l'entrée « Fichier ») est-elle **déjà construite** — ou faut-il différer l'enregistrement (par exemple sur `afterOpen`) ?
+
+**Sonde** : `tools/probe_startup.jsx`, déployée dans `~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Startup Scripts/` (dossier **utilisateur**). Son gestionnaire `File` est `tools/probe_startup_handler.jsx`, laissé **uniquement dans le dépôt** — s'il était déposé dans le même dossier, InDesign l'exécuterait aussi au lancement et polluerait la mesure.
+
+**Mesure 1 — oui, le script du dossier utilisateur est exécuté au lancement** (journal brut) :
+
+```
+[Mon Sep 28 2026 04:54:04 GMT+0200] A/fileName    = ~/Library/Preferences/Adobe%20InDesign/Version%2021.0/fr_FR/Scripts/Startup%20Scripts/probe_startup.jsx
+[Mon Sep 28 2026 04:54:04 GMT+0200] A/engineName  = main
+[Mon Sep 28 2026 04:54:04 GMT+0200] A/app.version = 21.6.0.57
+[Mon Sep 28 2026 04:54:04 GMT+0200] B/documents.length        = 0      (0 = aucun document ouvert a cet instant)
+```
+
+⇒ Le dossier **utilisateur** fonctionne — alors que la doc Adobe ne mentionne que le dossier **d'application**. Les deux chemins existent réellement sur ce poste :
+
+| Chemin | État mesuré |
+|---|---|
+| `/Applications/Adobe InDesign 2026/Scripts/startup scripts/` | existe, `root:admin`, ne contient que `ForceDirectory.txt` |
+| `~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Startup Scripts/` | existe (dossier utilisateur) |
+
+`Scripts/Startup Scripts` et `Scripts/startup scripts` désignent **le même dossier** sur ce poste (système de fichiers insensible à la casse) : `stat -f "%i %N"` renvoie l'inode `108734100` pour les deux graphies. La graphie **réellement présente sur le disque** est `startup scripts` (vérifiée avec `od -c`).
+
+**Mesure 2 — la barre de menus est DÉJÀ entièrement construite** :
+
+```
+[Mon Sep 28 2026 04:54:04 GMT+0200] B/menus.length            = 151    (151 mesure quand la barre est construite)
+[Mon Sep 28 2026 04:54:06 GMT+0200] C/menu 'Main' TROUVE | submenus = 11
+[Mon Sep 28 2026 04:54:06 GMT+0200] C/'Fichier' TROUVE | items = 29
+[Mon Sep 28 2026 04:54:06 GMT+0200] C/item 'Importer...' index = 10
+```
+
+⇒ 151 menus, et les 29 entrées de `Fichier` déjà en place (`10:Importer...`, exactement comme en session normale) — le tout **avant l'ouverture du moindre document**. **Aucun report sur `afterOpen` n'est nécessaire** : l'hypothèse est réfutée par la mesure, pas par un raisonnement.
+
+**Mesure 3 — l'entrée est créable depuis là, et un clic réel la rejoue** :
+
+```
+[Mon Sep 28 2026 04:54:07 GMT+0200] D/entree sonde deja presente ? items=0 actions=0
+[Mon Sep 28 2026 04:54:07 GMT+0200] D/ENTREE POSEE: '[SONDE DEMARRAGE] Entree de test' apres 'Importer...' (index 10)
+   | items 29 -> 30 | declencheur=File /Users/.../tools/probe_startup_handler.jsx (exists=true) | eventType=onInvoke | scriptMenuActions=3
+[Mon Sep 28 2026 04:54:35 GMT+0200] E/CLIC DECLENCHE sur l'entree de sonde de demarrage
+   | $.fileName=~/INDD/IMPORT_MD/tools/probe_startup_handler.jsx | app.version=21.6.0.57 | documents.length=1 | menus.length=151
+```
+
+⇒ **31 secondes** après le lancement, un clic **réel** de l'utilisateur sur l'entrée créée par le script de démarrage exécute bien le gestionnaire `File`. **La chaîne complète est établie** : lancement → script de démarrage exécuté → entrée créée → clic → gestionnaire rejoué.
+
+**Corroboration indépendante — Adobe utilise lui-même ce mécanisme.** Le dossier d'application `Scripts/startup scripts/` contient **deux chargeurs .jsxbin livrés avec le logiciel** (`converturltohyperlink/startup scripts/ConvertURLToHyperlinkMenuItemLoader.jsx`, idem `footnoteendnoteconversion`). Leur **source .jsx lisible** (103 lignes, conservée telle quelle) est un modèle à suivre :
+
+```javascript
+#targetengine "ConvertURLToHyperlinks"
+if (typeof(ConvertURLToHyperlinkMenuItem) == 'undefined') { /* garde anti double execution */ }
+try { var script = app.activeScript; } catch(e) { var script = File(e.fileName); }
+//this file is in the "startup scripts" subfolder
+script = script.parent.parent;                 // remonte au script a lancer
+OldFolder = Folder.current;
+app.doScript(script);                          // lance le vrai script
+Folder.current = OldFolder;
+```
+
+Trois enseignements directs : le mécanisme est celui d'Adobe lui-même (et non un bricolage) ; un **`#targetengine`** dédié isole le chargeur ; le vrai script est visé **par chemin de fichier relatif au chargeur**, exactement la logique du gestionnaire `File` du Cas 31. Cohérent avec la mesure : `app.scriptMenuActions.length = 2` **avant** toute action de la sonde (3 après son ajout) — deux actions sont donc déjà enregistrées avant nous. Leur **identité n'a pas été relevée** (réserve déclarée ci-dessous), mais c'est cohérent avec les deux chargeurs ci-dessus.
+
+**Ce que cela change pour le Cas 34** : l'entrée ne survit pas au redémarrage (Cas 34), mais **tout le nécessaire pour la recréer à chaque lancement est mesuré** — un script de démarrage s'exécute, trouve la barre de menus prête, peut y créer l'entrée, et le clic fonctionne. Attention toutefois à un piège d'architecture : le script à lancer (`import_md.jsx`) **se termine par `main();`** — un chargeur qui l'exécuterait au démarrage ouvrirait la boîte de dialogue de choix de fichier **à chaque lancement**. Le chargeur doit seulement **enregistrer une entrée dont le gestionnaire est `new File(<chemin de import_md.jsx>)`**, jamais exécuter ce fichier.
+
+⚠️ **Fausse mesure de la première version de la sonde — leçon générale.** Le journal de la première exécution portait :
+
+```
+| typeof main=string | typeof logToFile=string
+```
+
+C'est **faux**. La sonde appelait `tt(typeof main)`, où `tt` était elle-même `function tt(v) { return typeof v; }` : l'expression vaut donc `typeof "undefined"`, c'est-à-dire **`"string"`**, quelle que soit la variable testée. Un `typeof` déjà calculé ne doit **jamais** être passé à une fonction qui fait elle-même un `typeof` — le résultat est constant et se présente comme une mesure crédible. Corrigé : appel direct `(typeof main)`, **plus deux témoins positifs** (`typeof hlog`, `typeof LOG_PATH`, tous deux déclarés *dans* le fichier gestionnaire) — sans témoin, une lecture « `undefined` partout » ne distingue pas « variables absentes » de « moteur cassé » (même règle qu'au Cas 30 : dumper la valeur **et** son type avant de conclure). Le fait lui-même était déjà établi (Cas 31/33 : au clic dans un gestionnaire `File`, `typeof main = undefined`), donc aucune nouvelle mesure n'est nécessaire.
+
+**Réserves honnêtes — ce qui n'est PAS mesuré** :
+
+- seul le dossier **utilisateur** a été testé ; la copie dans le dossier **d'application** n'a jamais été déposée (elle exige `sudo`) ;
+- **une seule** exécution : le comportement avec **plusieurs** scripts dans le dossier, ou avec un script qui échoue, n'est pas mesuré ;
+- l'**identité des 2 actions de script préexistantes** n'a pas été relevée (seul leur **nombre** l'a été, deux fois) ;
+- la sonde **n'a pas été retirée** : tant qu'elle est dans le dossier, elle recrée son entrée de test `[SONDE DEMARRAGE] Entree de test` **à chaque lancement** d'InDesign.
+
+**Règle** : pour rendre durable un élément d'interface créé par script, le mécanisme d'Adobe est `Scripts/Startup Scripts/` — **documenté** (read-me livré) et **mesuré ici** (dossier utilisateur inclus). Le chargeur doit enregistrer l'action **et** désigner le vrai script comme gestionnaire `File` ; il ne doit **jamais** exécuter le script qu'il désigne. Et toute sonde déposée dans un dossier de lancement doit être **retirée après la mesure** — sinon elle devient elle-même une modification permanente de l'environnement de l'utilisateur.
 
 ---
 
