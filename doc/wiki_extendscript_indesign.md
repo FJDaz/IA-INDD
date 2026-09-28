@@ -73,7 +73,7 @@ les 6 rubriques habituelles, dans cet ordre.
 
 ## Table des matières
 
-**État du wiki** : **35 cas** | build de référence **InDesign 21.x** (`21.6.0.57`, `fr_FR`, macOS) | dernière revue : **28/09/2026**.
+**État du wiki** : **37 cas** | build de référence **InDesign 21.x** (`21.6.0.57`, `fr_FR`, macOS) | dernière revue : **28/09/2026**.
 
 Index de navigation rapide — utile pour ne charger/scanner que la section pertinente plutôt que tout le fichier avant une nouvelle mission. Les liens pointent vers les ancres de titre (`## Cas NN — ...`).
 
@@ -118,6 +118,8 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 - [Cas 34](#cas-34--une-scriptmenuaction-créée-au-runtime-ne-survit-pas-au-redémarrage-dindesign) — **`sourcé`** — Une `ScriptMenuAction` créée au runtime ne survit PAS au redémarrage d'InDesign : doit être recréée.
 - [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite) — **`sourcé`** — Un script déposé dans `Startup Scripts` est bien exécuté au lancement, et la barre de menus y est DÉJÀ construite (read-me Adobe verbatim).
 - [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée) — **`mesuré`** — Entrée de menu durable : module partagé `$.evalFile` + chargeur de démarrage (implémentation mesurée après redémarrage réel).
+- [Cas 37](#cas-37--lien-natif-vers-un-fichier-source-sans-place--le-modèle-dobjet-link) — **`sourcé`** — Lien natif vers un fichier source sans `place()` : `Story.itemLink` existe, `InsertionPoint.createTextFragmentLink()` crée le `Link` sur un fragment déjà présent, `placeAndLink()` le crée au placement, `Story.linkedStoryOptions` porte le réglage — et **le réglage d'interface n'est pas dans les préférences**.
+- [Cas 38](#cas-38--uxp-nest-pas-rétrocompatible-par-défaut--minversionmaxversion-du-manifest-pas-une-garantie-de-version) — **`mixte`** — UXP n'est **pas** rétrocompatible par défaut : `minVersion`/`maxVersion` du manifest bloquent l'installation hors plage, mais rien ne garantit qu'une API utilisée soit disponible sur toute la plage déclarée (versionnage UXP découplé du host InDesign).
 
 ### 2. Index par thème
 
@@ -166,9 +168,13 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 - [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite) — `Startup Scripts` et barre de menus
 - [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée) — entrée durable : module `$.evalFile` + chargeur
 
+**Lien dynamique / fichier lié (`Link`, `place`, story liée)**
+- [Cas 37](#cas-37--lien-natif-vers-un-fichier-source-sans-place--le-modèle-dobjet-link) — modèle d'objet `Link` et création d'un lien sur un texte inséré par script
+
 **Méthode et diagnostic (transversal, pas un bug d'API)**
 - [Cas 18](#cas-18--logging-systématique-plutôt-que-dépendre-du-dialogue-derreur-indesign) — logging systématique
 - [Cas 27](#cas-27--séparation-stricte-code-maison--dom-indesign-pourquoi-le-sandbox-node-ne-peut-jamais-suffire) — séparation logique pure / DOM
+- [Cas 38](#cas-38--uxp-nest-pas-rétrocompatible-par-défaut--minversionmaxversion-du-manifest-pas-une-garantie-de-version) — UXP et rétrocompatibilité de version
 
 ### 3. Index par symptôme
 
@@ -187,6 +193,7 @@ Chercher par ce qu'on a **vu à l'écran** (message d'erreur, comportement obser
 - **Un style de paragraphe invisible au panneau Styles de paragraphe** → [Cas 28](#cas-28--un-style-de-paragraphe-appelé-depuis-un-style-de-cellule-est-surclassé-invisible-au-panneau-styles-de-paragraphe)
 - **Table : création ou remplissage qui part en vrille** → [Cas 00](#cas-00--créer-et-remplir-une-table-indesign-par-script-pattern-validé-23092026), [Cas 20](#cas-20--écriture-par-segments-avec-une-seule-assignation-et-une-table-nest-pas-un-paragraphe), [Cas 28](#cas-28--un-style-de-paragraphe-appelé-depuis-un-style-de-cellule-est-surclassé-invisible-au-panneau-styles-de-paragraphe)
 - **Markdown mal interprété (underscore, gras, faux titres)** → [Cas 19](#cas-19--marqueurs-markdown-ambigus-underscore--distinguer-syntaxe-et-texte-normal-par-bordure-de-mot), [Cas 21](#cas-21--dialectes-markdown--un-item-de-liste-entièrement-en-gras-peut-être-un-titre-déguisé)
+- **Panneau Liens vide / aucun lien natif sur un texte inséré par script** → [Cas 37](#cas-37--lien-natif-vers-un-fichier-source-sans-place--le-modèle-dobjet-link)
 - **Sous-chaîne introuvable dans un `title` de menu** → [Cas 30](#cas-30--lesperluette-daccélérateur-dans-les-title-de-menus-fichier-importer)
 - **Entrée de menu absente / un clic ne fait rien** → [Cas 30](#cas-30--lesperluette-daccélérateur-dans-les-title-de-menus-fichier-importer), [Cas 31](#cas-31--déclencheur-dune-scriptmenuaction--seul-un-gestionnaire-de-type-file-survit-à-la-fin-du-script), [Cas 34](#cas-34--une-scriptmenuaction-créée-au-runtime-ne-survit-pas-au-redémarrage-dindesign), [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée)
 - **Entrée de menu disparue après un redémarrage d'InDesign** → [Cas 34](#cas-34--une-scriptmenuaction-créée-au-runtime-ne-survit-pas-au-redémarrage-dindesign), [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite), [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée)
@@ -1115,6 +1122,76 @@ Le module est chargé par `$.evalFile(new File(<dossier du fichier appelant> + "
 - le comportement si le module `import_md_menu.jsx` est **absent** ou corrompu n'est pas mesuré — le code journalise alors un échec **non bloquant** (`module … non chargeable -> entree de menu non creee (import inchange)`) et l'import via le Panneau Scripts reste fonctionnel, mais cette branche n'a pas été exercée en réel.
 
 **Règle** : quand deux points d'entrée doivent partager une logique de script (ici le Panneau Scripts **et** le chargeur de démarrage), **extraire la logique dans un module `$.evalFile` autonome** — jamais la recopier (deux copies divergeraient au premier correctif, cf. le piège structurel ci-dessous). Le module ne fait que **définir** ; les appelants décident d'**exécuter** (`main()`) ou d'**enregistrer** (`register()`). Et tout enregistrement d'entrée déclenché par l'entrée elle-même doit d'abord **vérifier la conformité** et **sortir sans rien retirer** — sinon le premier clic détruit l'entrée qu'il vient d'activer.
+
+---
+
+## Cas 37 — Lien natif vers un fichier source sans `place()` : le modèle d'objet `Link`
+
+**Thème** : modèle texte
+**API / objet visé** : `Link`, `Story.itemLink`, `InsertionPoint.createTextFragmentLink()`, `Document.placeAndLink()`, `Story.linkedStoryOptions`
+**Statut source** : `sourcé`
+**Build de référence** : InDesign 21.x (fr_FR, macOS) — miroir consulté : build **InDesign 2026 / 21.5.1.73** (fichiers Adobe datés **2026-09-21**)
+
+**Contexte** — Mission 04 (audit du lien dynamique vers le Markdown source). Le pipeline d'import maison écrit le texte par **assignation directe à `.contents`**, jamais par un `place()` natif. Question posée : peut-on obtenir l'**icône de lien du panneau Liens** (donc la détection native « source modifiée ») **sans** renoncer au mapping de styles maison ?
+
+**Symptôme / problème initial** — L'audit préalable concluait que notre méthode d'insertion « ne peut **structurellement** pas créer de `Link` » ⇒ le panneau Liens ne verrait jamais notre import, et il faudrait passer par un `place()` natif (qui écrase le mapping). **Cette conclusion était trop forte** — c'est ce que ce cas corrige.
+
+**Ce que dit la doc** (extraits verbatim, consultés le 28/09/2026, HTTP 200 — `https://www.indesignjs.de/indesignapi/indesign/`) :
+
+- `Story.itemLink` — « `itemLink` \| `Link` \| readonly \| *The source file of the link.* » (`Story.html`)
+- `Link.parent` — « `parent` \| **Graphic \| Movie \| Story \| Sound** \| readonly \| *The linked object.* » (`Link.html`). La hiérarchie de la classe `Link` liste bien `Graphic | Movie | Sound | Story` ⇒ **une `Story` peut porter un `Link`**.
+- `Link.filePath` — « `filePath` \| String, File \| readonly \| *… colon delimited on the Mac OS. Can also accept: File.* » (`Link.html`)
+- `Link.update()` — « `update()` → `Link` — *Updates the link if the source file has been changed.* » (`Link.html`)
+- `LinkStatus` (enum) — `NORMAL`, `LINK_OUT_OF_DATE`, `LINK_MISSING`, `LINK_INACCESSIBLE`, `LINK_EMBEDDED` (`Link.html`)
+- **`InsertionPoint.createTextFragmentLink()` → `Link`** — section « RETURN 15 » de la classe `Link` (`Link.html`, `InsertionPoint.html`)
+- **`placeAndLink(parentStory)`** — apparaît en « Story PARAMETER OF 35 » / « RETURN 20 » de `Link`, et comme méthode de `Document`, `Page`, `Spread`, `MasterSpread`, `EndnoteTextFrame` (`Document.html`, `Page.html`, `Spread.html`)
+- `Story.linkedStoryOptions` — « `linkedStoryOptions` \| `LinkedStoryOption` \| readonly » (`Story.html`) ; classes associées : `LinkedStoryOption` (**14 membres**), `LinkedPageItemOption` (**17 membres**), `ParaStyleMapping` (**15 membres**)
+
+**Ce que la doc NE dit PAS** (faits négatifs, vérifiés sur les pages de classes) :
+
+- `Application.linkingPreferences` (`LinkingPreference`, **9 propriétés**) **et** `Application.wordRTFImportPreferences` (`WordRTFImportPreference`, **26 membres**) n'exposent **aucune** propriété « Create Links When Placing Text and Spreadsheet Files » ⇒ ce réglage d'interface **n'est pas scriptable via les préférences**.
+- `WordRTFImportPreference` (26 membres) et `TaggedTextImportPreference` (**8 propriétés**) n'exposent **aucune** table de mapping de styles ⇒ le mapping passe par `Application.paraStyleMappings` / `charStyleMappings` / `tableStyleMappings`.
+
+**Cause du faux mur** — La déduction « `.contents` ⇒ pas de lien » confondait deux choses : « notre méthode **ne crée pas** de lien » (vrai) et « notre méthode **interdit** le lien » (faux). L'API expose une voie de création **sur un fragment déjà présent** (`createTextFragmentLink()`), donc le lien est atteignable **après** notre insertion, sans `place()`.
+
+**Solution / règle** — Pour obtenir un lien natif vers la source sans sacrifier le mapping :
+
+1. insérer le contenu par notre pipeline habituel (`.contents`) ;
+2. créer le lien en seconde passe via `InsertionPoint.createTextFragmentLink()` ;
+3. laisser le réglage « linked story » au levier API (`Story.linkedStoryOptions`), puisque les préférences ne l'exposent pas ;
+4. ne recourir à `placeAndLink()` que si le lien doit naître **pendant** le placement — et vérifier d'abord son statut de dépréciation.
+
+**Portée** — Toute question « comment obtenir l'icône/le statut du panneau Liens tout en gardant un traitement maison » se traite par cette famille d'API, **jamais** par les préférences (fait négatif A). **Réserve explicite** : ce cas est **`sourcé` au sens documentaire uniquement** — la signature exacte de `createTextFragmentLink()`, la valeur réelle de `linkResourceURI` produite, l'évolution de `status`, le comportement de `update()` sur un lien créé par nous (ré-import brut ou non) et le statut de dépréciation de `placeAndLink()` **ne sont pas mesurés** : ils relèvent de la sonde runtime (`COMMUNICATION/mission_04bis_sonde_lien_runtime.md`).
+
+---
+
+## Cas 38 — UXP n'est PAS rétrocompatible par défaut : `minVersion`/`maxVersion` du manifest, pas une garantie de version
+
+**Thème** : méthode
+**API / objet visé** : `manifest.json` (`host.minVersion`, `host.maxVersion`), versionnage UXP indépendant du host InDesign
+**Statut source** : `mixte`
+**Build de référence** : documentation UXP consultée le 28/09/2026 (page « Plugin manifest », `developer.adobe.com/indesign/uxp/plugins/concepts/manifest/`)
+
+**Contexte** — Mission 04/05 (panneau Import MD en UXP). FJD demande si UXP est rétrocompatible, en prévision de tests sur une machine Windows dont la version d'InDesign/UXP ne sera pas forcément identique au poste de développement (macOS).
+
+**Ce que dit la doc** (extraits vérifiés) :
+
+- Le manifest déclare une plage de compatibilité host explicite : `minVersion` — « *The minimum version of the host app that the plugin supports.* » ; `maxVersion` — « *The maximum version of the host app that the plugin supports* » (défaut : non défini = dernière version du host). (`developer.adobe.com/indesign/uxp/plugins/concepts/manifest/`)
+- Conséquence documentée d'une incompatibilité de version : « *Incompatible plugins will: fail to install if attempted in the given host; be invisible in the in-app plugin marketplace for the given host; be unavailable for update if the update is no longer compatible.* » — un blocage net à l'installation, pas une dégradation silencieuse à l'exécution.
+- Le « UXP Changelog and Product Support Matrix » (Cas 37, déjà cité) établit que **le cycle de version d'UXP est découplé de celui d'InDesign** : ex. UXP 9.3.0 ↔ InDesign 21.4 seulement, UXP 9.4.0 pas encore intégré à aucun host GA au moment de la consultation.
+
+**Signal communautaire à requalifier honnêtement** (recherche large, pas une citation officielle directe retrouvée avec URL exacte lors de cette passe) : InDesign 18.5 embarquerait UXP 7.1 ; l'utilisation d'une API introduite en UXP 7.2 sur cette version d'InDesign provoquerait des erreurs inattendues plutôt qu'un simple message de fonctionnalité absente. **À vérifier par citation officielle exacte avant de le considérer comme acquis** — noté ici comme piste cohérente avec le reste du cas, pas comme fait confirmé.
+
+**Ce que la doc NE dit PAS explicitement** : aucune page consultée (manifest, changelog) n'affirme ni n'infirme qu'un plugin écrit pour une ancienne version d'UXP continue de fonctionner à l'identique sur une version d'InDesign/UXP plus récente. Le silence documentaire porte spécifiquement sur la rétrocompatibilité ascendante (ancien plugin → nouvel hôte), pas seulement sur la compatibilité descendante (nouveau plugin → ancien hôte, elle, bien documentée via `minVersion`/`maxVersion`).
+
+**Cause du risque** — Trois variables croisées, dont une seule sous notre contrôle : (OS × version du moteur UXP embarqué × version d'InDesign). Le plugin ne connaît que le host InDesign visé par son manifest ; il n'a aucune garantie sur la version UXP réellement embarquée par cette version d'InDesign sur le poste de test, ni sur le fait qu'une API utilisée pendant le développement soit disponible sur un poste avec une version plus ancienne.
+
+**Solution / règle** :
+1. Toujours renseigner `minVersion` dans le manifest, alignée sur la version d'InDesign la plus ancienne qu'on accepte réellement de supporter (pas laissée vide/par défaut).
+2. Avant tout test sur une machine tierce (Windows notamment), **consigner la version exacte d'InDesign installée** sur ce poste avant de tirer une conclusion — un résultat positif sur une version ne se généralise pas automatiquement à une autre (cf. mission 04, section cross-platform).
+3. Ne jamais présumer qu'une API utilisée en développement est disponible sur toutes les versions listées dans la plage `minVersion`/`maxVersion` — vérifier la matrice de support UXP↔InDesign (Cas 37) pour la version la plus basse visée.
+
+**Portée** — S'applique à tout projet UXP multi-postes/multi-versions, pas seulement à ce projet. Distinct du Cas 37 (qui porte sur l'API `Link`) : ce cas porte sur le **cycle de vie de version**, orthogonal au contenu fonctionnel du plugin.
 
 ---
 
