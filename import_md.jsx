@@ -30,14 +30,29 @@ var MEMORY_MAPPING_PATH = new File($.fileName).parent.fsName + "/import_md_mappi
 // l'utilisateur (decision FJD 27/09/2026, cf. doc/wiki Cas 25).
 var NOT_MAPPED_LABEL = "\u2014 non mapp\u00e9 \u2014";
 
-// MISSION 03 (25/09, décision FJD) : reconstruction minimale de
-// insertMarkdownWithStyles après régression non identifiée. Quand
-// MINIMAL_MODE = true, main() exécute insertMarkdownWithStyles_v2() au lieu de
-// l'ancienne version — étape 1 = texte brut uniquement (une seule assignation,
-// aucun style, aucune table, aucune liste, aucun segment), cf.
-// COMMUNICATION/mission_03_reconstruction_minimale.md. Remettre à false une
-// fois la reconstruction validée bout en bout (étape 5, non-régression complète).
-var MINIMAL_MODE = true;
+// MISSION 03 — ÉTAPE 8 (point B, décision FJD 28/09/2026) : SUPPRESSION DES ÉMOJIS.
+// Les signes ci-dessous sont des emojis Unicode que les polices de texte ne
+// savent pas rendre (ou rendent en carré vide / tofu). Décision FJD : on les
+// ÉLIMINE purement et simplement — aucune substitution par une police symboles
+// (l'approche Webdings/Wingdings a été essayée et abandonnée : « fail emoji »).
+//   U+26A0 (⚠)  -> supprimé
+//   U+2705 (✅)  -> supprimé
+// U+FE0F (variation selector d'emoji) est retiré : il ne sert qu'à forcer la
+// présentation emoji, sans contenu propre.
+// PÉRIMÈTRE STRICTEMENT FINI : cette liste est le fruit d'un inventaire mesuré
+// des 12 fixtures (5 racine + 7 minimales). La typographie (U+2014 —, U+2026 …,
+// U+2013 –, U+20AC €, U+0153 œ) n'est PAS un emoji et reste INCHANGÉE.
+var EMOJI_STRIP = [
+    "\u26A0",
+    "\u2705"
+];
+
+// MISSION 03 (25/09 → 28/09, décision FJD) : reconstruction minimale achevée.
+// `insertMarkdownWithStyles()` est désormais l'UNIQUE implémentation (étapes
+// 1 à 7 validées en réel une à une, avec commit à chaque étape). Le drapeau
+// MINIMAL_MODE et l'ancienne `insertMarkdownWithStyles()` — conservés jusque-là
+// comme filet de comparaison — ont été retirés à l'étape 8 (non-régression
+// complète). Cf. COMMUNICATION/mission_03_reconstruction_minimale.md.
 
 // ============================================================================
 // SÉRIALISATION JSON MINIMALE
@@ -503,6 +518,18 @@ function isWordBoundaryChar(ch) {
 }
 
 function parseInlineMarkdown(text) {
+    // MISSION 03 — ÉTAPE 8 (décision FJD 28/09/2026) : les émojis sont retirés
+    // ICI, à l'entrée du parseur inline. C'est le SEUL point de suppression : les
+    // `children` en sortent déjà nettoyés, donc `getBlockPlainText()`
+    // (concaténation des `children`) l'est aussi — et TOUT consommateur
+    // d'offsets (paraOffsets de `fullText`, ancrages de table de l'étape 6,
+    // segments gras de l'étape 4) travaille alors sur la MÊME longueur, celle du
+    // texte réellement inséré.
+    // Ne PAS déplacer cette suppression plus bas (par ex. seulement à
+    // l'assemblage de `fullText`) : l'étape 4 relit alors des plages calculées
+    // sur un texte plus long que le paragraphe réel et échoue en
+    // « Object is invalid » (régression observée le 28/09, run 03:00).
+    text = stripEmojis(text);
     var elements = [];
     var i = 0;
     var currentText = "";
@@ -583,6 +610,50 @@ function parseInlineMarkdown(text) {
     }
 
     return elements;
+}
+
+/**
+ * MISSION 03 — ÉTAPE 8 (point B, décision FJD 28/09/2026) : suppression des
+ * emojis du flux de texte, cf. EMOJI_STRIP.
+ *
+ * Retourne le texte débarrassé des émojis de la liste. Chaque émoji retiré
+ * emporte en outre UNE espace immédiatement suivante, s'il y en a une : sans
+ * cela, retirer « ✅ » de « : ✅ Existe » laisserait « :  Existe » (double
+ * blanc). Si l'émoji est en fin de ligne, l'espace traînante disparaît aussi.
+ *
+ * Attention : la suppression raccourcit le texte, donc les offsets de sortie ne
+ * sont plus ceux d'entrée. Pour qu'il n'existe qu'UNE seule vérité de longueur,
+ * elle est appelée en TÊTE de `parseInlineMarkdown` (cf. supra) : les `children`
+ * et tout ce qui en dérive (`getBlockPlainText`, `fullText`, ancrages de table,
+ * segments gras de l'étape 4) portent alors la longueur du texte réellement
+ * inséré. Ne pas l'appeler ailleurs.
+ *
+ * ES3 : pas de String.replace avec callback, pas de Array.indexOf -> boucle.
+ */
+function stripEmojis(text) {
+    if (!text) return text;
+    var out = "";
+    for (var i = 0; i < text.length; i++) {
+        var ch = text.charAt(i);
+        if (ch === "\uFE0F") continue; // variation selector emoji : sans contenu
+        var isEmoji = false;
+        for (var m = 0; m < EMOJI_STRIP.length; m++) {
+            if (EMOJI_STRIP[m] === ch) { isEmoji = true; break; }
+        }
+        if (isEmoji) {
+            // On saute l'émoji, puis TOUTE suite de sélecteurs de variation
+            // (U+FE0F) qui le suivent IMMÉDIATEMENT — c'est le cas réel
+            // « ⚠️ » (U+26A0 U+FE0F) —, puis les espaces qui suivent, pour ne
+            // pas laisser de double blanc à la place de l'émoji retiré.
+            var j = i + 1;
+            while (j < text.length && text.charAt(j) === "\uFE0F") j++;
+            while (j < text.length && text.charAt(j) === " ") j++;
+            i = j - 1; // la boucle `for` fera i++ : on reprend au bon endroit
+            continue;
+        }
+        out += ch;
+    }
+    return out;
 }
 
 /**
@@ -1134,7 +1205,7 @@ function showConfigurationDialog(currentMapping) {
  *    sans rien inventer de plus.
  *
  * Retourne le NOM du style (chaîne), pas l'objet style — cohérent avec l'usage
- * existant de mapping[tag] dans insertMarkdownWithStyles().
+ * de mapping[tag] dans insertMarkdownWithStyles().
  */
 function getLiStyleForIndentLevel(block, mapping) {
     var indentLevel = block.indentLevel || 0;
@@ -1181,256 +1252,33 @@ function getLiStyleForIndentLevel(block, mapping) {
     return mapping["li"];
 }
 
-/**
- * Insère le texte Markdown parsé dans le TextFrame sélectionné avec les styles.
- */
-function insertMarkdownWithStyles(story, blocks, mapping) {
-    try {
-        // ARCHITECTURE RÉÉCRITE (24/09/2026, sur diagnostic + décision FJD) : la
-        // cause racine du désordre de texte (Cas 17 du wiki) n'était PAS l'opérateur
-        // += (corrigé au Cas 14) ni le style hérité (corrigé au Cas 16) — ces deux
-        // corrections étaient réelles mais insuffisantes. La vraie cause, jamais
-        // éliminée : réassigner insertionPoints[-1] À CHAQUE ITÉRATION D'UNE BOUCLE,
-        // quel que soit l'opérateur ("=" ou "+="), ne fait pas avancer le curseur de
-        // façon fiable sur un grand nombre de blocs (confirmé par forum Adobe :
-        // "be careful and do that in reverse order"). Le retrait du gras/italique
-        // avait réduit le nombre de réassignations par bloc à une seule, ce qui a
-        // suffisamment masqué le problème sur les tests précédents (peu de blocs) —
-        // il a reproduit avec un fichier plus long (nombreux blocs consécutifs).
-        //
-        // Nouvelle approche, confirmée par recherche documentaire (pattern reconnu
-        // et même recommandé pour la performance) : construire TOUT LE TEXTE en une
-        // seule chaîne JS (blocs séparés par "\r"), UNE SEULE assignation finale à
-        // story.contents, puis une passe séparée qui applique les styles de
-        // paragraphe par INDEX STABLE sur story.paragraphs (plus de réassignation
-        // répétée de insertionPoints[-1] dans la boucle principale).
-        //
-        // Les tables restent un cas à part (nécessitent une vraie insertion API,
-        // pas de texte) : le texte est découpé en segments autour de chaque table,
-        // chaque segment est écrit par une assignation directe unique (pas dans une
-        // boucle), puis la table est créée entre deux segments.
-
-        story.contents = "";
-        logToFile("insertMarkdownWithStyles: après story.contents='' — story.paragraphs.length=" + story.paragraphs.length + ", story.contents.length=" + story.contents.length);
-
-        // Regrouper les blocs non-table consécutifs pour ne faire qu'UNE assignation
-        // par segment (jamais une par bloc individuel) — segments = tableaux de blocs.
-        var segments = [];
-        var currentSegment = [];
-        for (var s = 0; s < blocks.length; s++) {
-            if (blocks[s].type === "table") {
-                if (currentSegment.length > 0) {
-                    segments.push({ type: "text", blocks: currentSegment });
-                    currentSegment = [];
-                }
-                segments.push({ type: "table", block: blocks[s] });
-            } else {
-                currentSegment.push(blocks[s]);
-            }
-        }
-        if (currentSegment.length > 0) {
-            segments.push({ type: "text", blocks: currentSegment });
-        }
-
-        // Le "\r" de transition entre deux segments TEXTE est écrit une seule fois,
-        // au début de chaque segment texte sauf le tout premier du document.
-        // Une table N'EST PAS un paragraphe : confirmé par recherche documentaire
-        // ("tables occupy a single character position in the story") — elle
-        // s'ancre comme un caractère DANS le paragraphe courant, elle ne crée
-        // jamais son propre saut de paragraphe. Donc aucun "\r" n'est écrit autour
-        // d'un segment table, ni avant ni après — seul du texte avant et du texte
-        // après une table peuvent nécessiter un "\r" entre eux (et un seul, pas
-        // deux). Une version précédente ajoutait un "\r" avant CHAQUE segment y
-        // compris les tables, produisant un paragraphe vide surnuméraire à chaque
-        // table et décalant tout l'index des paragraphes après ce point — bug
-        // trouvé par simulation avant tout test réel (cf. wiki Cas 17/20).
-        var hasWrittenAnyTextSegment = false;
-        for (var seg = 0; seg < segments.length; seg++) {
-            var segment = segments[seg];
-
-            if (segment.type === "text" && hasWrittenAnyTextSegment) {
-                story.insertionPoints[-1].contents = "\r";
-                try {
-                    story.paragraphs[-1].startParagraph = StartParagraph.ANYWHERE;
-                } catch (eStartPara) {
-                    logError(eStartPara, "insertMarkdownWithStyles/resetStartParagraph");
-                }
-            }
-
-            if (segment.type === "table") {
-                var block = segment.block;
-                var rowCount = block.rows.length;
-                var columnCount = rowCount > 0 ? block.rows[0].length : 0;
-                if (rowCount > 0 && columnCount > 0) {
-                    try {
-                        var newTable = story.insertionPoints[-1].tables.add({
-                            headerRowCount: 1,
-                            bodyRowCount: rowCount - 1,
-                            columnCount: columnCount
-                        });
-                        for (var r = 0; r < rowCount; r++) {
-                            for (var cIdx = 0; cIdx < columnCount; cIdx++) {
-                                var cellText = block.rows[r][cIdx] || "";
-                                newTable.rows[r].cells[cIdx].texts[0].contents = cellText;
-                            }
-                        }
-                        var tableStyleName = mapping["table"];
-                        if (tableStyleName) {
-                            var tableStyleObj = findTableStyleByName(tableStyleName);
-                            if (tableStyleObj) {
-                                newTable.appliedTableStyle = tableStyleObj;
-                            } else {
-                                logError({ message: "Style de tableau introuvable : " + tableStyleName }, "insertMarkdownWithStyles/tableStyle");
-                            }
-                        }
-                    } catch (eTable) {
-                        logError(eTable, "insertMarkdownWithStyles/table");
-                    }
-                }
-                continue;
-            }
-
-            // Segment de texte : construire la chaîne complète du segment en JS pur,
-            // puis UNE SEULE assignation à insertionPoints[-1].contents.
-            //
-            // Cas particulier des blocs "code" multi-lignes : leur .text contient
-            // des "\n" internes (une ligne de code = une ligne source, à l'intérieur
-            // du MÊME bloc/paragraphe). Vérifié via doc officielle et forums Adobe :
-            // "\n" assigné à .contents est traité comme un saut de ligne forcé
-            // InDesign (SpecialCharacters.FORCED_LINE_BREAK), qui reste dans le même
-            // paragraphe sans en ouvrir un nouveau — comportement confirmé, pas
-            // besoin de substitution vers un autre caractère Unicode.
-            var segBlocks = segment.blocks;
-            var fullText = "";
-            for (var i = 0; i < segBlocks.length; i++) {
-                fullText += segBlocks[i].text;
-                if (i < segBlocks.length - 1) {
-                    fullText += "\r";
-                }
-            }
-
-            // Mémoriser l'index du paragraphe où le PREMIER bloc de ce segment va
-            // s'écrire, pour appliquer les styles ensuite par index stable (pas par
-            // [-1] recalculé en boucle).
-            //
-            // Point clé (trouvé par simulation, cf. wiki Cas 09/11/20) : si un "\r"
-            // vient d'être écrit juste avant (transition entre segments texte), il a
-            // OUVERT un nouveau paragraphe VIDE qui est déjà le "paragraphe courant"
-            // — écrire du texte dedans le REMPLIT, ça ne crée pas encore un nouveau
-            // paragraphe après lui. Donc le premier bloc du segment s'écrit dans
-            // story.paragraphs[-1] (le dernier existant, vide), pas dans un
-            // paragraphe qui n'existe pas encore à cet index. Seul le TOUT PREMIER
-            // segment du document entier (story vide dès le départ) est déjà
-            // positionné sur paragraphs[0] sans "\r" préalable — même logique,
-            // simplement l'index 0 au lieu de "length - 1".
-            //
-            // CORRECTIF confirmé par log réel (25/09) : l'hypothèse "un TextFrame
-            // vide a toujours au moins 1 paragraphe" (répétée par plusieurs forums
-            // Adobe) s'est révélée FAUSSE dans ce cas précis — après une assignation
-            // EXPLICITE de story.contents = "", le log a montré
-            // story.paragraphs.length = 0 (pas 1). Le calcul "paragraphsBeforeCount
-            // - 1" produisait alors -1 sur le tout premier segment, décalant
-            // irrémédiablement tous les indices suivants (paraIndex "contagieux",
-            // signalé par FJD). Corrigé avec Math.max(0, ...) : si la story est
-            // réellement vide (length=0), le premier bloc vise l'index 0 (pas -1) ;
-            // sinon le comportement précédent (dernier paragraphe existant, qui
-            // vient d'être ouvert par un "\r") reste inchangé.
-            var paragraphsBeforeCount = story.paragraphs.length;
-            var firstNewParagraphIndex = Math.max(0, paragraphsBeforeCount - 1);
-            logToFile("insertMarkdownWithStyles: segment texte seg=" + seg + " paragraphsBeforeCount=" + paragraphsBeforeCount + " firstNewParagraphIndex=" + firstNewParagraphIndex + " segBlocks.length=" + segBlocks.length);
-
-            // Compter les "\r" réellement présents dans fullText avant assignation,
-            // pour isoler si le problème vient de la construction JS de fullText ou
-            // de la façon dont InDesign interprète l'assignation (25/09, diagnostic
-            // du bug "paragraphElements.length=1 au lieu de 85").
-            var crCount = 0;
-            for (var crIdx = 0; crIdx < fullText.length; crIdx++) {
-                if (fullText.charAt(crIdx) === "\r") crCount++;
-            }
-            logToFile("insertMarkdownWithStyles: avant assignation — fullText.length=" + fullText.length + " nombre de \\r dans fullText=" + crCount + " (attendu=" + (segBlocks.length - 1) + ")");
-
-            story.insertionPoints[-1].contents = fullText;
-            logToFile("insertMarkdownWithStyles: juste après assignation — story.paragraphs.length=" + story.paragraphs.length);
-
-            // Appliquer le style de paragraphe de chaque bloc du segment, par index
-            // stable. IMPORTANT (25/09, bug réel trouvé via log — erreur "Object is
-            // invalid" ligne appliedParagraphStyle) : story.paragraphs[i] N'EST PAS
-            // un objet à identité fixe, c'est une plage de caractères résolue à
-            // chaque accès. Certains styles de paragraphe (ex. liste à puces avec
-            // puce automatique InDesign) insèrent un caractère dans le flux de texte
-            // au moment où le style est appliqué — ça peut invalider les indices de
-            // paragraphes déjà "vus" mais pas encore stylés dans la MÊME boucle, le
-            // script plante en cours de route (confirmé par forum Adobe : pattern
-            // recommandé = story.paragraphs.everyItem().getElements() pour obtenir
-            // un tableau JS stable, snapshoté une fois, plutôt que de ré-interroger
-            // la collection dynamique à chaque itération).
-            var paragraphElements = story.paragraphs.everyItem().getElements();
-            logToFile("insertMarkdownWithStyles: après écriture fullText — paragraphElements.length=" + paragraphElements.length + " (attendu ~= firstNewParagraphIndex+segBlocks.length=" + (firstNewParagraphIndex + segBlocks.length) + ")");
-            for (var p = 0; p < segBlocks.length; p++) {
-                var paraIndex = firstNewParagraphIndex + p;
-                // Déterminer le style approprié pour les blocs de liste imbriqués
-                var paraStyleName = segBlocks[p].type;
-                if (segBlocks[p].type === "li") {
-                    paraStyleName = getLiStyleForIndentLevel(segBlocks[p], mapping);
-                } else {
-                    paraStyleName = mapping[segBlocks[p].type];
-                }
-                if (paraStyleName) {
-                    var paraStyle = findParagraphStyleByName(paraStyleName);
-                    if (paraStyle) {
-                        if (paragraphElements[paraIndex]) {
-                            paragraphElements[paraIndex].appliedParagraphStyle = paraStyle;
-                        } else {
-                            logError({ message: "Paragraphe introuvable à l'index " + paraIndex }, "insertMarkdownWithStyles/pass1/paraIndex");
-                        }
-                    } else {
-                        logError({ message: "Style de paragraphe introuvable : " + paraStyleName }, "insertMarkdownWithStyles/pass1");
-                    }
-                }
-            }
-
-            hasWrittenAnyTextSegment = true;
-        }
-
-        return true;
-
-    } catch (e) {
-        logError(e, "insertMarkdownWithStyles");
-        alertUser("Erreur lors de l'insertion du texte : " + e.message);
-        return false;
-    }
-}
 
 /**
- * MISSION 03 — reconstruction minimale, ÉTAPES 1 à 6.
- * (COMMUNICATION/mission_03_reconstruction_minimale.md, décisions FJD 25-27/09)
+ * MISSION 03 — import Markdown complet (étapes 1 à 7).
+ * (COMMUNICATION/mission_03_reconstruction_minimale.md, décisions FJD 25-28/09)
  *
- * Cette fonction est une COPIE ISOLÉE : l'ancienne insertMarkdownWithStyles()
- * ci-dessus reste inchangée tant que la nouvelle n'est pas validée bout en bout.
+ * Implémentation UNIQUE depuis l'étape 8 (non-régression complète) : l'ancienne
+ * `insertMarkdownWithStyles()` — conservée jusque-là comme filet de comparaison —
+ * a été supprimée, ainsi que le drapeau MINIMAL_MODE qui l'appelait.
  *
- * Ce qu'elle fait — rien d'autre :
+ * Ce qu'elle fait, dans l'ordre :
  *   1. Construire fullText = textes des blocs joints par "\r" (blocs "table"
  *      EXCLUS de ce texte : ils n'ont pas de .text et sont ancrés séparément à
  *      l'étape 6, cf. plus bas).
  *   2. story.contents = "" puis UNE SEULE assignation à insertionPoints[-1]
  *      (mode cadre) ou à options.insertAt (mode curseur, story NON vidée).
  *   3. ÉTAPE 2 — appliquer à chaque paragraphe le style lu dans le mapping du
- *      document, par INDEX STABLE (n-ième bloc non-table = n-ième paragraphe,
- *      base = index du paragraphe portant le curseur en mode curseur). Style
- *      neutre (jamais d'échec) si une clé manque ou pointe un style inexistant.
+ *      document, par INDEX STABLE. Un bloc peut produire PLUSIEURS paragraphes
+ *      (étape 7 : un paragraphe par ligne de code) : l'index du paragraphe est
+ *      donc obtenu via paraOffsets[], et non par le rang du bloc. Style neutre
+ *      (jamais d'échec) si une clé manque ou pointe un style inexistant.
  *      Aucun nom de style n'est codé en dur : tout vient du mapping.
- *   4. ÉTAPE 6 — ancrer les tables Markdown comme de VRAIES tables InDesign,
- *      dans le paragraphe qui les précède (une table occupe UNE position de
- *      caractère : elle ne crée aucun paragraphe, donc l'index stable des
- *      paragraphes ci-dessus reste valide).
- *
- * Ce qu'elle ne fait PAS (volontairement) : aucun bloc de code (étape 7). Les
- * segments inline (gras/italique) sont traités à l'étape 4 et la cascade
- * d'indentation des listes à l'étape 5, toutes deux plus bas dans cette
- * fonction. Chaque couche est réintroduite une à une, avec test réel InDesign +
- * commit git à chaque étape validée — jamais plusieurs couches d'un coup.
+ *   4. ÉTAPE 4 — segments inline (gras/italique) ; ÉTAPE 5 — cascade
+ *      d'indentation des listes ; ÉTAPE 6 — tables InDesign ancrées par offset
+ *      caractère ; ÉTAPE 7 — blocs de code littéraux (un paragraphe par ligne,
+ *      le style étant appliqué à TOUTES les lignes du bloc).
  */
-function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
+function insertMarkdownWithStyles(story, blocks, mapping, options) {
     try {
         // Étape 1 : textes des blocs non-table collectés puis joints par un seul
         // "\r" entre chaque (formulation fidèle au snippet de la mission ; les
@@ -1462,7 +1310,12 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         for (var i = 0; i < blocks.length; i++) {
             if (blocks[i].type === "table") continue;
             var partText = getBlockPlainText(blocks[i]);
-            paraOffsets[textParts.length] = crsSoFar + textParts.length;
+            // Les émojis ont déjà été retirés par `parseInlineMarkdown` (cf.
+            // supra) : `getBlockPlainText` concatène des `children` nettoyés.
+            // Un bloc `code` n'a jamais traversé le parseur inline — son texte
+            // reste donc LITTÉRAL, émojis compris, comme ses marqueurs.
+            var partStart = crsSoFar + textParts.length;
+            paraOffsets[textParts.length] = partStart;
             var partCrs = 0;
             for (var pc = 0; pc < partText.length; pc++) {
                 if (partText.charAt(pc) === "\r") partCrs++;
@@ -1603,6 +1456,16 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         logToFile("M03-etape0bis: contraste — story capturee AVANT vidage : snapshot=" + straySnapshot +
             " | contents.length=" + strayContentsLength + " || targetPoint.contents.length=" + targetContentsLength);
         logToFile("M03-etape1: apres assignation — paragraphes reels=" + liveParaFromCr + " (avant=" + paraCountBefore + ", blocs=" + blockCount + ", insertAtCursor=" + insertAtCursor + ")");
+
+        // ÉTAPE 8 (point B, décision FJD 28/09/2026) : les emojis sont SUPPRIMÉS
+        // du texte AVANT insertion (cf. stripEmojis / EMOJI_STRIP). Il n'y a donc
+        // plus rien à appliquer APRÈS insertion : ni glyphe de substitution, ni
+        // police symboles. L'ancienne passe « re-police Webdings/Wingdings »
+        // avait un défaut fatal — elle posait une surcharge de police AVANT
+        // l'étape 2, qui appelle applyParagraphStyle(style, true) (clearing
+        // overrides) et l'effaçait aussitôt : d'où un « fail emoji » muet
+        // (compteur à 0 échec, rendu faux). La suppression en amont élimine la
+        // cause, pas le symptôme.
 
         // Le chiffre annoncé est celui de l'arbitre JS pur (infaillible). On
         // signale toute divergence avec l'attendu OU avec la mesure DOM.
@@ -1852,46 +1715,6 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
             (liParCascade > 0 ? " cascade_titres=" + liParCascade : ""));
 
         // -------------------------------------------------------------------
-        // SONDE CIBLEE (27/09/2026, run 15:49). Le symptome reel rapporte par
-        // FJD (« contamination + dernier paragraphe en standard ») est la
-        // signature d'un decalage d'UN cran, pas d'une erreur d'arithmetique :
-        // le delta +84 du run est NORMAL (les 85 lignes ne creent que 84
-        // frontieres nouvelles, la 1re ligne reutilise un paragraphe existant).
-        // Le log de fenetre est AVEUGLE par construction (il relit
-        // paraSnapshot[base+pb] et le compare au meme bloc). On dumpe donc le
-        // CONTENU + le STYLE des paragraphes VOISINS de la frontiere et de la
-        // FIN : le contenu localise le cran sans ambiguite.
-        // Sonde temporaire, ASCII seul, a retirer a l'etape 8.
-        // -------------------------------------------------------------------
-        // SONDE v2 (27/09/2026, run 16:27) : la v1 a disculpe la boucle
-        // (para[171] = bloc #0, para[255] = bloc #84, ecarts=0, neutre=0).
-        // On emet maintenant une CARTE des styles en plages (run-length) sur
-        // TOUTE la story, plus le nombre de paragraphes relus en direct :
-        // une seule ligne suffit a voir tout decalage ou tout trou.
-        // Sonde temporaire, ASCII seul, a retirer a l'etape 8.
-        var liveNowLen = -1;
-        try { liveNowLen = liveStory.paragraphs.everyItem().getElements().length; } catch (eLN) {}
-        logToFile("M03-sonde2: snapshot=" + paraSnapshot.length + " liveNow=" + liveNowLen + " base=" + baseParaIndex);
-        var mapParts = [];
-        var mapRunStyle = null;
-        var mapRunStart = 0;
-        for (var mi = 0; mi < paraSnapshot.length; mi++) {
-            var miStyle = "?";
-            try { miStyle = safeStyleName(paraSnapshot[mi].appliedParagraphStyle, "?"); } catch (eMS) {}
-            if (miStyle !== mapRunStyle) {
-                if (mapRunStyle !== null) {
-                    mapParts.push(mapRunStart + (mapRunStart === mi - 1 ? "" : "-" + (mi - 1)) + "=" + mapRunStyle);
-                }
-                mapRunStyle = miStyle;
-                mapRunStart = mi;
-            }
-        }
-        if (mapRunStyle !== null) {
-            mapParts.push(mapRunStart + (mapRunStart === paraSnapshot.length - 1 ? "" : "-" + (paraSnapshot.length - 1)) + "=" + mapRunStyle);
-        }
-        logToFile("M03-carte: n=" + paraSnapshot.length + " base=" + baseParaIndex + " | " + mapParts.join(" "));
-
-        // -------------------------------------------------------------------
         // ÉTAPE 3 — COMPTEUR DES TITRES (décision FJD 26/09/2026, révisée le
         // 27/09/2026 — option 1). Il n'existe plus qu'UNE provenance de titre :
         // le vrai #/##/###... (l'ancienne conversion « puce entièrement en gras »
@@ -2076,8 +1899,8 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         // MISSION 03 — ÉTAPE 6 : TABLEAUX
         // (COMMUNICATION/mission_03_reconstruction_minimale.md, décisions FJD 26-27/09)
         //
-        // Route technique reprise TELLE QUELLE de l'ancienne
-        // insertMarkdownWithStyles() (L1049-1071), qui l'avait déjà éprouvée :
+        // Route technique de création de table InDesign, éprouvée dès les
+        // premiers tests réels de la mission 03 et reprise sans changement :
         //   anchorPoint.tables.add({headerRowCount:1, bodyRowCount:rowCount-1,
         //                           columnCount:columnCount})
         //   newTable.rows[r].cells[c].texts[0].contents = <texte de cellule>
@@ -2124,7 +1947,7 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         // `liveContents` a été relevé AVANT le stylage (étapes 2/4/5). Or
         // certains styles de paragraphe (puce automatique InDesign) peuvent
         // INJECTER des caractères dans le flux au moment où on les applique
-        // (constat déjà documenté dans l'ancienne insertMarkdownWithStyles).
+        // (constat documenté dès les premiers tests réels de la mission 03).
         // Si c'est arrivé, les offsets calculés depuis fullText ne désignent
         // plus les bons endroits. On RELIT donc la story MAINTENANT (juste
         // avant le premier ancrage) et on exige que sa longueur vaille
@@ -2358,7 +2181,7 @@ function insertMarkdownWithStyles_v2(story, blocks, mapping, options) {
         return true;
 
     } catch (e) {
-        logError(e, "insertMarkdownWithStyles_v2");
+        logError(e, "insertMarkdownWithStyles");
         alertUser("Erreur (v2 étape 1) : " + e.message);
         return false;
     }
@@ -2922,27 +2745,17 @@ function main() {
         }
 
         // Insérer le Markdown avec les styles.
-        // MISSION 03 : si MINIMAL_MODE est actif, on exécute la reconstruction
-        // minimale (étape 1 : texte brut, cf. COMMUNICATION/
-        // mission_03_reconstruction_minimale.md) — l'ancienne version reste
-        // disponible et inchangée pour comparaison (MINIMAL_MODE = false).
-        var success;
-        if (MINIMAL_MODE) {
-            success = insertMarkdownWithStyles_v2(targetStory, blocks, mapping, insertionOptions);
-            if (success) {
-                alertUser("M03 étapes 1/1bis (texte brut) + 2 (styles de paragraphe) + 3 (titres) exécutées.\n\nMode de sélection détecté : " + resolved.mode + "\n\nVérifiez le log import_md_errors.log :\ncompteurs M03-etape2 (blocs / attendus / reels / ecarts) et M03-etape3 (titres reels / maxMappe / derives), plus le style relu de chaque bloc. NE PAS avancer tant qu'un ecart persiste.");
-            }
-        } else {
-            success = insertMarkdownWithStyles(targetStory, blocks, mapping);
-        }
+        // MISSION 03 (étape 8) : `insertMarkdownWithStyles()` est l'unique
+        // implémentation depuis la non-régression complète ; l'ancienne
+        // `insertMarkdownWithStyles()` et le drapeau MINIMAL_MODE ont été
+        // retirés. Cf. COMMUNICATION/mission_03_reconstruction_minimale.md.
+        var success = insertMarkdownWithStyles(targetStory, blocks, mapping, insertionOptions);
         if (!success) {
             alertUser("Échec de l'insertion du Markdown avec les styles.");
             return;
         }
 
-        if (!MINIMAL_MODE) {
-            alertUser("Markdown inséré avec succès avec les styles configurés !");
-        }
+        alertUser("Markdown inséré avec succès avec les styles configurés !");
 
     } catch (e) {
         logError(e, "main");
