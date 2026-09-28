@@ -72,6 +72,16 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ---
 
+## Mission 03bis — Rétro-documentation : URLs manquantes dans le wiki
+
+**Statut** : 🔴 À FAIRE — mission intermédiaire, à la suite du chapitre 1 (mission 03), sans dépendance avec la mission 04 (chapitre 2, reste bloquée indépendamment)
+
+**Fichier détaillé** : [mission_03bis_retrodoc_wiki_urls.md](mission_03bis_retrodoc_wiki_urls.md)
+
+**Résumé** : la méthode générale du wiki (réflexe n°1) impose depuis le 23/09 que toute vérification documentaire donnant lieu à un cas inclue citation exacte + URL source. Constat FJD du 28/09 : sur 34 cas, seuls 2 (Cas 31, 34) respectent la règle. Mission en 2 temps : trier les cas entre "API confirmée par doc externe" (URL due) et "découverte par test réel/log" (URL non pertinente), puis compléter uniquement la première catégorie — sans reconstruire de fausses citations a posteriori.
+
+---
+
 ## Mission 04 — Audit : lien dynamique vers le Markdown source (UXP vs update() natif vs solution maison)
 
 **Statut** : 🔴 BLOQUÉE — en attente de la clôture complète de la mission 03 (étapes 4 à 8 + intégration menu natif « Fichier > Importer > Importer un MD »). Ne pas démarrer avant. Ouvre le second chapitre du projet, « Panneau Import MD ».
