@@ -2763,5 +2763,77 @@ function main() {
     }
 }
 
+// ============================================================================
+// ÉTAPE 9 — POINT D'ENTRÉE NATIF DANS LE MENU (Fichier > Importer un MD)
+// ============================================================================
+//
+// Structure RÉELLE mesurée dans InDesign 21.6.0.57 fr_FR le 28/09 (sondes
+// tools/probe_menu.jsx + tools/probe_menu2.jsx, journal probe_menu2.log) :
+//   - app.menus contient 151 entrées, mais UNE SEULE est la barre de menus :
+//     « Main » (11 sous-menus). Les 150 autres sont des menus contextuels ou
+//     de panneaux.
+//   - Le menu Fichier est un SOUS-MENU de Main :
+//       MENU d=1 | path=Main/&Fichier | name=Fichier | title=&Fichier
+//                | items=29 | submenus=6
+//   - Le title porte l'ESPERLUETTE D'ACCÉLÉRATEUR (« &Fichier ») : comparer le
+//     title brut ne matche JAMAIS « Fichier ». On retire donc les « & » avant
+//     toute comparaison (title comme name).
+//   - « Importer… » est un ITEM DIRECT du menu Fichier, PAS un sous-menu :
+//       ITEM path=Main/&Fichier [10] name=Importer... | title=I&mporter...
+//            | action=Importer...
+//     Aucun des 6 sous-menus de Fichier n'est « Importer ». L'entrée est donc
+//     posée DANS le menu Fichier, juste APRÈS « Importer… » (emplacement le
+//     plus proche confirmé par la mesure, conformément à la mission).
+//
+// NATURE DU DÉCLENCHEUR — la doc accepte deux formes (File ou fonction), mais
+// une seule survit. Mesure réelle (sonde 3, 28/09/2026, InDesign 21.6.0.57
+// fr_FR, outil tools/probe_menu3.jsx) : action.invoke() PENDANT le script
+// fonctionne avec les deux formes, mais APRÈS la fin du script SEUL un
+// gestionnaire de type File écrit au journal — les formes « fonction »
+// n'écrivent rien (au clic : typeof main = undefined, typeof logToFile =
+// undefined, typeof $.global.__M03_MENU_HANDLER = undefined). Une fonction du
+// script ne survit donc PAS à la fin du script ; le seul déclencheur durable
+// est un File, c'est-à-dire CE script. Cliquer l'entrée le réexécute, et ses
+// dernières instructions sont l'enregistrement de l'entrée (sans effet :
+// l'entrée est déjà conforme) puis main(). Le clic déclenche donc EXACTEMENT
+// main(), sans logique dupliquée.
+//
+// PERSISTANCE — l'enregistrement est en mémoire applicative : l'entrée ne
+// survit PAS à un redémarrage d'InDesign (mesure FJD 28/09/2026, wiki Cas 34).
+// Elle est recréée au lancement par le script de démarrage import_md_loader.jsx
+// (dossier « Startup Scripts », niveau UTILISATEUR — mesuré fonctionnel,
+// wiki Cas 35).
+//
+// Doc officielle (indesignjs.de/indesignapi/indesign/, export du modèle objet
+// Adobe InDesign 2026) : MenuItems.add(associatedMenuAction, at?, reference?,
+// withProperties?) ; ScriptMenuAction extends MenuAction ; Menus n'a PAS de
+// add() ; ScriptMenuAction.ON_INVOKE ; addEventListener(eventType, handler),
+// le handler pouvant être « File or JavaScript Function ».
+
+// ---------------------------------------------------------------------------
+// Enregistrement de l'entrée de menu.
+//
+// Il vit désormais dans le module PARTAGÉ import_md_menu.jsx (voie A, option
+// (a) — décision FJD 28/09/2026), pour que le Panneau Scripts et le script de
+// démarrage (import_md_loader.jsx) partagent UN SEUL code. Les helpers qui
+// vivaient ici (MENU_ACTION_NAME, normalizeMenuTitle, safeMenuTitle,
+// safeMenuName, findMainMenu, findSubmenuByTitle, countOwnScriptActions,
+// resolveOwnScriptPath) ont été déplacés dans ce module — rien n'est dupliqué.
+//
+// Le module est chargé puis appelé AVANT l'import, de façon idempotente. Un
+// échec ici est journalisé mais ne bloque JAMAIS l'import : le Panneau Scripts
+// reste le point d'entrée de référence.
+// ---------------------------------------------------------------------------
+try {
+    $.evalFile(new File(new File($.fileName).parent.fsName + "/import_md_menu.jsx"));
+} catch (eMenuLoad) {
+    logToFile("M03-etape9: module import_md_menu.jsx non chargeable -> entree de menu non creee (import inchange) | message=" + eMenuLoad.message);
+}
+if (typeof importMdRegisterMenuEntry !== "undefined") {
+    importMdRegisterMenuEntry.register($.fileName);
+} else {
+    logToFile("M03-etape9: importMdRegisterMenuEntry ABSENT apres chargement -> entree de menu non creee");
+}
+
 // Exécuter le script
 main();

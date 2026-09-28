@@ -906,6 +906,64 @@ C'est **faux**. La sonde appelait `tt(typeof main)`, où `tt` était elle-même 
 
 ---
 
+## Cas 36 — Une entrée de menu durable : module partagé `$.evalFile` + chargeur de démarrage (implémentation mesurée)
+
+**Origine** : étape 9 de la mission 03. Les Cas 31 à 35 avaient **tranché la conception** (déclencheur `File` durable, entrée non persistante, chargeur de démarrage mesuré) ; ce cas documente le **choix d'architecture retenu** (acté par FJD : « oui, option A ») et **sa mesure en réel** après un vrai redémarrage d'InDesign.
+
+**Le choix — voie A, option (a) : un module partagé, zéro duplication.** Le script livrable `import_md.jsx` se termine par `main();` (il **exécute** l'import). Le chargeur de démarrage ne doit donc **jamais** l'exécuter — sinon la boîte de dialogue s'ouvrirait à chaque lancement (piège déjà posé au Cas 35). Pour que le chargeur puisse **enregistrer** l'entrée **sans dupliquer** la logique d'enregistrement, celle-ci a été extraite dans un **module autonome** :
+
+| Fichier | Rôle | Ne doit jamais… |
+|---|---|---|
+| `import_md_menu.jsx` | module partagé : expose `importMdRegisterMenuEntry.register(path)` | être exécuté pour autre chose que définir le module |
+| `import_md.jsx` | livrable : charge le module (`$.evalFile`) **puis** `main()` | — |
+| `import_md_loader.jsx` | chargeur de démarrage : charge le module puis **`register`** (jamais `main()`) | exécuter `import_md.jsx` |
+
+Le module est chargé par `$.evalFile(new File(<dossier du fichier appelant> + "/import_md_menu.jsx"))` — le chemin est **relatif à l'appelant** (`new File($.fileName).parent.fsName`), jamais absolu : le Panneau Scripts et le dossier de démarrage le résolvent chacun depuis son propre côté, sans chemin en dur. Après chargement, les deux appelants testent `typeof importMdRegisterMenuEntry !== "undefined"` avant d'appeler `register(...)`.
+
+**`register` est idempotent et ne détruit jamais l'entrée qu'on vient d'activer.** La séquence : (1) inventaire des items de `Fichier` et repérage de la référence `Importer...` ; (2) **chemin rapide de conformité** — si l'entrée est déjà bien placée **et** qu'il n'y a qu'**une** action de ce nom, on **retourne sans rien retirer** ; (3) sinon seulement, retrait des résidus (items d'abord, puis `app.scriptMenuActions` de la fin vers le début) ; (4) placement `items.add(action, LocationOptions.AFTER, refItem)` ; (5) action créée via `app.scriptMenuActions.add(...)`, `eventType` pris sur `ScriptMenuAction.ON_INVOKE`, `handler = new File(<chemin de import_md.jsx>)`. C'est l'étape (2) qui garantit qu'un **clic** — qui réexécute `import_md.jsx` donc `register` — ne **retire pas** l'entrée en cours d'invocation.
+
+**Le chargeur, sans `#targetengine` — divergence assumée d'avec le modèle Adobe.** Le modèle Adobe (`ConvertURLToHyperlinkMenuItemLoader.jsx`, cf. Cas 35) pose un `#targetengine` dédié parce que son déclencheur est une **fonction** en mémoire. Ici le déclencheur est un **`File`** (durable, cf. Cas 31/33) : un moteur dédié n'apporte rien et ne ferait que **séparer** le module du moteur principal. Le chargeur a donc été écrit **sans** `#targetengine` ; son rôle est strictement : retrouver le dossier `Scripts` depuis sa propre position (`IMD_SELF.parent` → `startupDir`, `.parent` → `scriptsDir`), localiser le dossier `Scripts Panel` (essai direct, sinon **balayage d'un niveau** des sous-dossiers à la recherche d'un dossier contenant `import_md.jsx` — parade aux noms de dossiers localisés/ accentués), puis charger le module et appeler `register(<chemin de import_md.jsx>)`. Il est **100 % ASCII** et ne journalise jamais dans un log qui n'existerait pas encore.
+
+**Mesure en réel — après un vrai redémarrage d'InDesign le 28/09/2026**, journal `…/Scripts Panel/import_md_errors.log` (normalisé `LC_ALL=C tr '\r' '\n'`), InDesign `21.6.0.57 fr_FR`. Extraits **verbatim** (dates réelles, chemins abrégés par `…`) :
+
+```
+[Mon Sep 28 2026 11:26:27 GMT+0200] LOADER-DEMARRAGE: loader=…/Scripts/Startup Scripts/import_md_loader.jsx
+   | startupDir=…/Scripts/Startup Scripts | scriptsDir=…/Scripts
+   | panelDir=…/Scripts/Scripts Panel
+   | target=…/Scripts Panel/import_md.jsx (exists=true) | module=…/Scripts Panel/import_md_menu.jsx (exists=true)
+[Mon Sep 28 2026 11:26:29 GMT+0200] M03-etape9: entree de menu creee -> 'Importer un MD' apres 'Importer...'
+   | menu='Fichier' items 29 -> 30 | declencheur=File …/Scripts Panel/import_md.jsx (exists=true) | eventType=onInvoke | scriptMenuActions=4
+[Mon Sep 28 2026 11:26:29 GMT+0200] LOADER-DEMARRAGE: register -> true | scriptMenuActions=4
+```
+
+⇒ **au lancement**, le chargeur a résolu correctement **tous** ses chemins (y compris les dossiers accentués, via le balayage), chargé le module, et **posé l'entrée** à l'index 11 (juste après `Importer...` = index 10), avec un gestionnaire `File` dont la cible `exists=true`. **La chaîne lancement → chargeur → module → entrée est établie en réel.**
+
+**Et un clic, qui réexécute le script, est un no-op d'enregistrement** (même journal, deux clics) :
+
+```
+[Mon Sep 28 2026 11:27:39 GMT+0200] M03-etape9: entree de menu deja conforme -> rien a faire | menu='Fichier' items=30 | index=11 | scriptMenuActions=1
+[Mon Sep 28 2026 11:27:52 GMT+0200] M03-etape9: entree de menu deja conforme -> rien a faire | menu='Fichier' items=30 | index=11 | scriptMenuActions=1
+[Mon Sep 28 2026 11:28:26 GMT+0200] M03-etape2: blocs=25 paragraphes attendus=34 reels=34 ecarts=0 | mode=curseur base=0 story_total=34 styles=25 neutre=0 baseIndexConnu=true avant_fenetre=0 apres_fenetre=0
+[Mon Sep 28 2026 11:28:28 GMT+0200] M03-etape4: segments appliques=22 residuels=0 debordements=0 | blocs_avec_segments=16 imbriques=23 (italique prioritaire sur le gras : un seul style de caractere possible)
+[Mon Sep 28 2026 11:28:28 GMT+0200] M03-etape6: tables=1 dims=2x3 cellules=6 paragraphes_hors_table=25
+[Mon Sep 28 2026 11:28:28 GMT+0200] M03-etape7: code_blocs=2 lignes=11 literaux_intacts=true tables_detectees_dans_code=1 lignes_code_stylees=9
+[Mon Sep 28 2026 11:28:28 GMT+0200] M03-etape6-detail: mode=curseur base_offset=0 ancrages=[693] erreurs=0 style_table=Table 1 style_cellule_para=appele:P Table cellules_style=6 cellules_neutre=0 story_len=2632 fullText_len=2632 offsets_fiables=true offset_verifie=true
+```
+
+⇒ le clic **réexécute `import_md.jsx`**, trouve l'entrée **déjà conforme** (« rien a faire », `items=30` et `index=11` **inchangés** — l'entrée en cours d'invocation n'est **pas** détruite), puis **`main()` tourne en entier** (étapes 2, 4, 6, 7 journalisées, `ecarts=0`, `residuels=0`, `debordements=0`, `erreurs=0`, `offset_verifie=true`). **Le clic déclenche exactement `main()`, sans duplication.**
+
+**Verdict FJD (test réel du 28/09/2026)** : « **L'entrée est là, l'import fonctionne.** »
+
+**Réserves honnêtes** :
+
+- un seul poste, une seule version (`21.6.0.57 fr_FR`) ;
+- la **copie dans le dossier d'application** du chargeur n'a pas été déposée (elle exige `sudo`) : seul le dossier **utilisateur** est utilisé ;
+- le comportement si le module `import_md_menu.jsx` est **absent** ou corrompu n'est pas mesuré — le code journalise alors un échec **non bloquant** (`module … non chargeable -> entree de menu non creee (import inchange)`) et l'import via le Panneau Scripts reste fonctionnel, mais cette branche n'a pas été exercée en réel.
+
+**Règle** : quand deux points d'entrée doivent partager une logique de script (ici le Panneau Scripts **et** le chargeur de démarrage), **extraire la logique dans un module `$.evalFile` autonome** — jamais la recopier (deux copies divergeraient au premier correctif, cf. le piège structurel ci-dessous). Le module ne fait que **définir** ; les appelants décident d'**exécuter** (`main()`) ou d'**enregistrer** (`register()`). Et tout enregistrement d'entrée déclenché par l'entrée elle-même doit d'abord **vérifier la conformité** et **sortir sans rien retirer** — sinon le premier clic détruit l'entrée qu'il vient d'activer.
+
+---
+
 ## Piège structurel à retenir — deux copies du même script
 
 InDesign exécute les scripts depuis `~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/`, pas depuis le dossier de travail/repo. Toute correction faite sur le fichier source doit être recopiée vers cet emplacement avant test, sinon on corrige un fichier que le logiciel n'utilise jamais (piège rencontré le 23/09/2026, cf. mission_01).
