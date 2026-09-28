@@ -1,7 +1,21 @@
 # Mission 04 — Audit : lien dynamique vers le Markdown source (UXP vs update() natif vs solution maison)
 
-**Statut** : 🔴 BLOQUÉE — en attente de la clôture complète de la mission 03 (étapes 4 à 8 + intégration menu natif). Ne pas démarrer avant.
-**Cadrage (FJD, 27/09)** : la mission 03 (pipeline complet + point d'entrée menu InDesign) est le **premier exercice** du projet, à finir intégralement avant d'ouvrir quoi que ce soit d'autre. Cette mission 04 ouvre le **second chapitre** — « Panneau Import MD » — dont le premier jalon est cet audit, strictement séquentiel après le volet 1, jamais en parallèle.
+**Statut** : 🟢 DÉBLOQUÉE (28/09/2026) — mission 03 (chapitre 1) et les intermédiaires 03bis/03ter TERMINÉES. Prête à démarrer, **par le préambule ci-dessous en premier**.
+**Cadrage (FJD, 27/09)** : la mission 03 (pipeline complet + point d'entrée menu InDesign) était le **premier exercice** du projet. Cette mission 04 ouvre le **second chapitre** — « Panneau Import MD ».
+
+## Préambule OBLIGATOIRE — cross-platform Windows/macOS (ajouté 28/09/2026, FJD)
+
+**Constat** : tout le travail de la mission 03 a été pensé, codé et testé exclusivement sur macOS (chemins `~/Library/Preferences/Adobe InDesign/.../fr_FR/Scripts/...`, locale française en dur dans certaines présélections). **Windows fait partie du périmètre réel du projet** (utilisateurs finaux sur PC), et **aucune machine Windows n'est disponible pour tester en réel**. Ce préambule doit être traité avant les points 1-4 ci-dessous, parce que sa réponse peut réorienter tout le reste de l'audit.
+
+**Question centrale, à trancher en premier, par recherche documentaire uniquement (pas de test réel possible)** : **UXP est-il réellement cross-platform** (même code, même comportement sur macOS et Windows, à l'exception du strict nécessaire — chemins de fichiers, raccourcis clavier), **ou retombe-t-on sur des dialectes séparés par OS** comme à l'époque du SDK C++ classique (« comme en 2001 ») ?
+
+**Méthode imposée pour ce préambule** :
+- Chercher la documentation officielle Adobe UXP en premier (affirmation explicite de parité cross-platform, ou silence révélateur sur le sujet).
+- Compléter par une recherche large de retours d'expérience communautaires — forums développeurs Adobe, GitHub issues, blogs techniques — en cherchant spécifiquement les mentions du type « fonctionne sur Mac mais pas Windows », « bug spécifique Windows », « chemin cassé sous Windows », etc. Ce sont ces signaux-là, pas la doc marketing, qui révèlent les vrais points de friction.
+- Pour chaque affirmation retenue, citation exacte + URL + date, comme d'habitude (cf. wiki, réflexe n°1).
+- Étendre la même vérification aux **chemins de fichiers ExtendScript classiques** (`File`/`Folder`, dossiers `Scripts Panel`/`Startup Scripts` sous Windows) — c'est pertinent même si la mission part sur UXP, au cas où une brique ExtendScript classique reste dans l'architecture retenue.
+
+**Sortie attendue de ce préambule** : une réponse tranchée (avec le niveau d'incertitude honnêtement signalé si la doc reste ambiguë) sur le degré de portabilité réelle d'UXP entre macOS et Windows, avant de trancher l'orientation générale de l'audit (points 1 à 4 ci-dessous). Si UXP s'avère fortement dépendant de l'OS, cette information doit peser dans la recommandation finale au même titre que les 3 options déjà identifiées.
 
 ## Contexte et objectif
 
