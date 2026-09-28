@@ -11,7 +11,12 @@ Constat FJD après plusieurs itérations correctif → test manuel → nouveau b
 **1. Vérifier la documentation officielle avant de coder une hypothèse — et laisser une trace citable, pas juste "vérifié via doc".**
 Ne jamais supposer qu'une API InDesign se comporte comme son équivalent JS générique le laisserait penser (`+=` sur un `InsertionPoint` n'est pas garanti se comporter comme `+=` sur une chaîne JS — cf. Cas 14). Chercher un exemple de code fonctionnel dans la doc officielle (indesignjs.de/extendscriptAPI) ou les forums Adobe/Indiscripts, pas seulement la signature de la méthode. Un exemple réel vaut mieux qu'une description abstraite de paramètres.
 
-Décision FJD (23/09/2026) sur la manière de capitaliser cette doc : pas de RAG ni d'indexation séparée de la doc Adobe (disproportionné pour ce projet) — chaque vérification documentaire qui aboutit à un cas du wiki doit inclure la **citation exacte** trouvée (pas une paraphrase) et l'**URL source**, directement dans l'entrée du cas concerné. Le wiki devient ainsi une doc Adobe filtrée par l'usage réel du projet, sans infrastructure à maintenir. Voir le format dans les cas ci-dessous (ex. Cas 09, 14, 17) — à reproduire systématiquement pour toute nouvelle vérification.
+Décision FJD (23/09/2026) sur la manière de capitaliser cette doc : pas de RAG ni d'indexation séparée de la doc Adobe (disproportionné pour ce projet) — chaque vérification documentaire qui aboutit à un cas du wiki doit inclure la **citation exacte** trouvée (pas une paraphrase) et l'**URL source**, directement dans l'entrée du cas concerné. Le wiki devient ainsi une doc Adobe filtrée par l'usage réel du projet, sans infrastructure à maintenir.
+
+**Format de la trace à reproduire systématiquement** — quand la citation exacte a été retrouvée et vérifiée :
+> « `<citation verbatim>` » — *source* : `<URL>` (HTTP 200, consultée le JJ/MM/AAAA)
+
+Voir les cas dont la source a été vérifiée HTTP 200 au 28/09/2026 (ex. Cas 01, 19, 26, 31). Quand la citation d'origine n'a PAS pu être retrouvée, ne jamais la reformuler de mémoire : le cas porte alors une mention honnête de repli (voir le champ **Statut source** du gabarit ci-dessous) — c'est le cas notamment de Cas 09, 14 et 17.
 
 **2. Extraire la logique pure dans un script Node autonome, hors ExtendScript.**
 Le parsing (Markdown → blocs), les calculs de position, la logique de décision — tout ce qui ne dépend pas directement du DOM InDesign — se teste en JS standard, avec `node --check` pour la syntaxe et des scripts d'exécution réels pour le comportement.
@@ -31,9 +36,90 @@ Quand un même symptôme persiste après plusieurs correctifs réels et vérifi�
 
 ---
 
-## Table des matières par thème
+## Gabarit d'entrée — à appliquer à tout **nouveau** cas (É1)
 
-Index de navigation rapide (34 cas au 28/09/2026) — utile pour ne charger/scanner que la section pertinente plutôt que tout le fichier avant une nouvelle mission. Les liens pointent vers les ancres de titre (`## Cas NN — ...`).
+Règle de rangement du wiki, définie dans `doc/METHODE_wiki_recursif.md` (socle projet-indépendant) : tout **nouveau** cas créé à partir du 28/09/2026 ouvre sur un titre `## Cas NN — <titre factuel>`, suivi de 4 champs balisés, puis du corps `Contexte` / `Symptôme` / `Cause` / `Ce que dit la doc` / `Solution` / `Portée` :
+
+```markdown
+Titre : ## Cas NN — <titre factuel>
+
+**Thème** : <langage | modèle texte | styles | parsing | tables | menus | méthode>
+**API / objet visé** : <nom exact de la méthode / propriété / classe concernée>
+**Statut source** : sourcé | mesuré | à sourcer
+**Build de référence** : InDesign 21.x (fr_FR, macOS)
+
+Contexte / Symptôme / Cause / Ce que dit la doc / Solution / Portée :
+les 6 rubriques habituelles, dans cet ordre.
+```
+
+**Valeurs du champ `Statut source`** :
+
+- **`sourcé`** — le fait a été confirmé par une citation exacte de la doc officielle, avec URL vérifiée HTTP 200 et date de consultation.
+- **`mesuré`** — le comportement a été constaté en réel (test dans InDesign), mais aucune source externe ne peut être citée.
+- **`à sourcer`** — cas admis mais dont la source reste à retrouver (état transitoire à lever ou assumer).
+
+**Portée de cette règle — non rétroactive** : ce gabarit s'applique **aux nouveaux cas uniquement**. Les 35 cas existants au 28/09/2026 gardent leur rédaction d'origine : **aucune réécriture rétroactive**, aucun déplacement de texte, aucune modification de contenu technique. Leur statut source est néanmoins rendu visible dans le sommaire ci-dessous, sans toucher au corps des cas (le champ balisé pourra être ajouté mécaniquement plus tard, par script, cf. `doc/METHODE_wiki_recursif.md`).
+
+**Règle de numérotation** : ascendante et **immuable**. Aucun cas n'est renuméroté ; un cas retiré laisse un trou documenté comme tel (cf. Cas 11 et Cas 15 ci-dessous).
+
+**Boucle de production** — tout bloc de mission porte deux champs obligatoires :
+
+```markdown
+**Cas wiki consultés** : Cas NN, Cas NN (ou « aucun — aucun cas voisin »)
+**Cas wiki produits/enrichis** : Cas NN créé | Cas NN complété (ou « aucun — cas non mûr »)
+```
+
+---
+
+## Table des matières
+
+**État du wiki** : **35 cas** | build de référence **InDesign 21.x** (`21.6.0.57`, `fr_FR`, macOS) | dernière revue : **28/09/2026**.
+
+Index de navigation rapide — utile pour ne charger/scanner que la section pertinente plutôt que tout le fichier avant une nouvelle mission. Les liens pointent vers les ancres de titre (`## Cas NN — ...`).
+
+**Trous de numérotation assumés** : **Cas 11** et **Cas 15** n'existent pas (jamais créés). La numérotation est ascendante et **immuable** — jamais de renumérotation, un trou reste un trou (cf. `doc/METHODE_wiki_recursif.md`).
+
+**Légende statut source** (champ `Statut source` du gabarit É1) : **`sourcé`** = citation exacte + URL vérifiée HTTP 200 · **`mixte`** = fait d'API sourcé, mais comportement constaté par test réel · **`mesuré`** = comportement constaté en réel, sans doc externe à citer.
+
+### 1. Catalogue des cas (résumé + statut source)
+
+- [Cas 00](#cas-00--créer-et-remplir-une-table-indesign-par-script-pattern-validé-23092026) — **`sourcé`** — Créer/remplir une table par script : `insertionPoints[-1].tables.add({headerRowCount, bodyRowCount, columnCount})`, puis `rows[r].cells[c].texts[0].contents`.
+- [Cas 01](#cas-01--char-est-un-mot-réservé) — **`sourcé`** — `char` est un mot réservé ES3 (§7.5.1/§7.5.3) ⇒ erreur de syntaxe inattendue.
+- [Cas 02](#cas-02--appactivewindowalert-nexiste-pas) — **`sourcé`** — `app.activeWindow.alert()` n'existe pas : utiliser l'`alert()` globale (sans titre sur macOS).
+- [Cas 03](#cas-03--new-window-avec-un-objet-de-config) — **`sourcé`** — `new Window({...})` prend un objet de config, pas des arguments positionnels.
+- [Cas 04](#cas-04--collectioneveryitem-itéré-avec-un-for-classique) — **`sourcé`** — `collection.everyItem()` : collection non indexable directement ⇒ `for` classique borné par `.length`.
+- [Cas 05](#cas-05--duck-typing-sur-les-groupes-de-styles-paragraphstylegroup-vs-characterstylegroup) — **`sourcé`** — Duck-typing des groupes de styles : `CharacterStyleGroup` n'expose pas `paragraphStyles`.
+- [Cas 06](#cas-06--documentlabels-traité-comme-une-collection-énumérable) — **`sourcé`** — `document.labels` n'est **pas** une collection énumérable : utiliser `insertLabel`/`extractLabel`.
+- [Cas 07](#cas-07--json-nexiste-pas-nativement-en-extendscript) — **`sourcé`** — Pas de `JSON` natif en ExtendScript (ES3) ; `JSON` n'arrive qu'en ES5 (§15.12).
+- [Cas 08](#cas-08--arrayprototypeindexof-nexiste-pas-nativement-en-extendscript) — **`sourcé`** — Pas d'`Array.prototype.indexOf` en ES3 (défini en ES5 §15.4.4.14).
+- [Cas 09](#cas-09--insertionpoints-1paragraphsadd-nexiste-pas) — **`mixte`** — `insertionPoints[-1].paragraphs.add()` n'existe pas ; `InsertionPoint.contents` est read/write (API sourcée, parcours des paragraphes constaté en réel).
+- [Cas 10](#cas-10--fusionner-des-lignes-de-texte-avec-n-avant-insertion-indesign) — **`mesuré`** — Fusion de lignes : seul `\r` termine un paragraphe, `\n` est un saut forcé (constaté en réel, non sourcé).
+- [Cas 12](#cas-12--comptage-de-caractères-js-length-désynchronisé-du-comptage-indesign-sur-unicode-composé) — **`mesuré`** — `.length` JS ≠ comptage InDesign sur Unicode composé (é, é) — simulé puis constaté en réel.
+- [Cas 13](#cas-13--textframe-temporaire--copie-caractère-par-caractère--pattern-fragile-à-éviter) — **`mesuré`** — Copie caractère par caractère via TextFrame temporaire : pattern fragile à éviter.
+- [Cas 14](#cas-14---sur-insertionpointcontents--pattern-non-documenté-à-éviter) — **`mixte`** — `+=` sur `InsertionPoint.contents` : pattern non documenté à éviter (ancrage API `InsertionPoint.contents` ajouté).
+- [Cas 16](#cas-16--un-nouveau-paragraphe-hérite-du-startparagraph-saut-de-colonnecadrepage-du-texte-précédent) — **`mixte`** — Un nouveau paragraphe hérite du `startParagraph` (saut de colonne/cadre/page) du texte précédent (enum `StartParagraph` sourcé, héritage mesuré).
+- [Cas 17](#cas-17--réassignation-répétée-de-insertionpoints-1contents-dans-une-boucle--curseur-non-fiable) — **`mixte`** — Réassignation répétée de `insertionPoints[-1].contents` dans une boucle ⇒ curseur non fiable (source d'origine morte, ancrage API ajouté).
+- [Cas 18](#cas-18--logging-systématique-plutôt-que-dépendre-du-dialogue-derreur-indesign) — **`mesuré`** — Journaliser systématiquement plutôt que dépendre du dialogue d'erreur InDesign.
+- [Cas 19](#cas-19--marqueurs-markdown-ambigus-underscore--distinguer-syntaxe-et-texte-normal-par-bordure-de-mot) — **`sourcé`** — Marqueurs Markdown ambigus (underscore) : distinguer syntaxe et texte normal par *delimiter run* + *flanking* (CommonMark 0.31.2).
+- [Cas 20](#cas-20--écriture-par-segments-avec-une-seule-assignation-et-une-table-nest-pas-un-paragraphe) — **`mesuré`** — Écriture par segments avec une seule assignation ; une table n'est pas un paragraphe (citation d'origine non retrouvée).
+- [Cas 21](#cas-21--dialectes-markdown--un-item-de-liste-entièrement-en-gras-peut-être-un-titre-déguisé) — **`mesuré`** — Dialectes Markdown : un item de liste entièrement en gras peut être un titre déguisé (abandonné depuis, cf. mission 03).
+- [Cas 22](#cas-22--storyparagraphsi-invalide-en-cours-de-boucle--utiliser-getelements) — **`mixte`** — `story.paragraphs[i]` invalide en cours de boucle : utiliser `getElements()` (absence de `getElements` confirmée par la doc).
+- [Cas 23](#cas-23--storyparagraphslength-peut-valoir-0-après-une-assignation-explicite-de-chaîne-vide) — **`mesuré`** — `story.paragraphs.length` peut valoir 0 après une assignation explicite de chaîne vide ⇒ le compteur de diagnostic ment.
+- [Cas 24](#cas-24--la-story-capturée-avant-le-vidage-se-détache--le-compteur-de-diagnostic-ment) — **`mesuré`** — La story capturée AVANT le vidage se détache (proxy mort) ⇒ le compteur de diagnostic ment ; mesurer sur `parentStory`.
+- [Cas 25](#cas-25--une-valeur-par-défaut--qui-rend-service--applique-un-style-sans-geste-de-lutilisateur) — **`mesuré`** — Une valeur par défaut « qui rend service » applique un style sans geste de l'utilisateur (repli silencieux, puis persisté).
+- [Cas 26](#cas-26--paragraphindex-nest-pas-un-index-de-paragraphe) — **`sourcé`** — `Paragraph.index` n'est PAS un index de paragraphe (c'est un offset de caractère) ; libellé ambigu de la doc confirmé verbatim.
+- [Cas 27](#cas-27--séparation-stricte-code-maison--dom-indesign-pourquoi-le-sandbox-node-ne-peut-jamais-suffire) — **`mixte`** — Séparation stricte code maison / DOM InDesign : le sandbox Node ne peut jamais suffire (thèse vérifiée, citation d'origine non retrouvée).
+- [Cas 28](#cas-28--un-style-de-paragraphe-appelé-depuis-un-style-de-cellule-est-surclassé-invisible-au-panneau-styles-de-paragraphe) — **`sourcé`** — Un style de paragraphe appelé depuis un style de CELLULE est surclassé et invisible au panneau Styles de paragraphe.
+- [Cas 29](#cas-29--une-sonde-de-vérification-doffset-basée-sur-indexof-peut-rendre-un-faux-négatif) — **`mesuré`** — Une sonde d'offset basée sur `indexOf` peut rendre un faux négatif (trouve la 1ʳᵉ occurrence).
+- [Cas 30](#cas-30--lesperluette-daccélérateur-dans-les-title-de-menus-fichier-importer) — **`sourcé`** — L'esperluette d'accélérateur dans les `title` de menus (`&Fichier`) : normaliser avant toute comparaison.
+- [Cas 31](#cas-31--déclencheur-dune-scriptmenuaction--seul-un-gestionnaire-de-type-file-survit-à-la-fin-du-script) — **`sourcé`** — Déclencheur d'une `ScriptMenuAction` : seul un gestionnaire de type `File` survit à la fin du script.
+- [Cas 32](#cas-32--cheminexists-sur-une-chaîne-renvoie-undefined--la-sonde-qui-crie-au-loup) — **`mesuré`** — `chemin.exists` sur une **chaîne** renvoie `undefined` (propriété d'objet `File`) ⇒ sonde qui crie au loup.
+- [Cas 33](#cas-33--global-ne-transporte-pas-détat-du-script-vers-lévénement-quil-a-câblé) — **`mesuré`** — `$.global` ne transporte PAS d'état du script vers l'événement qu'il a câblé (frontière fin-de-script → événement).
+- [Cas 34](#cas-34--une-scriptmenuaction-créée-au-runtime-ne-survit-pas-au-redémarrage-dindesign) — **`sourcé`** — Une `ScriptMenuAction` créée au runtime ne survit PAS au redémarrage d'InDesign : doit être recréée.
+- [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite) — **`sourcé`** — Un script déposé dans `Startup Scripts` est bien exécuté au lancement, et la barre de menus y est DÉJÀ construite (read-me Adobe verbatim).
+- [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée) — **`mesuré`** — Entrée de menu durable : module partagé `$.evalFile` + chargeur de démarrage (implémentation mesurée après redémarrage réel).
+
+### 2. Index par thème
 
 **Langage ExtendScript (ES3, absences d'API standard)**
 - [Cas 01](#cas-01--char-est-un-mot-réservé) — `char` mot réservé
@@ -73,15 +159,43 @@ Index de navigation rapide (34 cas au 28/09/2026) — utile pour ne charger/scan
 - [Cas 00](#cas-00--créer-et-remplir-une-table-indesign-par-script-pattern-validé-23092026) — pattern de création de table
 
 **Menus (`ScriptMenuAction`, intégration native — mission 03 étape 9)**
-- [Cas 30](#cas-30--lesperluette-daccélérateur-dans-les-title-de-menus-fichier-imporrter) — esperluette d'accélérateur
+- [Cas 30](#cas-30--lesperluette-daccélérateur-dans-les-title-de-menus-fichier-importer) — esperluette d'accélérateur
 - [Cas 31](#cas-31--déclencheur-dune-scriptmenuaction--seul-un-gestionnaire-de-type-file-survit-à-la-fin-du-script) — seul un handler `File` survit
 - [Cas 32](#cas-32--cheminexists-sur-une-chaîne-renvoie-undefined--la-sonde-qui-crie-au-loup) — `.exists` sur une chaîne
 - [Cas 34](#cas-34--une-scriptmenuaction-créée-au-runtime-ne-survit-pas-au-redémarrage-dindesign) — pas de persistance au redémarrage
 - [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite) — `Startup Scripts` et barre de menus
+- [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée) — entrée durable : module `$.evalFile` + chargeur
 
 **Méthode et diagnostic (transversal, pas un bug d'API)**
 - [Cas 18](#cas-18--logging-systématique-plutôt-que-dépendre-du-dialogue-derreur-indesign) — logging systématique
 - [Cas 27](#cas-27--séparation-stricte-code-maison--dom-indesign-pourquoi-le-sandbox-node-ne-peut-jamais-suffire) — séparation logique pure / DOM
+
+### 3. Index par symptôme
+
+Chercher par ce qu'on a **vu à l'écran** (message d'erreur, comportement observé), pas par le concept qu'on devrait déjà connaître.
+
+- **« undefined is not a function » / objet ou méthode inexistants** → [Cas 02](#cas-02--appactivewindowalert-nexiste-pas), [Cas 03](#cas-03--new-window-avec-un-objet-de-config), [Cas 04](#cas-04--collectioneveryitem-itéré-avec-un-for-classique), [Cas 05](#cas-05--duck-typing-sur-les-groupes-de-styles-paragraphstylegroup-vs-characterstylegroup), [Cas 08](#cas-08--arrayprototypeindexof-nexiste-pas-nativement-en-extendscript), [Cas 09](#cas-09--insertionpoints-1paragraphsadd-nexiste-pas), [Cas 22](#cas-22--storyparagraphsi-invalide-en-cours-de-boucle--utiliser-getelements), [Cas 32](#cas-32--cheminexists-sur-une-chaîne-renvoie-undefined--la-sonde-qui-crie-au-loup)
+- **Erreur de syntaxe / mot inattendu** → [Cas 01](#cas-01--char-est-un-mot-réservé)
+- **`JSON` introuvable / `JSON.parse` ne fonctionne pas** → [Cas 07](#cas-07--json-nexiste-pas-nativement-en-extendscript)
+- **`.indexOf` sur un tableau qui échoue** → [Cas 08](#cas-08--arrayprototypeindexof-nexiste-pas-nativement-en-extendscript)
+- **Comptage de caractères qui ne tombe pas juste (Unicode composé)** → [Cas 12](#cas-12--comptage-de-caractères-js-length-désynchronisé-du-comptage-indesign-sur-unicode-composé)
+- **Texte écrit au mauvais endroit / caractères perdus / doublons** → [Cas 13](#cas-13--textframe-temporaire--copie-caractère-par-caractère--pattern-fragile-à-éviter), [Cas 14](#cas-14---sur-insertionpointcontents--pattern-non-documenté-à-éviter), [Cas 17](#cas-17--réassignation-répétée-de-insertionpoints-1contents-dans-une-boucle--curseur-non-fiable), [Cas 20](#cas-20--écriture-par-segments-avec-une-seule-assignation-et-une-table-nest-pas-un-paragraphe)
+- **Curseur d'insertion qui ne suit pas la boucle** → [Cas 17](#cas-17--réassignation-répétée-de-insertionpoints-1contents-dans-une-boucle--curseur-non-fiable)
+- **Nombre de paragraphes faux (`length` = 0, snapshot figé)** → [Cas 23](#cas-23--storyparagraphslength-peut-valoir-0-après-une-assignation-explicite-de-chaîne-vide), [Cas 24](#cas-24--la-story-capturée-avant-le-vidage-se-détache--le-compteur-de-diagnostic-ment)
+- **Styles non appliqués (`reels=0`) sans aucune erreur** → [Cas 26](#cas-26--paragraphindex-nest-pas-un-index-de-paragraphe)
+- **Un style neutre apparaît sans que l'utilisateur l'ait demandé** → [Cas 25](#cas-25--une-valeur-par-défaut--qui-rend-service--applique-un-style-sans-geste-de-lutilisateur)
+- **Un style de paragraphe invisible au panneau Styles de paragraphe** → [Cas 28](#cas-28--un-style-de-paragraphe-appelé-depuis-un-style-de-cellule-est-surclassé-invisible-au-panneau-styles-de-paragraphe)
+- **Table : création ou remplissage qui part en vrille** → [Cas 00](#cas-00--créer-et-remplir-une-table-indesign-par-script-pattern-validé-23092026), [Cas 20](#cas-20--écriture-par-segments-avec-une-seule-assignation-et-une-table-nest-pas-un-paragraphe), [Cas 28](#cas-28--un-style-de-paragraphe-appelé-depuis-un-style-de-cellule-est-surclassé-invisible-au-panneau-styles-de-paragraphe)
+- **Markdown mal interprété (underscore, gras, faux titres)** → [Cas 19](#cas-19--marqueurs-markdown-ambigus-underscore--distinguer-syntaxe-et-texte-normal-par-bordure-de-mot), [Cas 21](#cas-21--dialectes-markdown--un-item-de-liste-entièrement-en-gras-peut-être-un-titre-déguisé)
+- **Sous-chaîne introuvable dans un `title` de menu** → [Cas 30](#cas-30--lesperluette-daccélérateur-dans-les-title-de-menus-fichier-importer)
+- **Entrée de menu absente / un clic ne fait rien** → [Cas 30](#cas-30--lesperluette-daccélérateur-dans-les-title-de-menus-fichier-importer), [Cas 31](#cas-31--déclencheur-dune-scriptmenuaction--seul-un-gestionnaire-de-type-file-survit-à-la-fin-du-script), [Cas 34](#cas-34--une-scriptmenuaction-créée-au-runtime-ne-survit-pas-au-redémarrage-dindesign), [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée)
+- **Entrée de menu disparue après un redémarrage d'InDesign** → [Cas 34](#cas-34--une-scriptmenuaction-créée-au-runtime-ne-survit-pas-au-redémarrage-dindesign), [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite), [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée)
+- **Script qui ne tourne pas au lancement d'InDesign** → [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite)
+- **Une sonde annonce « introuvable » / « absent » alors que c'est faux (faux négatif)** → [Cas 24](#cas-24--la-story-capturée-avant-le-vidage-se-détache--le-compteur-de-diagnostic-ment), [Cas 29](#cas-29--une-sonde-de-vérification-doffset-basée-sur-indexof-peut-rendre-un-faux-négatif), [Cas 30](#cas-30--lesperluette-daccélérateur-dans-les-title-de-menus-fichier-importer), [Cas 32](#cas-32--cheminexists-sur-une-chaîne-renvoie-undefined--la-sonde-qui-crie-au-loup)
+- **Une alarme se déclenche alors que tout va bien (faux positif)** → [Cas 24](#cas-24--la-story-capturée-avant-le-vidage-se-détache--le-compteur-de-diagnostic-ment)
+- **Impossible de diagnostiquer : aucune trace, `catch` vide** → [Cas 18](#cas-18--logging-systématique-plutôt-que-dépendre-du-dialogue-derreur-indesign)
+- **Le test Node passe mais le réel échoue (simulateur trop optimiste)** → [Cas 12](#cas-12--comptage-de-caractères-js-length-désynchronisé-du-comptage-indesign-sur-unicode-composé), [Cas 23](#cas-23--storyparagraphslength-peut-valoir-0-après-une-assignation-explicite-de-chaîne-vide), [Cas 24](#cas-24--la-story-capturée-avant-le-vidage-se-détache--le-compteur-de-diagnostic-ment), [Cas 26](#cas-26--paragraphindex-nest-pas-un-index-de-paragraphe), [Cas 27](#cas-27--séparation-stricte-code-maison--dom-indesign-pourquoi-le-sandbox-node-ne-peut-jamais-suffire)
+- **La correction ne s'applique pas (deux copies du script)** → piège structurel en fin de fichier (cf. [Cas 31](#cas-31--déclencheur-dune-scriptmenuaction--seul-un-gestionnaire-de-type-file-survit-à-la-fin-du-script), [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite), [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée))
 
 ---
 
@@ -114,6 +228,11 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 
 **Table des styles** : comme les `ParagraphStyle`/`CharacterStyle` (Cas 05), les `TableStyle` peuvent être rangés dans des `TableStyleGroup` — la même traversée récursive s'applique, mais volontairement implémentée en fonction séparée (`collectTableStylesRecursive`) plutôt que généralisée sur `collectStylesRecursive`, pour ne jamais risquer de régresser un code déjà validé en le rendant plus générique.
 
+**Sources vérifiées en ligne le 28/09/2026** (modèle objet Adobe InDesign 2026 exporté par indesignjs.de) :
+- `Tables.add` — *« add ( to? , reference? , withProperties? ) → Table — Creates a new table. »* (URL `https://www.indesignjs.de/indesignapi/indesign/Tables.html`) : `add()` est bien appelable sur la collection `tables` d'un point d'insertion.
+- `Table.appliedTableStyle` — *« appliedTableStyle TableStyle | String read/write — The table style applied to the table. Can also accept: String. »* (URL `https://www.indesignjs.de/indesignapi/indesign/Table.html`).
+- `Cell.texts` — *« texts Texts<Text> readonly — A collection of text objects. »* (URL `https://www.indesignjs.de/indesignapi/indesign/Cell.html`) : une cellule expose un `Text`, d'où `cells[c].texts[0].contents` et non `cells[c].contents`.
+
 ---
 
 ## Cas 01 — `char` est un mot réservé
@@ -126,6 +245,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 
 **Mots réservés à surveiller** (hérités Java, invalides comme identifiants en ExtendScript) : `char`, `new`, `default`, `class`, `final`, `native`, `package`, `synchronized`, `throws`, `boolean`, `byte`, `double`, `float`, `int`, `long`, `short`, `interface`, `implements`, `extends`, `import`, `export`, `super`, `transient`, `volatile`.
 
+**Source vérifiée le 28/09/2026** (norme ECMA-262 3ᵉ édition, décembre 1999, texte extrait directement du PDF officiel) — §7.5.1 *Reserved Words* : *« Reserved words cannot be used as identifiers. »* ; §7.5.3 *Future Reserved Words* : *« The following words are used as keywords in proposed extensions and are therefore reserved to allow for the possibility of future adoption of those extensions. »* La liste `FutureReservedWord :: one of` contient **`char`** aux côtés de `abstract, enum, int, short, boolean, export, interface, static, byte, extends, long, super, final, native, synchronized, class, float, package, throws, const, goto, private, transient, debugger, implements, protected, volatile, double, import, public` — exactement les mots hérités Java listés ci-dessus. URL `https://www.ecma-international.org/wp-content/uploads/ECMA-262_3rd_edition_december_1999.pdf` (HTTP 200, consultée le 28/09/2026).
+
 ---
 
 ## Cas 02 — `app.activeWindow.alert()` n'existe pas
@@ -136,6 +257,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 
 **Correction** : `alert(text)` — un seul argument texte, pas de titre séparé (à concaténer soi-même si besoin).
 
+**Source vérifiée le 28/09/2026** (documentation officielle Adobe, *JavaScript Tools Guide* — User Notification Dialogs) : *« alert(message[, title="Script Alert", errorIcon=false]); — Displays a platform-standard dialog containing a short message and an OK button. »* et *« Mac OS does not support titles for alert dialogs. »* — l'alerte est bien une **fonction globale** (pas une méthode de `Window`/`activeWindow`), et le titre n'a pas d'effet sur macOS. URL `https://extendscript.docsforadobe.dev/extendscript-tools-features/user-notification-dialogs/` (HTTP 200, consultée le 28/09/2026).
+
 ---
 
 ## Cas 03 — `new Window({...})` avec un objet de config
@@ -145,6 +268,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 **Cause** : pattern de construction UI copié d'un autre contexte JS (React-like ou After Effects), invalide en ScriptUI InDesign. Le constructeur `Window` attend une signature positionnelle, pas un objet de configuration.
 
 **Correction** : `new Window(type, title, bounds, options)` — ex. `new Window("dialog", "Mon titre")`. Le positionnement des enfants se fait ensuite via `orientation`, `alignChildren`, `spacing`, `margins` (layout automatique) plutôt que `.location`/`.size` en pixels absolus, qui ne sont fiables qu'en désactivant explicitement le layout automatique.
+
+**Source vérifiée le 28/09/2026** (documentation officielle Adobe, *JavaScript Tools Guide* — The Window Object) : signature exacte *« new Window (type [, title, bounds, {creation_properties}]); »* et *« The constructor creates and returns a new Window object, or null if window creation failed. »* — signature **positionnelle**, aucun objet de configuration accepté. URL `https://extendscript.docsforadobe.dev/user-interface-tools/window-object/` (HTTP 200, consultée le 28/09/2026).
 
 ---
 
@@ -157,6 +282,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 **Correction** : soit itérer directement sur la collection sans `.everyItem()` (`collection.length`, `collection[i]`), soit utiliser `everyItem().name` pour obtenir directement le tableau de noms si c'est tout ce qu'il faut.
 
 **Leçon transversale** : ne jamais laisser un `catch` vide sur un appel API InDesign incertain — logger systématiquement (cf. Cas 06), sinon ce genre d'échec silencieux est indiscernable d'un "document sans styles".
+
+**Source vérifiée le 28/09/2026** (modèle objet Adobe InDesign 2026, indesignjs.de) — `everyItem` est documenté comme **méthode de collection** (au même titre que `item`, `firstItem`, `lastItem`, `anyItem`), distincte de l'accès indexé : URL `https://www.indesignjs.de/indesignapi/indesign/Paragraphs.html`. La collection expose aussi `length` : *« length Number readonly — The number of objects in the collection. »* — c'est cette paire (`length` + accès indexé) qui doit être utilisée dans un `for`, pas `everyItem()`. La collection `Cells` documente elle aussi `everyItem` (URL `https://www.indesignjs.de/indesignapi/indesign/Cells.html`).
 
 ---
 
@@ -172,6 +299,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 
 **Corollaire utile** : `[Style de paragraphe de base]`/`[Aucun]` existent nativement et de façon indestructible sur tout document InDesign, même le plus vierge — la racine de `document.paragraphStyles`/`characterStyles` n'est donc jamais réellement vide. Une UI de sélection de style peut s'appuyer là-dessus pour toujours avoir au moins une valeur par défaut valable, sans code spécial pour le cas "document sans styles personnalisés".
 
+**Source vérifiée le 28/09/2026** (modèle objet Adobe InDesign 2026, indesignjs.de) — `CharacterStyleGroup` documente **uniquement** `characterStyles` : *« characterStyles CharacterStyles<CharacterStyle> readonly — A collection of character styles. »* (URL `https://www.indesignjs.de/indesignapi/indesign/CharacterStyleGroup.html`). Cette page ne contient **aucune** ancre `id="p-paragraphStyles"` (propriété inexistante), alors que `ParagraphStyleGroup` expose bien `paragraphStyles` (ancre `id="p-paragraphStyles"` présente, URL `https://www.indesignjs.de/indesignapi/indesign/ParagraphStyleGroup.html`) : le duck-typing `group.paragraphStyles || group.characterStyles` ne peut donc pas fonctionner.
+
 ---
 
 ## Cas 06 — `document.labels` traité comme une collection énumérable
@@ -184,6 +313,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 
 **Leçon transversale (renforce le Cas 04)** : ce bug est resté invisible un moment parce qu'une des deux fonctions concernées avait un `catch` vide — encore un cas d'échec silencieux masqué par l'absence de logging systématique.
 
+**Source vérifiée le 28/09/2026** (modèle objet Adobe InDesign 2026, indesignjs.de) — la page `Document` documente exactement deux méthodes pour les labels et **aucune collection `labels`** : `insertLabel (key, value) → void — « Sets the label to the value asso[ciée à la clé] »` (ancre `id="m-insertLabel"`) et `extractLabel (key) → String` (ancre `id="m-extractLabel"`). Aucune ancre `id="p-labels"` n'existe sur la page (URL `https://www.indesignjs.de/indesignapi/indesign/Document.html`, consultée le 28/09/2026) — confirme qu'il n'y a pas de collection de labels énumérable.
+
 ---
 
 ## Cas 07 — `JSON` n'existe pas nativement en ExtendScript
@@ -193,6 +324,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 **Cause** : l'objet global `JSON` (avec `.stringify()`/`.parse()`), natif en JS moderne depuis ES5, n'est pas fourni par le moteur ExtendScript par défaut. Aucun polyfill n'est chargé automatiquement.
 
 **Correction** : pour une structure de données simple et connue à l'avance (objet plat, pas de nesting), écrire un sérialiseur/déserialiseur minimal fait maison plutôt que d'importer un polyfill JSON complet (souvent surdimensionné pour le besoin). Si le besoin de sérialisation devient plus riche (objets imbriqués, tableaux, types variés), envisager d'inclure un polyfill JSON2 standard (`json2.js`, domaine public) en début de script.
+
+**Source vérifiée le 28/09/2026** (norme ECMA-262) — l'objet `JSON` est défini au **§15.12** de la norme ECMA-262 **5ᵉ édition** (juin 2011), dont l'ancre `id="sec-15.12"` existe (URL `https://262.ecma-international.org/5.1/#sec-15.12`, HTTP 200, titre de page : *ECMAScript Language Specification - ECMA-262 Edition 5.1*). Un objet introduit en **ES5** est par construction absent d'un moteur **ES3** comme ExtendScript — le rattachement ES3 d'ExtendScript est sourcé au Cas 01.
 
 ---
 
@@ -205,6 +338,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 **Correction** : écrire une fonction de recherche manuelle (boucle `for` comparant chaque élément) plutôt que compter sur `.indexOf()` pour un tableau. Vérifier au cas par cas si l'objet est une chaîne (`.indexOf` OK) ou un tableau (`.indexOf` KO).
 
 **Leçon transversale** : de façon générale, toute méthode ES5+ (`Array.prototype.indexOf`, `.forEach`, `.map`, `.filter`, `Object.keys`, etc.) est suspecte par défaut en ExtendScript et doit être vérifiée avant usage, pas supposée disponible comme en JS moderne.
+
+**Source vérifiée le 28/09/2026** (norme ECMA-262) — `Array.prototype.indexOf` est spécifié au **§15.4.4.14** de la norme ECMA-262 **5ᵉ édition**, citation exacte de la signature : *« Array.prototype.indexOf ( searchElement [ , fromIndex ] ) »* (URL `https://262.ecma-international.org/5.1/#sec-15.4.4.14`, HTTP 200, ancre `sec-15.4.4.14` vérifiée). Méthode ES5 ⇒ absente du moteur ES3 d'ExtendScript.
 
 ---
 
@@ -223,7 +358,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 **CORRECTION du Cas 09 (23/09/2026, après vérification via simulation Node + doc officielle indesignjs.de)** : le raisonnement `[-1]`/`[-2]` ci-dessus s'est révélé faux dans les deux branches lors d'un test sur un fichier réel — `paragraphs[-1]` pointe TOUJOURS vers le paragraphe vide ouvert par le dernier `\r` écrit, y compris pour le tout premier bloc (un split sur `\r` d'une chaîne `"texte\r"` donne `["texte", ""]`, et `[-1]` est le `""`). La bonne approche, confirmée par la documentation officielle : **écrire le texte du bloc SANS `\r`, appliquer le style pendant que ce texte est encore le dernier paragraphe en cours (`paragraphs[-1]`, sans ambiguïté), puis ajouter le `\r` séparément après**, pour clore ce paragraphe et préparer le suivant. Élimine complètement le besoin de distinguer premier bloc / blocs suivants.
 
 > **Citation source** : *"The easiest way to add text to a frame is targeting its last 'insertion point', which is equivalent to clicking the text cursor at the very end of its text. [...] `myTextFrame.insertionPoints.item(-1).contents = "\rThis is a new paragraph of example text."`"* — le `\r` précède le nouveau texte plutôt que de clore l'ancien, confirmant l'approche "texte d'abord, `\r` après".
-> **Source** : recherche web ciblée sur `InDesign ExtendScript InsertionPoint contents append paragraphs "story" text model documentation`, résultat issu de la doc officielle indesignjs.de/extendscriptAPI (page InsertionPoint/InsertionPoints) et d'exemples de la communauté Adobe.
+> **Source** : recherche web ciblée sur `InDesign ExtendScript InsertionPoint contents append paragraphs "story" text model documentation` — **citation non re-retrouvée telle quelle** lors de la vérification du 28/09/2026.
+> **Source vérifiée (doc officielle, 28/09/2026)** — `Paragraphs` est une collection **sans** méthode `add` : sa liste de méthodes se limite à `anyItem, count, everyItem, firstItem, item, itemByRange, lastItem, middleItem, nextItem, previousItem, toSource` et la page ne contient **aucune** ancre `id="m-add"` (URL `https://www.indesignjs.de/indesignapi/indesign/Paragraphs.html`) — ce qui confirme l'erreur `insertionPoints[-1].paragraphs.add is not a function`. Par ailleurs `InsertionPoint.contents` est bien `String | SpecialCharacters` (ancre `id="p-contents"`) et `InsertionPoint.paragraphs` est **readonly** (*« paragraphs Paragraphs<Paragraph> readonly — A collection of paragraphs. »*, URL `https://www.indesignjs.de/indesignapi/indesign/InsertionPoint.html`) : on écrit donc via `contents`, jamais via `paragraphs.add`.
 
 ---
 
@@ -236,6 +372,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 **Correction** : ne jamais utiliser `"\n"` comme séparateur dans du texte destiné à devenir plusieurs paragraphes InDesign distincts — soit traiter chaque ligne source comme son propre bloc/paragraphe (le cas le plus sûr, un bloc logique = un paragraphe InDesign), soit fusionner avec un espace si la fusion en un seul paragraphe visuel continu est réellement voulue.
 
 **Leçon transversale** : tout calcul de position de caractère en aval (`itemByRange`, `textRangeStart` cumulatif) est extrêmement sensible à la moindre différence entre la longueur de texte calculée côté script et celle qu'InDesign va réellement stocker après insertion — vérifier systématiquement qu'aucun caractère de contrôle ambigu (`\n` vs `\r`, espaces multiples normalisés différemment, etc.) ne s'est glissé entre les deux.
+
+> **Statut source (28/09/2026) — mesuré, non sourcé** : l'affirmation « seul `\r` a le rôle de saut de paragraphe, pas `\n` » n'a **pas** été retrouvée explicitement dans la documentation en ligne (recherches sur les pages `Story.html` et `InsertionPoint.html` du modèle objet pour « paragraph separator » / « carriage return » : aucun résultat). Le fait est **mesuré** en test réel (décalage de positions observé avec `\n` en séparateur, cf. Symptôme/Cause ci-dessus) et cohérent avec l'usage de `\r` documenté au Cas 09. Ce cas est donc classé **mesuré**, non **sourcé**.
 
 ---
 
@@ -275,8 +413,9 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 
 **Leçon transversale** : en ExtendScript, un opérateur qui "a l'air de marcher" par analogie avec un pattern JS standard (`string += autre` pour concaténer) n'est pas garanti se comporter pareil sur un objet du DOM InDesign qui n'est pas une vraie chaîne de caractères — toujours privilégier le pattern exact montré dans la documentation officielle ou les exemples de la communauté, plutôt que d'assumer qu'un opérateur générique JS transpose tel quel.
 
-> **Citation source** : *"With a text frame selected, this line will add text at the end: `app.selection[0].insertionPoints[-1].contents = "hello, world!";`"* — un exemple de la documentation communautaire InDesign, confirmant l'assignation directe (`=`) comme le pattern standard, jamais `+=`.
-> **Source** : recherche web ciblée sur `InDesign ExtendScript "insertionPoints.item(-1).contents =" example add text without erasing existing story content`.
+> **Citation source** : *"With a text frame selected, this line will add text at the end: `app.selection[0].insertionPoints[-1].contents = "hello, world!";`"* — un exemple de documentation communautaire InDesign, confirmant l'assignation directe (`=`) comme le pattern standard, jamais `+=`. **Cette citation précise n'a pas été re-retrouvée en ligne lors de la vérification du 28/09/2026** (le motif `hello, world` est absent des pages indesignjs.de).
+> **Source** : recherche web ciblée sur `InDesign ExtendScript "insertionPoints.item(-1).contents =" example add text without erasing existing story content` — **source d'origine non retrouvée**.
+> **Ancrage API vérifié (doc officielle, 28/09/2026)** — `InsertionPoint.contents` est documenté **`String | SpecialCharacters`, read/write** (ancre `id="p-contents"`, URL `https://www.indesignjs.de/indesignapi/indesign/InsertionPoint.html`) : c'est bien une **propriété assignable**, ce qui fait de l'assignation directe (`=`) le seul pattern documenté ; aucun opérateur `+=` n'est décrit par le modèle objet, ce qui étaye la mise en garde sans la prouver formellement.
 
 ---
 
@@ -290,6 +429,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 
 **Leçon transversale** : l'héritage de style d'un nouveau paragraphe en InDesign n'est pas limité à l'apparence visuelle (police, couleur, etc.) — des attributs de comportement structurel comme les sauts de paragraphe suivent la même règle d'héritage et peuvent produire des effets à distance (contenu qui "disparaît" ailleurs dans le document) difficiles à diagnostiquer sans connaître ce mécanisme.
 
+> **Ancrage API vérifié (doc officielle, 28/09/2026)** — la propriété existe bien sous ce nom : `Paragraph.startParagraph` (type `StartParagraph`), enum documentée `StartParagraph :: ANYWHERE | NEXT_COLUMN | NEXT_EVEN_PAGE | NEXT_FRAME | NEXT_ODD_PAGE | NEXT_PAGE` (URL `https://www.indesignjs.de/indesignapi/indesign/Paragraph.html`). Le **comportement d'héritage** décrit ci-dessus (un nouveau paragraphe hérite du réglage du précédent) n'est pas documenté comme tel — il est **mesuré** en test réel. Ce cas est donc classé **sourcé pour l'existence/les valeurs de l'API**, **mesuré pour le comportement d'héritage**.
+
 ---
 
 ## Cas 17 — Réassignation répétée de `insertionPoints[-1].contents` dans une boucle : curseur non fiable
@@ -302,6 +443,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 
 > **Citation source** : *"When assigning new contents to insertion points, be careful and do that in reverse order (from back to forth) inside a story."* Signalé également : *"when inserting multiple returns to the end of a paragraph using `insertionPoints[-1]` in a loop, the insertion point -1 is not at the end of the paragraph for subsequent iterations."*
 > **Source** : recherche web ciblée sur `InDesign ExtendScript multiple sequential "insertionPoints[-1].contents = text" calls in loop does insertion point advance each time`, résultat croisant GitHub (fabianmoronzirfas/extendscript wiki, page InsertionPoints) et forums Adobe.
+> **Statut source (28/09/2026) — source non retrouvée** : le wiki GitHub cité à l'origine (`fabianmoronzirfas/extendscript`, page *InsertionPoints*) a été **déplacé** (redirection 301 vers `ff6347/extendscript`, dont la page ne dit plus que « This repos wiki has moved ») — la citation n'est donc **plus vérifiable en ligne**. Le comportement reste **mesuré** en test réel (symptôme confirmé sur fichier long) → ce cas est classé **mesuré**, non **sourcé**.
+> **Ancrage API vérifié (doc officielle, 28/09/2026)** — `SpecialCharacters` documente les marqueurs de texte, dont `FORCED_LINE_BREAK`, `DISCRETIONARY_LINE_BREAK`, `COLUMN_BREAK`, `PAGE_BREAK`, `FRAME_BREAK`, `PARAGRAPH_SYMBOL`, mais **aucun** `PARAGRAPH_RETURN` (URL `https://www.indesignjs.de/indesignapi/indesign/SpecialCharacters.html`) : cohérent avec le fait que c'est `\r` (non exposé comme `SpecialCharacters`) qui structure le paragraphe.
 
 **Leçon transversale, la plus importante de cette session** : quand un symptôme persiste après plusieurs correctifs ciblés, chacun réel et vérifié, il faut se demander si tous ces correctifs pansent des symptômes d'une seule et même cause structurelle plus profonde (ici : la boucle de réassignation répétée elle-même), plutôt que de continuer à chercher le prochain correctif ponctuel. Un test qui isole une variable à la fois (ici : retirer complètement le gras/italique) permet de confirmer si la cause de fond est bien là où on la soupçonne, avant de réinvestir du temps dans un nouveau pattern d'écriture.
 
@@ -327,6 +470,8 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 
 **Correspond au comportement CommonMark** pour les délimiteurs d'emphase — la règle "bordure de mot" n'est pas une improvisation, c'est l'esprit de la spécification officielle simplifié pour ce cas d'usage (CommonMark a des règles plus fines encore, notamment sur les délimiteurs "gauche-fort"/"droit-fort", non implémentées ici — suffisant pour les cas réels rencontrés).
 
+**Source vérifiée le 28/09/2026** (spécification CommonMark 0.31.2) — la notion de *delimiter run* et de bordure (« flanking ») est bien dans la spécification : *« A delimiter run is either a sequence of one or more `*` characters [...] or a sequence of one or more `_` characters [...]. »*, avec les définitions *« A left-flanking delimiter run is a delimiter run that is (1) not followed by Unicode whitespace, and [...] »* et *« A right-flanking delimiter run is [...] »*. C'est exactement la règle « bordure de mot » simplifiée appliquée ici. URL `https://spec.commonmark.org/0.31.2/` (HTTP 200, consultée le 28/09/2026).
+
 **Leçon transversale** : quand une syntaxe à ajouter réutilise un caractère qui a un usage légitime hors syntaxe (ici `_`), ne jamais l'activer sans condition — toujours vérifier avec l'utilisateur si une règle de désambiguïsation existe déjà dans la spécification de référence (ici CommonMark) avant d'improviser.
 
 ---
@@ -338,6 +483,7 @@ newTable.appliedTableStyle = tableStyleObject; // objet TableStyle, obtenu via r
 **Architecture retenue** (confirmée par recherche documentaire, pattern recommandé pour la performance) : regrouper les blocs de contenu en segments (texte consécutif vs table), écrire chaque segment texte en **une seule assignation** (`insertionPoints[-1].contents = texteComplet`, blocs concaténés avec `\r`), jamais une réassignation par bloc dans une boucle. Les styles de paragraphe sont appliqués **après coup**, par index stable sur `story.paragraphs`.
 
 **Piège n°1 — une table n'est pas un paragraphe.** Citation trouvée : *"tables occupy a single character position in the story"* — une table insérée via `insertionPoints[-1].tables.add()` s'ancre comme un caractère unique DANS le paragraphe courant, elle ne crée jamais son propre saut de paragraphe. Écrire un `\r` avant ET après un segment table (logique naïve "chaque segment a ses séparateurs") produit un paragraphe vide surnuméraire à chaque table. Correction : le `\r` de transition ne s'écrit qu'entre deux segments **texte** consécutifs, jamais autour d'un segment table.
+> **Statut source (28/09/2026) — source non retrouvée** : la citation `"tables occupy a single character position in the story"` n'a **pas** été re-retrouvée en ligne (recherches infructueuses sur les pages `Table.html`, `Tables.html`, `Story.html`, `TextFrame.html`, `Text.html` du modèle objet indesignjs.de, ainsi qu'en recherche web générale ; aucune ancre ne porte ce texte). Le comportement, lui, est **mesuré** : il a été reproduit par le simulateur et par le test réel (paragraphe vide surnuméraire à chaque table, corrigé en ne plaçant le `\r` qu'entre deux segments texte). Ce cas est donc classé **mesuré**, non **sourcé**. Ancrage API partiel : `Tables.add` est bien documenté (*« add ( to? , reference? , withProperties? ) → Table — Creates a new table. »*, URL `https://www.indesignjs.de/indesignapi/indesign/Tables.html`).
 
 **Piège n°2 — le paragraphe ouvert par un `\r` est le paragraphe courant, pas le suivant.** Après avoir écrit un `\r` de transition, `story.paragraphs.length` inclut déjà le nouveau paragraphe vide qu'il vient d'ouvrir. Écrire le premier bloc du segment suivant **remplit ce paragraphe existant**, il ne crée pas un nouveau paragraphe après lui. L'index correct du premier bloc d'un segment est donc `story.paragraphs.length - 1` (juste avant l'écriture), et **jamais** `story.paragraphs.length` tel quel — piège identique en substance au Cas 09/11 (confusion "paragraphe courant" vs "paragraphe suivant"), qui a donc été refait une deuxième fois avant d'être définitivement compris.
 
@@ -508,11 +654,15 @@ Preuve en réel : `baseParSoustraction=65` (= 86 − 21), puis `reels=21 ecarts=
 
 **Leçon transversale** : ne jamais se fier au **nom** d'une propriété du DOM InDesign pour en déduire sa **sémantique**. `.index` sonne comme un rang ; c'est un offset de caractère. La doc officielle entretient l'ambiguïté — dans ce cas, la seule autorité est la **mesure** : comparer la valeur lue à une valeur calculable par un autre chemin (`contents.length − fullText.length`) tranche en une ligne. Corollaire de méthode : un bug « d'un cran » peut en réalité être un bug **hors échelle** ; mesurer l'écart absolu, pas seulement son signe.
 
+**Source vérifiée le 28/09/2026** (modèle objet Adobe InDesign 2026, indesignjs.de) — la formule ambiguë entre guillemets provient de la page `Paragraph`, verbatim : *« index Number readonly — The index of the text in the collection or parent object. »* (URL `https://www.indesignjs.de/indesignapi/indesign/Paragraph.html`, ancre `id="p-index"`, HTTP 200) — confirme le libellé documenté, sans lever l'ambiguïté « index de rang » vs « offset de caractère » que la mesure a tranchée.
+
 ---
 
 ## Cas 27 — Séparation stricte code maison / DOM InDesign (pourquoi le sandbox Node ne peut jamais suffire)
 
 **Origine** : recherche externe menée le 27/09/2026 (FJD) pour savoir s'il existe un environnement dédié permettant de simuler InDesign (ExtendScript ou UXP) hors de l'application, façon "test-driven development". Résultat net et sourcé : **aucun mock du DOM InDesign n'existe dans la communauté**, ni en ExtendScript ni en UXP. Les frameworks de test trouvés (Extendables/Jasmine, jasminejsx) exécutent leurs tests **dans InDesign**, avec le vrai DOM — ils ne le remplacent jamais. Seul InDesign Server (licence payante, ~2100$/an) permet un vrai headless, mais avec le moteur de composition réel, pas un mock léger. Un thread Adobe Community de 2012 résume la pratique de la communauté : *« the decision went to use real world full runs rather than isolated test units »*.
+
+> **Statut source (28/09/2026) — citation non retrouvée** : le thread Adobe Community de 2012 cité ici n'a **pas** pu être re-retrouvé en ligne avec certitude (aucune URL conservée au moment de la rédaction, et aucune page du guide de scripting local n'est disponible sur ce poste pour recouper). La **conclusion** de ce cas — pas de mock communautaire du DOM InDesign, frameworks de test exécutés dans InDesign, InDesign Server seul headless réel — reste, elle, **vérifiée** (constat de recherche FJD du 27/09/2026 et confortée par l'échec structurel du sandbox Node sur les Cas 23/24/26). La citation exacte est donc à considérer comme **non sourcée** ; la thèse du cas tient par la mesure et l'expérience, pas par cette citation.
 
 **Raison structurelle (pas un manque d'outillage, une contrainte de fond)** : les objets `app`, `Document`, `Story`, `TextFrame`, etc. sont injectés par le runtime Adobe au moment de l'exécution dans l'application hôte — ce ne sont pas des modules importables ou substituables de l'extérieur. Un mock fidèle supposerait de réimplémenter tout le moteur de composition InDesign (retour à la ligne, gestion des styles, chaînage de texte, etc.) — hors de portée pour ce projet, et probablement pour n'importe quel projet hors Adobe lui-même.
 
@@ -540,6 +690,8 @@ Preuve en réel : `baseParSoustraction=65` (= 86 − 21), puis `reels=21 ecarts=
 **Piège associé — `document.cellStyles` est une collection PLATE** : elle n'est **pas** hiérarchisée et ne permet donc **pas** de retrouver le style de cellule réellement appliqué à une région donnée. Chercher un `CellStyle` par nom dans `document.cellStyles` ne dit rien de la région (corps / en-tête / pied). La seule voie fiable est de **partir du TableStyle** (`bodyRegionCellStyle`, `headerRegionCellStyle`, `footerRegionCellStyle`, `headerColumnCellStyle`) — chacun étant de type `CellStyle`.
 
 **API utile confirmée (build InDesign 21.x)** : `Cell.appliedCellStyle` (`CellStyle | String`, read/write) ; `Cell.paragraphs` (**readonly**, mais les paragraphes qu'il contient acceptent l'écriture de `appliedParagraphStyle`) ; `Cell.clearCellStyleOverrides(clearingOverridesThroughRootCellStyle?)` → void ; **`CellStyle` n'a PAS de `clearCellStyleOverrides`** (méthodes disponibles : addEventListener, duplicate, extractLabel, getElements, insertLabel, move, remove, removeEventListener, toSource).
+
+**Sources vérifiées le 28/09/2026** (modèle objet Adobe InDesign 2026, indesignjs.de) — `Cell` expose bien `appliedCellStyle` (*« appliedCellStyle CellStyle | String read/write — The cell style applied to the cell. Can also accept: String. »*, ancre `id="p-appliedCellStyle"`), `paragraphs` (**readonly**, ancre `id="p-paragraphs"`) et `clearCellStyleOverrides` (méthode, ancre `id="m-clearCellStyleOverrides"`) : URL `https://www.indesignjs.de/indesignapi/indesign/Cell.html`. La page `CellStyle` ne contient **aucune** occurrence de `clearCellStyleOverrides` (URL `https://www.indesignjs.de/indesignapi/indesign/CellStyle.html`) — confirme que la méthode vit sur `Cell`, pas sur `CellStyle`. Les régions de style de cellule existent bien sur `TableStyle` : ancres `id="p-bodyRegionCellStyle"`, `id="p-headerRegionCellStyle"`, `id="p-footerRegionCellStyle"`, `id="p-headerColumnCellStyle"` toutes présentes (URL `https://www.indesignjs.de/indesignapi/indesign/TableStyle.html`).
 
 **Preuve réelle (run 27/09/2026 22:25:46)** : `M03-etape6-detail: … erreurs=0 style_table=Table 1 style_cellule_para=appele:P Table cellules_style=18 cellules_neutre=0` ⇒ 18 cellules sur 18 portent le style appelé par le style de cellule, zéro repli neutre.
 
@@ -578,6 +730,8 @@ Deux conséquences immédiates, toutes deux mesurées :
 L'esperluette ne se limite pas au premier caractère (relevé sur les 6 sous-menus réels de Fichier) : `&Nouveau`, `Ouvrir une composition &récente`, `Paramètres prédéfinis Ado&be PDF`, `Param&ètres prédéfinis du document`, `Paramètres utilisateur`, `Impressions pr&édéfinies`. Elle peut donc tomber **n'importe où** dans le libellé, y compris à l'intérieur d'un mot.
 
 **Ce que dit la doc officielle** (`indesignjs.de/indesignapi/indesign/`, export du modèle objet Adobe InDesign 2026, propriété `title` de `MenuAction` / `MenuItem` / `ScriptMenuAction`) : *« The title includes any ampersand characters (&), which are used to tell the Windows OS to underline the following character in the name for use with the Alt key to navigate to a menu item. Double ampersands are used to display an actual ampersand character in the name. The Mac OS ignores and removes the extra ampersand characters. »*
+
+**Source vérifiée le 28/09/2026** — la citation provient bien de la page `title` (`id="p-title"`) du modèle objet, présente à l'identique sur les trois classes `MenuItem` (URL `https://www.indesignjs.de/indesignapi/indesign/MenuItem.html`), `MenuAction` (URL `https://www.indesignjs.de/indesignapi/indesign/MenuAction.html`) et `ScriptMenuAction` (URL `https://www.indesignjs.de/indesignapi/indesign/ScriptMenuAction.html`) — HTTP 200, consultées le 28/09/2026.
 
 **Piège de lecture de cette citation** : « The Mac OS ignores and removes the extra ampersand characters » décrit l'**affichage** (macOS ne souligne rien), **pas la valeur de la propriété**. Mesure réelle sur macOS fr_FR : `title` renvoie bien `&Fichier` et `I&mporter...`, esperluettes **incluses**. On ne peut donc pas s'appuyer sur cette phrase pour croire la propriété nettoyée.
 
