@@ -17,6 +17,18 @@
 
 **Sortie attendue de ce préambule** : une réponse tranchée (avec le niveau d'incertitude honnêtement signalé si la doc reste ambiguë) sur le degré de portabilité réelle d'UXP entre macOS et Windows, avant de trancher l'orientation générale de l'audit (points 1 à 4 ci-dessous). Si UXP s'avère fortement dépendant de l'OS, cette information doit peser dans la recommandation finale au même titre que les 3 options déjà identifiées.
 
+### Première passe de recherche (Architecte, 28/09/2026 — à approfondir/vérifier par DS)
+
+**Verdict provisoire** : UXP n'est ni « cross-platform à 100% » ni « deux dialectes séparés comme en 2001 » — c'est **un seul code source avec des écarts de comportement ponctuels et documentés officiellement**, pas systémiques.
+
+**Preuves trouvées** :
+1. La page officielle "Getting started" (`developer.adobe.com/indesign/uxp/plugins/getting-started/`) et le guide UXP général (`developer.adobe.com/photoshop/uxp/2022/guides/`) restent **silencieux** sur une affirmation explicite de parité cross-OS — ni promesse, ni mise en garde. Vérifié par lecture directe des deux pages, aucune occurrence de "Windows"/"macOS"/"cross-platform".
+2. **Preuve décisive, source officielle** : le "UXP Changelog and Support Matrix" (`blog.developer.adobe.com/en/publish/2026/07/uxp-changelog-and-support-matrix`) documente explicitement, pour UXP 9.3, des fonctionnalités limitées à un OS : *« Added support for the video `poster` attribute (supported only on MacOS). »* et *« Added support for `file://` URLs alongwith `#fragments` via `shell.openPath()` on macOS. »* — aucun équivalent Windows mentionné pour ces deux points.
+3. **Signal communautaire (à vérifier plus en détail, pas encore une preuve solide)** : un bug rapporté sur un panneau UXP Photoshop qui charge une UI vide spécifiquement sous Windows 11 (v26.8.1), avec un contournement suggéré de déplacer le dossier plugin à la racine du disque — suggère une sensibilité aux chemins de fichiers sous Windows, cohérent avec l'inquiétude de FJD.
+4. **Signal communautaire, ExtendScript classique** : InDesign 19.4 a changé de format de chemin de plugin (HFS → POSIX), signe que les questions de chemin de fichiers restent un point de friction réel et évolutif dans l'écosystème Adobe, pas seulement une crainte théorique.
+
+**Ce qui reste à faire (pour DS, dans le cadre de la mission)** : approfondir le signal Windows 11/Photoshop (est-ce un bug isolé corrigé depuis, ou récurrent ?), et chercher spécifiquement si un comportement similaire a été rapporté pour un plugin **InDesign** (pas seulement Photoshop) — les deux applications partagent UXP mais pas nécessairement les mêmes bugs.
+
 ## Contexte et objectif
 
 FJD veut, à terme, une feature de suivi de lien : quand le fichier `.md` source est modifié après un premier import, InDesign doit **détecter** ce changement (idéalement via son propre panneau Liens natif, avec l'icône d'alerte standard), et un geste utilisateur (clic sur un bouton de mise à jour) doit **relancer notre pipeline complet** (reparsing + mapping de styles sur la charte réelle du document), pas juste un import brut.
