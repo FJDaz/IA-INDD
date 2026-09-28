@@ -74,17 +74,27 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ## Mission 03bis — Rétro-documentation : URLs manquantes dans le wiki
 
-**Statut** : 🔴 À FAIRE — mission intermédiaire, à la suite du chapitre 1 (mission 03), sans dépendance avec la mission 04 (chapitre 2, reste bloquée indépendamment)
+**Statut** : 🔴 À FAIRE — mission intermédiaire, à la suite du chapitre 1 (mission 03, TERMINÉE). Indépendante de la mission 04 (chapitre 2, reste bloquée séparément).
 
 **Fichier détaillé** : [mission_03bis_retrodoc_wiki_urls.md](mission_03bis_retrodoc_wiki_urls.md)
 
-**Résumé** : la méthode générale du wiki (réflexe n°1) impose depuis le 23/09 que toute vérification documentaire donnant lieu à un cas inclue citation exacte + URL source. Constat FJD du 28/09 : sur 34 cas, seuls 2 (Cas 31, 34) respectent la règle. Mission en 2 temps : trier les cas entre "API confirmée par doc externe" (URL due) et "découverte par test réel/log" (URL non pertinente), puis compléter uniquement la première catégorie — sans reconstruire de fausses citations a posteriori.
+**Résumé** : la méthode générale du wiki (réflexe n°1) impose depuis le 23/09 que toute vérification documentaire donnant lieu à un cas inclue citation exacte + URL source. Constat FJD du 28/09 : sur les cas du wiki, très peu respectaient la règle. **Analyse affinée par DS (28/09, doc `doc/architecture/PATRON_wiki_recursif.md` §10)** : tri en 2 catégories cumulatives avec une 3ᵉ famille reconnue (« source citée en prose sans URL » classée cat.1, sinon le réflexe n°1 reste un vœu pieux) — **≈20 cas cat.1 (« API nommée » → URL due) dont ≈18 réellement à sourcer**, **≈15 cas cat.2 (« découverte par mesure » → pas d'URL due)**. Sources attendues par nature de fait : langage ES3 (Cas 01/07/08/32/33) → ECMA-262 3ᵉ éd. et MDN (pas Adobe) ; DOM InDesign → indesignjs `/indesignapi/`. Règle anti-fabrication : URL vérifiée HTTP 200 + phrase exacte, sinon bascule en cat.2 avec mention explicite « source non retrouvée, fait confirmé par mesure ». Plan en 4 lots (A cadre, B langage/ES3, C DOM InDesign, D constat cat.2) détaillé dans le fichier de mission.
+
+---
+
+## Mission 03ter — Wiki : gabarit à champs balisés (É1) + sommaire enrichi (É2)
+
+**Statut** : 🔴 À FAIRE — mission intermédiaire, à la suite de la mission 03bis. Indépendante de la mission 04 (chapitre 2, reste bloquée séparément).
+
+**Fichier détaillé** : [mission_03ter_wiki_gabarit_sommaire.md](mission_03ter_wiki_gabarit_sommaire.md)
+
+**Résumé** : le wiki a dépassé les seuils de déclenchement É1 (gabarit) et É2 (sommaire enrichi) du patron d'organisation rédigé conjointement par FJD et DS le 28/09 (`doc/architecture/PATRON_wiki_recursif.md`, socle projet-indépendant extrait dans `doc/METHODE_wiki_recursif.md`) : 969 lignes, 35 cas, 5 cas lourds (>50 lignes) représentant 42% du fichier, sommaire déjà périmé. Mission purement structurelle (pas de contenu technique touché) : appliquer un gabarit à 3 champs balisés (Thème / API visée / Statut source) à tout **nouveau** cas à partir de maintenant (pas de rétro-application aux 35 cas existants — coût disproportionné, cf. principe anti-anticipation de la méthode), et enrichir le sommaire (en-tête avec compteur exact + build + date de revue, résumé par cas, index par symptôme en plus de l'index par thème existant).
 
 ---
 
 ## Mission 04 — Audit : lien dynamique vers le Markdown source (UXP vs update() natif vs solution maison)
 
-**Statut** : 🔴 BLOQUÉE — la clôture de la mission 03 (étapes 4 à 8 + intégration menu natif « Fichier > Importer un MD ») est **acquise** (28/09/2026), mais la mission intermédiaire **03bis** doit passer avant. Ne pas démarrer avant la clôture de 03bis. Ouvre le second chapitre du projet, « Panneau Import MD ».
+**Statut** : 🔴 BLOQUÉE — la clôture de la mission 03 (étapes 4 à 9, intégration menu natif « Fichier > Importer un MD » incluse) est **acquise** (28/09/2026), mais les missions intermédiaires **03bis** et **03ter** doivent passer avant. Ne pas démarrer avant leur clôture. Ouvre le second chapitre du projet, « Panneau Import MD ».
 
 **Fichier détaillé** : [mission_04_audit_lien_dynamique.md](mission_04_audit_lien_dynamique.md)
 
@@ -94,7 +104,8 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ## Références du projet
 
-- **Wiki technique** : [../doc/wiki_extendscript_indesign.md](../doc/wiki_extendscript_indesign.md) — base de connaissance des pièges ExtendScript/InDesign (26 cas documentés au 27/09 : Cas 24 « le compteur de diagnostic ment » + addendum sur le faux positif d'alerte, **Cas 25** « une valeur par défaut qui rend service applique un style sans geste de l'utilisateur » — cause racine du style neutralisé du 27/09, **Cas 26** « `Paragraph.index` n'est pas un index de paragraphe »), méthode de travail validée (simulation Node avant test réel, contrôle négatif obligatoire, vérification doc officielle avant hypothèse, arbitre indépendant devant reproduire la *même* transformation que le code, carte en plages pour révéler une distribution de styles)
+- **Wiki technique** : [../doc/wiki_extendscript_indesign.md](../doc/wiki_extendscript_indesign.md) — base de connaissance des pièges ExtendScript/InDesign (35 cas au 28/09, table des matières par thème en tête de fichier), méthode de travail validée (simulation Node avant test réel, contrôle négatif obligatoire, vérification doc officielle avant hypothèse, arbitre indépendant devant reproduire la *même* transformation que le code, carte en plages pour révéler une distribution de styles)
+- **Patron d'organisation du wiki** : [../doc/architecture/PATRON_wiki_recursif.md](../doc/architecture/PATRON_wiki_recursif.md) (analyse complète FJD+DS, 28/09) et [../doc/METHODE_wiki_recursif.md](../doc/METHODE_wiki_recursif.md) (socle projet-indépendant) — boucle consulter/documenter, gabarit à champs balisés, numérotation immuable, échelle à 6 horizons chiffrés. Missions 03bis (sources) et 03ter (gabarit+sommaire) en découlent.
 - **Fixtures de test** : [../fixtures/](../fixtures/) — fichiers `.md` classés par modèle générateur (Claude, DeepSeek ×2, Gemini, ChatGPT) + JSON attendus
 - **Script principal** : [../import_md.jsx](../import_md.jsx) — copié systématiquement vers `~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/import_md.jsx` après chaque modification (InDesign exécute cette seconde copie, jamais le fichier de travail directement)
 - **Rôles** : Architecte (Claude) rédige les missions et valide, Ouvrier (DS) exécute — cf. mémoire `project_agent_roles.md`
