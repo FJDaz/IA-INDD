@@ -74,27 +74,27 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ## Mission 03bis — Rétro-documentation : URLs manquantes dans le wiki
 
-**Statut** : 🔴 À FAIRE — mission intermédiaire, à la suite du chapitre 1 (mission 03, TERMINÉE). Indépendante de la mission 04 (chapitre 2, reste bloquée séparément).
+**Statut** : ✅ TERMINÉE (28/09/2026, commit `2e62fbd`)
 
 **Fichier détaillé** : [mission_03bis_retrodoc_wiki_urls.md](mission_03bis_retrodoc_wiki_urls.md)
 
-**Résumé** : la méthode générale du wiki (réflexe n°1) impose depuis le 23/09 que toute vérification documentaire donnant lieu à un cas inclue citation exacte + URL source. Constat FJD du 28/09 : sur les cas du wiki, très peu respectaient la règle. **Analyse affinée par DS (28/09, doc `doc/architecture/PATRON_wiki_recursif.md` §10)** : tri en 2 catégories cumulatives avec une 3ᵉ famille reconnue (« source citée en prose sans URL » classée cat.1, sinon le réflexe n°1 reste un vœu pieux) — **≈20 cas cat.1 (« API nommée » → URL due) dont ≈18 réellement à sourcer**, **≈15 cas cat.2 (« découverte par mesure » → pas d'URL due)**. Sources attendues par nature de fait : langage ES3 (Cas 01/07/08/32/33) → ECMA-262 3ᵉ éd. et MDN (pas Adobe) ; DOM InDesign → indesignjs `/indesignapi/`. Règle anti-fabrication : URL vérifiée HTTP 200 + phrase exacte, sinon bascule en cat.2 avec mention explicite « source non retrouvée, fait confirmé par mesure ». Plan en 4 lots (A cadre, B langage/ES3, C DOM InDesign, D constat cat.2) détaillé dans le fichier de mission.
+**Résumé** : tri traçable des 35 cas du wiki en cat.1 (fait d'API, URL due — 17 cas) / cat.2 (découverte par test réel, URL non pertinente — 18 cas). Les 17 cas cat.1 complétés avec URL + citation exacte, toutes vérifiées HTTP 200 le 28/09/2026 (indesignjs.de, ECMA-262, docsforadobe.dev, spec.commonmark.org). **Anti-fabrication respecté** : 6 citations non re-retrouvées honnêtement downgradées « mesuré, non sourcé » plutôt que reconstruites (Cas 09, 10, 14, 17, 20, 27) — aucune affirmation de comportement technique modifiée. Sources par nature de fait : langage ES3 → ECMA-262/MDN, DOM InDesign → indesignjs.de.
 
 ---
 
 ## Mission 03ter — Wiki : gabarit à champs balisés (É1) + sommaire enrichi (É2)
 
-**Statut** : 🔴 À FAIRE — mission intermédiaire, à la suite de la mission 03bis. Indépendante de la mission 04 (chapitre 2, reste bloquée séparément).
+**Statut** : ✅ TERMINÉE (28/09/2026, commit `2e62fbd`)
 
 **Fichier détaillé** : [mission_03ter_wiki_gabarit_sommaire.md](mission_03ter_wiki_gabarit_sommaire.md)
 
-**Résumé** : le wiki a dépassé les seuils de déclenchement É1 (gabarit) et É2 (sommaire enrichi) du patron d'organisation rédigé conjointement par FJD et DS le 28/09 (`doc/architecture/PATRON_wiki_recursif.md`, socle projet-indépendant extrait dans `doc/METHODE_wiki_recursif.md`) : 969 lignes, 35 cas, 5 cas lourds (>50 lignes) représentant 42% du fichier, sommaire déjà périmé. Mission purement structurelle (pas de contenu technique touché) : appliquer un gabarit à 3 champs balisés (Thème / API visée / Statut source) à tout **nouveau** cas à partir de maintenant (pas de rétro-application aux 35 cas existants — coût disproportionné, cf. principe anti-anticipation de la méthode), et enrichir le sommaire (en-tête avec compteur exact + build + date de revue, résumé par cas, index par symptôme en plus de l'index par thème existant).
+**Résumé** : gabarit à 3 champs balisés (Thème / API visée / Statut source) documenté dans le wiki pour tout nouveau cas — non rétroactif sur les 35 cas existants, conforme au principe anti-anticipation de la méthode. Sommaire réécrit : en-tête (35 cas, build InDesign 21.6.0.57, date de revue), catalogue avec statut source + résumé par cas, index par thème conservé + nouvel index par symptôme (22 entrées, 120 liens vérifiés sans ancre manquante). Statut source ratifié en triplet `sourcé`/`mixte`/`mesuré` (arbitrage FJD) : 16 sourcés, 6 mixtes, 13 mesurés. Correction du réflexe n°1 de la méthode générale, qui citait des cas non sourcés comme exemples de bon format — remplacés par des cas réellement conformes.
 
 ---
 
 ## Mission 04 — Audit : lien dynamique vers le Markdown source (UXP vs update() natif vs solution maison)
 
-**Statut** : 🔴 BLOQUÉE — la clôture de la mission 03 (étapes 4 à 9, intégration menu natif « Fichier > Importer un MD » incluse) est **acquise** (28/09/2026), mais les missions intermédiaires **03bis** et **03ter** doivent passer avant. Ne pas démarrer avant leur clôture. Ouvre le second chapitre du projet, « Panneau Import MD ».
+**Statut** : 🟢 DÉBLOQUÉE (28/09/2026) — mission 03 (chapitre 1) et les intermédiaires 03bis/03ter TERMINÉES. Ouvre le second chapitre du projet, « Panneau Import MD ». Prête à démarrer.
 
 **Fichier détaillé** : [mission_04_audit_lien_dynamique.md](mission_04_audit_lien_dynamique.md)
 
