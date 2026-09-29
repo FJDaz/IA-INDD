@@ -1,0 +1,39 @@
+{
+    "id": "com.fjd.importmd.sonde",
+    "name": "Sonde Import MD",
+    "version": "0.1.0",
+    "main": "index.html",
+    "manifestVersion": 5,
+    "host": {
+        "app": "ID",
+        "minVersion": "18.5.0"
+    },
+    "entrypoints": [
+        {
+            "type": "panel",
+            "id": "sonde-import-md",
+            "label": {
+                "default": "Sonde Import MD"
+            },
+            "minimumSize": {
+                "width": 240,
+                "height": 300
+            },
+            "maximumSize": {
+                "width": 900,
+                "height": 2000
+            },
+            "preferredDockedSize": {
+                "width": 320,
+                "height": 520
+            },
+            "preferredFloatingSize": {
+                "width": 320,
+                "height": 520
+            }
+        }
+    ],
+    "requiredPermissions": {
+        "localFileSystem": "fullAccess"
+    }
+}

@@ -73,7 +73,7 @@ les 6 rubriques habituelles, dans cet ordre.
 
 ## Table des matières
 
-**État du wiki** : **37 cas** | build de référence **InDesign 21.x** (`21.6.0.57`, `fr_FR`, macOS) | dernière revue : **28/09/2026**.
+**État du wiki** : **45 cas** | build de référence **InDesign 21.x** (`21.6.0.57`, `fr_FR`, macOS) | dernière revue : **29/09/2026**.
 
 Index de navigation rapide — utile pour ne charger/scanner que la section pertinente plutôt que tout le fichier avant une nouvelle mission. Les liens pointent vers les ancres de titre (`## Cas NN — ...`).
 
@@ -118,8 +118,16 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 - [Cas 34](#cas-34--une-scriptmenuaction-créée-au-runtime-ne-survit-pas-au-redémarrage-dindesign) — **`sourcé`** — Une `ScriptMenuAction` créée au runtime ne survit PAS au redémarrage d'InDesign : doit être recréée.
 - [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite) — **`sourcé`** — Un script déposé dans `Startup Scripts` est bien exécuté au lancement, et la barre de menus y est DÉJÀ construite (read-me Adobe verbatim).
 - [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée) — **`mesuré`** — Entrée de menu durable : module partagé `$.evalFile` + chargeur de démarrage (implémentation mesurée après redémarrage réel).
-- [Cas 37](#cas-37--lien-natif-vers-un-fichier-source-sans-place--le-modèle-dobjet-link) — **`sourcé`** — Lien natif vers un fichier source sans `place()` : `Story.itemLink` existe, `InsertionPoint.createTextFragmentLink()` crée le `Link` sur un fragment déjà présent, `placeAndLink()` le crée au placement, `Story.linkedStoryOptions` porte le réglage — et **le réglage d'interface n'est pas dans les préférences**.
+- [Cas 37](#cas-37--lien-natif-vers-un-fichier-source-sans-place--le-modèle-dobjet-link) — **`mixte`** — Lien natif vers une source : le modèle d'objet `Link` existe, `place(.icml)` en crée bien un (`linkType=InCopyMarkup`, `Story.itemLink` non-null), **mais** `InsertionPoint.createTextFragmentLink()` échoue **11/11** vers un `.md`, `place(.md)` ne crée **aucun** lien, et **`update()` comme la réouverture ne rechargent jamais le contenu** (contrôle de fraîcheur seul).
 - [Cas 38](#cas-38--uxp-nest-pas-rétrocompatible-par-défaut--minversionmaxversion-du-manifest-pas-une-garantie-de-version) — **`mixte`** — UXP n'est **pas** rétrocompatible par défaut : `minVersion`/`maxVersion` du manifest bloquent l'installation hors plage, mais rien ne garantit qu'une API utilisée soit disponible sur toute la plage déclarée (versionnage UXP découplé du host InDesign).
+- [Cas 39](#cas-39--exportfile-nécrase-pas-un-fichier-existant-silencieusement-et-le-porteur-de-lexport-icml-nest-pas-le-document) — **`mesuré`** — `exportFile` **n'écrase pas** un fichier existant (`ok=true`, taille inchangée) ⇒ `remove()` la cible puis relire le fichier produit ; l'export ICML se fait depuis la **story**, pas depuis le document ; `/tmp` est un lien symbolique (écrire dans un vrai sous-dossier).
+- [Cas 40](#cas-40--neutraliser-lalerte-dune-sonde--alert-et-confirm-sont-tous-deux-en-lecture-seule) — **`mesuré`** — Dans une sonde non interactive, **`alert` ET `confirm` sont tous deux en lecture seule** (8 tentatives dans 4 contextes, toutes `REFUSE : confirm is read only`, sentinelle jamais vue) — la mention « `confirm` est écrasable » était **fausse** et a été **corrigée le 29/09/2026**, mesure à l'appui ; et le canal `osascript … do script` casse sur les guillemets imbriqués ⇒ écrire un `.jsx` temporaire et l'exécuter par `$.evalFile`.
+- [Cas 41](#cas-41--ce-quun-icml-exporté-par-script-contient-réellement-et-ce-quil-ne-contient-pas) — **`mesuré`** — Ce qu'un ICML exporté par script contient **réellement** : les marques markdown survivent **littéralement en texte brut** dans `<Content>`, **aucune balise XML** (`XMLElement`/`XMLTag`/`<Tag` = 0) ⇒ « Map Tags to Styles » n'a rien à lier ; le bloc `<Properties>` domine le poids (≈ 850:1) ; **réserve de mesure déclarée** sur les styles.
+- [Cas 42](#cas-42--un-grep-ne-pose-quun-seul-style-de-paragraphe-par-requête) — **`mesuré`** — Un GREP ne pose qu'**UN seul** style de paragraphe par requête : `appliedParagraphStyle` est **scalaire** (`typeof=string`, pas un `Array`), **aucune variante plurielle n'existe** dans le DOM, et la contre-épreuve donne `modifications = 1` avec `p[1]` resté intact ⇒ **N niveaux ⇒ N passes**.
+- [Cas 43](#cas-43--un-document-créé-par-script-na-aucun-bloc-de-texte-ni-story-ni-textframe) — **`mesuré`** — Un document créé par `app.documents.add()` n'a **aucun bloc de texte** (`stories=0`, `textFrames=0`) ⇒ `doc.stories[0]` rend un objet **invalide** qui n'explose qu'à la ligne suivante (« Object is invalid », erreur signalée **une ligne trop tard**) ⇒ créer le bloc explicitement et passer par `parentStory`.
+- [Cas 44](#cas-44--extractlabel--insertlabel--ce-que-le-label-accepte-réellement) — **`mesuré`** — `extractLabel` sur une clé **absente** rend **`''`** (`typeof="string"`, ni `null` ni `undefined`, sans exception) ⇒ tester par la valeur vide, jamais par `null` ; `insertLabel` sous la **même** clé **ÉCRASE** l'ancienne valeur ; un label de **4000** caractères se relit **intégralement** et **survit à fermeture + réouverture** du document.
+- [Cas 45](#cas-45--filemodified-ne-signale-pas-un-changement-de-contenu-et-fileread-normalise-les-fins-de-ligne) — **`mesuré`** — `File.modified` **ne bouge pas** quand le contenu change dans la même seconde (`date a BOUGE = false` alors que la somme change) et `File.length` reste inchangé ⇒ **ni la date ni la taille ne sont un signal de contenu** ; `File.read()` **normalise les fins de ligne en LF** et `File.write()` **écrit CRLF → CR** ⇒ la somme décrit le texte **normalisé**, pas les octets bruts (bonne nouvelle : un `.md` ré-enregistré par un autre outil ne déclenche **pas** de fausse alerte).
+- [Cas 46](#cas-46--docsave-refuse-tmp-et-privatetmp--foldertemp-est-la-seule-cible-qui-marche) — **`mesuré`** — `Document.save()` refuse `/tmp` **et** `/private/tmp` (`ECHEC : Dossier "…" introuvable`), `Document.saveAs` **n'existe pas** (`d.saveAs is not a function`) ⇒ seule **`Folder.temp`** permet d'enregistrer le document témoin d'un test fermeture/réouverture.
 
 ### 2. Index par thème
 
@@ -131,6 +139,7 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 - [Cas 07](#cas-07--json-nexiste-pas-nativement-en-extendscript) — pas de `JSON` natif
 - [Cas 08](#cas-08--arrayprototypeindexof-nexiste-pas-nativement-en-extendscript) — pas d'`Array.indexOf`
 - [Cas 33](#cas-33--global-ne-transporte-pas-détat-du-script-vers-lévénement-quil-a-câblé) — `$.global` ne transporte pas d'état
+- [Cas 40](#cas-40--neutraliser-lalerte-dune-sonde--alert-et-confirm-sont-tous-deux-en-lecture-seule) — `alert` **et** `confirm` en lecture seule (corrigé 29/09/2026)
 
 **Modèle texte InDesign (Story/Paragraph/InsertionPoint)**
 - [Cas 09](#cas-09--insertionpoints-1paragraphsadd-nexiste-pas) — pas de `paragraphs.add()`
@@ -146,12 +155,15 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 - [Cas 24](#cas-24--la-story-capturée-avant-le-vidage-se-détache--le-compteur-de-diagnostic-ment) — la story capturée se détache
 - [Cas 26](#cas-26--paragraphindex-nest-pas-un-index-de-paragraphe) — `.index` n'est pas un index de paragraphe
 - [Cas 29](#cas-29--une-sonde-de-vérification-doffset-basée-sur-indexof-peut-rendre-un-faux-négatif) — sonde `indexOf` faux négatif
+- [Cas 43](#cas-43--un-document-créé-par-script-na-aucun-bloc-de-texte-ni-story-ni-textframe) — un document créé par script n'a aucune story
 
 **Styles (paragraphe/caractère/objet/table/cellule)**
 - [Cas 05](#cas-05--duck-typing-sur-les-groupes-de-styles-paragraphstylegroup-vs-characterstylegroup) — duck-typing groupes de styles
 - [Cas 06](#cas-06--documentlabels-traité-comme-une-collection-énumérable) — `document.labels` non énumérable
+- [Cas 44](#cas-44--extractlabel--insertlabel--ce-que-le-label-accepte-réellement) — `extractLabel`/`insertLabel` : clé absente ⇒ `''`, réécriture ⇒ écrasement
 - [Cas 25](#cas-25--une-valeur-par-défaut--qui-rend-service--applique-un-style-sans-geste-de-lutilisateur) — valeur par défaut silencieuse
 - [Cas 28](#cas-28--un-style-de-paragraphe-appelé-depuis-un-style-de-cellule-est-surclassé-invisible-au-panneau-styles-de-paragraphe) — style de cellule surclasse le style de paragraphe
+- [Cas 42](#cas-42--un-grep-ne-pose-quun-seul-style-de-paragraphe-par-requête) — un GREP ne pose qu'un seul style par requête
 
 **Parsing Markdown / logique métier du script**
 - [Cas 19](#cas-19--marqueurs-markdown-ambigus-underscore--distinguer-syntaxe-et-texte-normal-par-bordure-de-mot) — ambiguïté underscore
@@ -169,12 +181,20 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 - [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée) — entrée durable : module `$.evalFile` + chargeur
 
 **Lien dynamique / fichier lié (`Link`, `place`, story liée)**
-- [Cas 37](#cas-37--lien-natif-vers-un-fichier-source-sans-place--le-modèle-dobjet-link) — modèle d'objet `Link` et création d'un lien sur un texte inséré par script
+- [Cas 37](#cas-37--lien-natif-vers-un-fichier-source-sans-place--le-modèle-dobjet-link) — modèle d'objet `Link` : ce qui marche (`place(.icml)`) et ce qui ne marche pas (`createTextFragmentLink()`, `update()` qui ne recharge rien)
+
+**Export et fichiers liés (`exportFile`, `ExportFormat`, ICML)**
+- [Cas 39](#cas-39--exportfile-nécrase-pas-un-fichier-existant-silencieusement-et-le-porteur-de-lexport-icml-nest-pas-le-document) — `exportFile` n'écrase pas un fichier existant ; le porteur ICML est la story ; piège du lien symbolique `/tmp`
+- [Cas 41](#cas-41--ce-quun-icml-exporté-par-script-contient-réellement-et-ce-quil-ne-contient-pas) — ce qu'un ICML contient réellement (aucune balise XML, marques md en texte brut)
 
 **Méthode et diagnostic (transversal, pas un bug d'API)**
 - [Cas 18](#cas-18--logging-systématique-plutôt-que-dépendre-du-dialogue-derreur-indesign) — logging systématique
 - [Cas 27](#cas-27--séparation-stricte-code-maison--dom-indesign-pourquoi-le-sandbox-node-ne-peut-jamais-suffire) — séparation logique pure / DOM
 - [Cas 38](#cas-38--uxp-nest-pas-rétrocompatible-par-défaut--minversionmaxversion-du-manifest-pas-une-garantie-de-version) — UXP et rétrocompatibilité de version
+- [Cas 42](#cas-42--un-grep-ne-pose-quun-seul-style-de-paragraphe-par-requête) — mesurer une capacité par contre-épreuve réelle, pas par lecture du nom des propriétés
+- [Cas 43](#cas-43--un-document-créé-par-script-na-aucun-bloc-de-texte-ni-story-ni-textframe) — fabriquer un document témoin dans une sonde
+- [Cas 45](#cas-45--filemodified-ne-signale-pas-un-changement-de-contenu-et-fileread-normalise-les-fins-de-ligne) — `File.modified` n'est pas un signal de contenu ; lecture normalisée en LF
+- [Cas 46](#cas-46--docsave-refuse-tmp-et-privatetmp--foldertemp-est-la-seule-cible-qui-marche) — `doc.save()` refuse `/tmp` ; seule `Folder.temp` marche
 
 ### 3. Index par symptôme
 
@@ -194,6 +214,9 @@ Chercher par ce qu'on a **vu à l'écran** (message d'erreur, comportement obser
 - **Table : création ou remplissage qui part en vrille** → [Cas 00](#cas-00--créer-et-remplir-une-table-indesign-par-script-pattern-validé-23092026), [Cas 20](#cas-20--écriture-par-segments-avec-une-seule-assignation-et-une-table-nest-pas-un-paragraphe), [Cas 28](#cas-28--un-style-de-paragraphe-appelé-depuis-un-style-de-cellule-est-surclassé-invisible-au-panneau-styles-de-paragraphe)
 - **Markdown mal interprété (underscore, gras, faux titres)** → [Cas 19](#cas-19--marqueurs-markdown-ambigus-underscore--distinguer-syntaxe-et-texte-normal-par-bordure-de-mot), [Cas 21](#cas-21--dialectes-markdown--un-item-de-liste-entièrement-en-gras-peut-être-un-titre-déguisé)
 - **Panneau Liens vide / aucun lien natif sur un texte inséré par script** → [Cas 37](#cas-37--lien-natif-vers-un-fichier-source-sans-place--le-modèle-dobjet-link)
+- **Le fichier lié ne se met jamais à jour / contenu périmé affiché malgré une source modifiée** → [Cas 37](#cas-37--lien-natif-vers-un-fichier-source-sans-place--le-modèle-dobjet-link)
+- **L'export « réussit » (`ok=true`) mais le fichier produit n'a pas changé / échec d'export ICML selon le porteur** → [Cas 39](#cas-39--exportfile-nécrase-pas-un-fichier-existant-silencieusement-et-le-porteur-de-lexport-icml-nest-pas-le-document)
+- **La sonde bloque sur une boîte de dialogue / impossible de neutraliser l'alerte (écraser `confirm` ne marche pas non plus)** → [Cas 40](#cas-40--neutraliser-lalerte-dune-sonde--alert-et-confirm-sont-tous-deux-en-lecture-seule)
 - **Sous-chaîne introuvable dans un `title` de menu** → [Cas 30](#cas-30--lesperluette-daccélérateur-dans-les-title-de-menus-fichier-importer)
 - **Entrée de menu absente / un clic ne fait rien** → [Cas 30](#cas-30--lesperluette-daccélérateur-dans-les-title-de-menus-fichier-importer), [Cas 31](#cas-31--déclencheur-dune-scriptmenuaction--seul-un-gestionnaire-de-type-file-survit-à-la-fin-du-script), [Cas 34](#cas-34--une-scriptmenuaction-créée-au-runtime-ne-survit-pas-au-redémarrage-dindesign), [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée)
 - **Entrée de menu disparue après un redémarrage d'InDesign** → [Cas 34](#cas-34--une-scriptmenuaction-créée-au-runtime-ne-survit-pas-au-redémarrage-dindesign), [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite), [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée)
@@ -203,6 +226,13 @@ Chercher par ce qu'on a **vu à l'écran** (message d'erreur, comportement obser
 - **Impossible de diagnostiquer : aucune trace, `catch` vide** → [Cas 18](#cas-18--logging-systématique-plutôt-que-dépendre-du-dialogue-derreur-indesign)
 - **Le test Node passe mais le réel échoue (simulateur trop optimiste)** → [Cas 12](#cas-12--comptage-de-caractères-js-length-désynchronisé-du-comptage-indesign-sur-unicode-composé), [Cas 23](#cas-23--storyparagraphslength-peut-valoir-0-après-une-assignation-explicite-de-chaîne-vide), [Cas 24](#cas-24--la-story-capturée-avant-le-vidage-se-détache--le-compteur-de-diagnostic-ment), [Cas 26](#cas-26--paragraphindex-nest-pas-un-index-de-paragraphe), [Cas 27](#cas-27--séparation-stricte-code-maison--dom-indesign-pourquoi-le-sandbox-node-ne-peut-jamais-suffire)
 - **La correction ne s'applique pas (deux copies du script)** → piège structurel en fin de fichier (cf. [Cas 31](#cas-31--déclencheur-dune-scriptmenuaction--seul-un-gestionnaire-de-type-file-survit-à-la-fin-du-script), [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite), [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée))
+- **« Object is invalid » en fabriquant un document témoin dans une sonde** → [Cas 43](#cas-43--un-document-créé-par-script-na-aucun-bloc-de-texte-ni-story-ni-textframe)
+- **Il faut N passes pour poser N styles de titre / le nettoyage GREP n'en pose qu'un** → [Cas 42](#cas-42--un-grep-ne-pose-quun-seul-style-de-paragraphe-par-requête)
+- **Besoin de relire les marques markdown depuis un export InDesign (ICML) / « Map Tags to Styles » n'a rien à lier** → [Cas 41](#cas-41--ce-quun-icml-exporté-par-script-contient-réellement-et-ce-quil-ne-contient-pas)
+- **Un export InDesign énorme pour trois lignes de texte (20–29 ko)** → [Cas 41](#cas-41--ce-quun-icml-exporté-par-script-contient-réellement-et-ce-quil-ne-contient-pas)
+- **Une donnée attachée au document se relit vide / le test « le label est-il là ? » ne se déclenche jamais** → [Cas 44](#cas-44--extractlabel--insertlabel--ce-que-le-label-accepte-réellement)
+- **Une empreinte ne voit pas une source modifiée (ou crie au loup) : la date et la taille ne suffisent pas** → [Cas 45](#cas-45--filemodified-ne-signale-pas-un-changement-de-contenu-et-fileread-normalise-les-fins-de-ligne)
+- **`doc.save()` échoue avec « Dossier … introuvable » / besoin d'un document témoin réellement enregistrable** → [Cas 46](#cas-46--docsave-refuse-tmp-et-privatetmp--foldertemp-est-la-seule-cible-qui-marche)
 
 ---
 
@@ -1129,8 +1159,8 @@ Le module est chargé par `$.evalFile(new File(<dossier du fichier appelant> + "
 
 **Thème** : modèle texte
 **API / objet visé** : `Link`, `Story.itemLink`, `InsertionPoint.createTextFragmentLink()`, `Document.placeAndLink()`, `Story.linkedStoryOptions`
-**Statut source** : `sourcé`
-**Build de référence** : InDesign 21.x (fr_FR, macOS) — miroir consulté : build **InDesign 2026 / 21.5.1.73** (fichiers Adobe datés **2026-09-21**)
+**Statut source** : `mixte`
+**Build de référence** : InDesign 21.x (fr_FR, macOS) — miroir consulté : build **InDesign 2026 / 21.5.1.73** (fichiers Adobe datés **2026-09-21**) ; **comportements mesurés** sur **21.6.0.57** `fr_FR` les **29/09/2026** (sondes 04bis et 04ter)
 
 **Contexte** — Mission 04 (audit du lien dynamique vers le Markdown source). Le pipeline d'import maison écrit le texte par **assignation directe à `.contents`**, jamais par un `place()` natif. Question posée : peut-on obtenir l'**icône de lien du panneau Liens** (donc la détection native « source modifiée ») **sans** renoncer au mapping de styles maison ?
 
@@ -1144,7 +1174,7 @@ Le module est chargé par `$.evalFile(new File(<dossier du fichier appelant> + "
 - `Link.update()` — « `update()` → `Link` — *Updates the link if the source file has been changed.* » (`Link.html`)
 - `LinkStatus` (enum) — `NORMAL`, `LINK_OUT_OF_DATE`, `LINK_MISSING`, `LINK_INACCESSIBLE`, `LINK_EMBEDDED` (`Link.html`)
 - **`InsertionPoint.createTextFragmentLink()` → `Link`** — section « RETURN 15 » de la classe `Link` (`Link.html`, `InsertionPoint.html`)
-- **`placeAndLink(parentStory)`** — apparaît en « Story PARAMETER OF 35 » / « RETURN 20 » de `Link`, et comme méthode de `Document`, `Page`, `Spread`, `MasterSpread`, `EndnoteTextFrame` (`Document.html`, `Page.html`, `Spread.html`)
+- **`placeAndLink(parentStory)`** — apparaît en « Story PARAMETER OF 35 » / « RETURN 20 » de `Link`, et comme méthode de `Document`, `Page`, `Spread`, `MasterSpread`, `EndnoteTextFrame` (`Document.html`, `Page.html`, `Spread.html`). **Dépréciée** — citation verbatim (`Document.html`, **consultée le 29/09/2026, HTTP 200**, URL servie `https://www.indesignjs.de/indesignapi/indesign/Document.html`, sha256 `e1fb6142b29488c719a3925555dbc64e5dc9478131a2a38653ba451936d72a76`) : « **Deprecated: Use ContentPlacerObject load method.** Original Description: Place following the behavior of the place and link story menu item. This will load the place gun. »
 - `Story.linkedStoryOptions` — « `linkedStoryOptions` \| `LinkedStoryOption` \| readonly » (`Story.html`) ; classes associées : `LinkedStoryOption` (**14 membres**), `LinkedPageItemOption` (**17 membres**), `ParaStyleMapping` (**15 membres**)
 
 **Ce que la doc NE dit PAS** (faits négatifs, vérifiés sur les pages de classes) :
@@ -1152,16 +1182,31 @@ Le module est chargé par `$.evalFile(new File(<dossier du fichier appelant> + "
 - `Application.linkingPreferences` (`LinkingPreference`, **9 propriétés**) **et** `Application.wordRTFImportPreferences` (`WordRTFImportPreference`, **26 membres**) n'exposent **aucune** propriété « Create Links When Placing Text and Spreadsheet Files » ⇒ ce réglage d'interface **n'est pas scriptable via les préférences**.
 - `WordRTFImportPreference` (26 membres) et `TaggedTextImportPreference` (**8 propriétés**) n'exposent **aucune** table de mapping de styles ⇒ le mapping passe par `Application.paraStyleMappings` / `charStyleMappings` / `tableStyleMappings`.
 
-**Cause du faux mur** — La déduction « `.contents` ⇒ pas de lien » confondait deux choses : « notre méthode **ne crée pas** de lien » (vrai) et « notre méthode **interdit** le lien » (faux). L'API expose une voie de création **sur un fragment déjà présent** (`createTextFragmentLink()`), donc le lien est atteignable **après** notre insertion, sans `place()`.
+**Cause du faux mur** — La déduction « `.contents` ⇒ pas de lien » confondait deux choses : « notre méthode **ne crée pas** de lien » (vrai) et « notre méthode **interdit** le lien » (faux) : l'API **expose** bien une voie de création sur un fragment déjà présent (`createTextFragmentLink()`). Mais **l'existence d'une méthode ne garantit pas qu'elle fonctionne sur notre source** — la mesure ci-dessous infirme cette voie.
 
-**Solution / règle** — Pour obtenir un lien natif vers la source sans sacrifier le mapping :
+**Ce que la mesure a établi (29/09/2026 — sondes 04bis et 04ter)** :
 
-1. insérer le contenu par notre pipeline habituel (`.contents`) ;
-2. créer le lien en seconde passe via `InsertionPoint.createTextFragmentLink()` ;
-3. laisser le réglage « linked story » au levier API (`Story.linkedStoryOptions`), puisque les préférences ne l'exposent pas ;
-4. ne recourir à `placeAndLink()` que si le lien doit naître **pendant** le placement — et vérifier d'abord son statut de dépréciation.
+| Fait mesuré | Résultat | Preuve |
+| --- | --- | --- |
+| `InsertionPoint.createTextFragmentLink()` vers un `.md` | **ÉCHEC 11/11** | `probe_04bis_Q1_createTextFragmentLink.log` — `Valeur obligatoire manquante pour le paramètre 'linkResourceURI'…`, puis `Impossible de créer la ressource de lien à partir de l'URI donné.`, puis `Impossible d'importer le lien vers le fragment de texte. Vérifiez la connectivité…` |
+| `place()` d'un `.md` | **`doc.links.length = 0`**, `story.itemLink = (null)` | journaux 04bis |
+| `place()` d'un `.icml` | **`links = 1`**, `linkType = InCopyMarkup`, `linkResourceURI = file:/…`, `story.itemLink` **non-null** | `probe_04ter_T2_placement_lie.log` |
+| `Link.status` (numériques) | `NORMAL = 1852797549`, `LINK_OUT_OF_DATE = 1819242340` | `probe_04ter_T3_update_vs_mapping.log` + contre-épreuve TEST 1 |
+| `Link.update()` sur source modifiée | **ne recharge RIEN** : contenu affiché et styles témoins identiques avant/après ; seul `status` passe à `LINK_OUT_OF_DATE` | `probe_04ter_T3_update_vs_mapping.log` |
+| Réouverture avec `checkLinksAtOpen = true` | **ne recharge RIEN** non plus | `/tmp/test_reopen2.log` (TEST 2 propre, 10:04:46) |
+| L'ICML produit porte-t-il nos styles nommés ? | **Non** (`grep 'ZZ Temoin'` dans l'ICML = vide) ⇒ les styles témoins relus après `update()` viennent du mapping maison, **pas** de l'ICML (lecture non circulaire) | anti-tautologie, T3 |
+| `story.linkedStoryOptions` sur un ICML placé | **3 propriétés interrogées, 3 × « Cette propriété n'est pas applicable dans l'état actuel »** ⇒ l'ICML lié par `place()` **n'est pas** un « linked story » au sens d'InDesign | `probe_04ter_T2_placement_lie.log` |
 
-**Portée** — Toute question « comment obtenir l'icône/le statut du panneau Liens tout en gardant un traitement maison » se traite par cette famille d'API, **jamais** par les préférences (fait négatif A). **Réserve explicite** : ce cas est **`sourcé` au sens documentaire uniquement** — la signature exacte de `createTextFragmentLink()`, la valeur réelle de `linkResourceURI` produite, l'évolution de `status`, le comportement de `update()` sur un lien créé par nous (ré-import brut ou non) et le statut de dépréciation de `placeAndLink()` **ne sont pas mesurés** : ils relèvent de la sonde runtime (`COMMUNICATION/mission_04bis_sonde_lien_runtime.md`).
+⇒ **Le lien natif surveille l'ICML, pas le `.md` ; et il ne sert qu'à signaler la fraîcheur, jamais à réimporter.** Pour un pipeline qui doit relire le `.md` et réappliquer son mapping, **cette voie échoue**.
+
+**Solution / règle** — **Révisée le 29/09/2026 : les étapes 2 à 4 de la version initiale de ce cas sont écartées par la mesure.**
+
+1. **Écarter `InsertionPoint.createTextFragmentLink()`** comme voie de lien vers notre source : elle échoue systématiquement vers un `.md` (**11/11**, cf. tableau ci-dessus).
+2. **Écarter `placeAndLink()`** : son statut de dépréciation est **tranché par citation verbatim** le 29/09/2026 — « **Deprecated: Use ContentPlacerObject load method.** » (`Document.html`). La méthode reste **présente au runtime** (`typeof = function`, arité 0, sur `Document`/`Page`/`Spread`/`MasterSpread`) ⇒ dépréciation **douce**, mais la voie est **écartée** (remplaçant désigné : `ContentPlacerObject.load`).
+3. Si un lien natif est réellement requis, il ne peut viser qu'un **intermédiaire ICML** (`story.exportFile(file, ExportFormat.INCOPY_MARKUP)` puis `place(.icml)`) — et il faut alors assumer ses **deux limites mesurées** : il **ne réimporte jamais** le contenu (`update()` = contrôle de fraîcheur seul, réouverture comprise) et il **ne transporte aucun style nommé** (le mapping maison reste à faire, cf. Cas 25 et 28).
+4. Pour répondre au besoin réel (« la source a changé ⇒ je sais de quoi elle a changé, et je décide quoi réappliquer »), il faut donc **une empreinte maison du fichier source** (piste retenue : voie B, empreinte du `.md` en métadonnées) — **pas** le mécanisme natif.
+
+**Portée** — Toute question « comment obtenir l'icône/le statut du panneau Liens tout en gardant un traitement maison » se traite par cette famille d'API, **jamais** par les préférences (fait négatif A : `Application.linkingPreferences` et `wordRTFImportPreferences` n'exposent pas le réglage d'interface). **Réserve levée le 29/09/2026** : ce cas était `sourcé` **au sens documentaire uniquement** ; les comportements alors en réserve (signature de `createTextFragmentLink()`, valeur réelle de `linkResourceURI`, évolution de `status`, comportement de `update()` sur un lien créé par nous) **sont désormais mesurés** et figurent au tableau ci-dessus. **Point de dépréciation soldé le 29/09/2026** : la **citation verbatim** de la doc est jointe — « **Deprecated: Use ContentPlacerObject load method.** » (`Document.html`, section `METHODS`, entrée `placeAndLink` ; URL servie citée ci-dessus) — tandis que la méthode **existe toujours** comme membre de `Document`, `Page`, `Spread` (arité 0 relevée) : dépréciation **douce**, sans retrait du runtime. **Plus aucun point ouvert sur ce cas.**
 
 ---
 
@@ -1192,6 +1237,326 @@ Le module est chargé par `$.evalFile(new File(<dossier du fichier appelant> + "
 3. Ne jamais présumer qu'une API utilisée en développement est disponible sur toutes les versions listées dans la plage `minVersion`/`maxVersion` — vérifier la matrice de support UXP↔InDesign (Cas 37) pour la version la plus basse visée.
 
 **Portée** — S'applique à tout projet UXP multi-postes/multi-versions, pas seulement à ce projet. Distinct du Cas 37 (qui porte sur l'API `Link`) : ce cas porte sur le **cycle de vie de version**, orthogonal au contenu fonctionnel du plugin.
+
+---
+
+## Cas 39 — `exportFile` n'écrase pas un fichier existant (silencieusement) et le porteur de l'export ICML n'est pas le document
+
+**Thème** : méthode
+**API / objet visé** : `Document.exportFile()`, `Story.exportFile()`, `ExportFormat.INCOPY_MARKUP`, `File.remove()`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS) — mesuré le **29/09/2026** (mission 04ter)
+
+**Contexte** — Sonde 04ter : produire un fichier ICML depuis une story pour le placer ensuite (`place(.icml)`) et obtenir un `Link` natif. Trois pièges successifs, tous découverts en réel et journalisés (`/tmp/probe_04ter_T1_production_icml.log`, `/tmp/test_reopen2.log`).
+
+**Symptôme** —
+
+1. `document.exportFile(ExportFormat.INCOPY_MARKUP, f)` échoue : **`L'objet spécifié ne prend pas en charge le format d'exportation souhaité.`** — 2 essais sur 2 (`ligne=492`).
+2. Avec la cible à la **racine de `/tmp`**, l'export ne produit rien.
+3. Après correction du porteur, l'export « réussit » (`ok=true`) **mais le fichier produit garde son ancien contenu et sa taille**.
+
+**Cause** —
+
+1. Le porteur d'un export ICML n'est pas le **document**, c'est la **story** : `story.exportFile(ExportFormat.INCOPY_MARKUP, file)` fonctionne (`ICML produit : existe=true | taille=35909 o`).
+2. `/tmp` est un **lien symbolique vers `/private/tmp`** ; écrire à la racine de ce chemin échoue. Un **sous-dossier réel** (`/tmp/probe_04ter_out/x.icml`) fonctionne.
+3. `exportFile` **ne remplace pas** un fichier existant : il ressort en `ok=true` sans rien écrire.
+
+**Ce que dit la doc** — `ExportFormat` expose **18 constantes**, dont `INCOPY_MARKUP = 1768123756` (relevé par la sonde T0 : `ExportFormat : 18 constante(s)` / `constante retenue : ExportFormat.INCOPY_MARKUP … 1768123756`). La doc ne signale **pas** que `Document` refuse ce format, ni qu'`exportFile` reste sans effet sur une cible existante.
+
+**Solution** —
+
+1. Exporter depuis **la story** (`story.exportFile(file, ExportFormat.INCOPY_MARKUP)`), jamais depuis le document.
+2. Écrire dans un **vrai sous-dossier** ; se méfier des liens symboliques (`/tmp`), y compris pour lire le fichier produit.
+3. **`remove()` la cible avant d'exporter**, puis **relire le fichier produit** (existence, taille, contenu attendu) pour prouver l'écriture — `ok=true` **ne prouve rien**.
+
+**Portée** — Vaut pour tout export par script (ICML, PDF, IDML…) : `ok=true` n'est pas une preuve, et le porteur du format peut être un objet inattendu. Toute sonde d'export doit se **contre-éprouver** en écrasant un fichier existant (TEST 0 de `COMMUNICATION/mission_04ter_sonde_icml.md`, journal `/tmp/test_reopen2.log`). Cas jumeau : Cas 18 (journaliser plutôt que se fier au retour de l'API).
+
+---
+
+## Cas 40 — Neutraliser l'alerte d'une sonde : `alert` ET `confirm` sont tous deux en lecture seule
+
+**Thème** : langage
+**API / objet visé** : `alert()`, `confirm()`, `$.evalFile()`, canal `osascript … do script`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS) — mesuré le **29/09/2026** (mission 04ter) ; **moitié « `confirm` » corrigée le 29/09/2026** (mission 05), mesure à l'appui
+
+**Contexte** — Une sonde lancée sans personne devant l'écran ne doit afficher **aucune** boîte de dialogue (sinon elle bloque indéfiniment la mesure). Le lancement se fait depuis le shell : `osascript -e 'tell application "Adobe InDesign 2026" to do script "…" language javascript'`.
+
+**Symptôme** — En tentant de neutraliser les boîtes de dialogue de la sonde, le journal porte **`shadow alert KO : alert is read only`**, tandis que la ligne **`fonctions neutralisees = confirm`** paraît attester que `confirm` a bien été écrasé (`/private/tmp/run_04ter.log`).
+
+**Cause** — Dans ExtendScript, `alert` **et `confirm`** sont des **fonctions globales non réassignables** (lecture seule) : on ne peut remplacer ni l'une ni l'autre par une version silencieuse. La ligne `fonctions neutralisees = confirm` ne décrit **pas** un effet : elle n'atteste que le fait que l'instruction `neutralise.push("confirm")` a été **atteinte** — donc que l'affectation n'a pas levé d'exception à cet endroit-là, ce qui ne prouve rien sur son effet. Par ailleurs, le canal `osascript … do script "<code>"` **casse dès que le code contient des guillemets imbriqués** (JSON, chemins, chaînes littérales) — l'échec est silencieux côté AppleScript.
+
+**Correction du 29/09/2026 — la moitié « `confirm` est écrasable » de ce cas était FAUSSE** —
+
+Le libellé d'origine (« `alert` est en lecture seule, `confirm` est écrasable ») a été **invalidé par la mesure** :
+
+- **Matrice 4 contextes × 2 formes d'écriture = 8 tentatives, TOUTES refusées** (`/private/tmp/matrix_inline.log`, `/private/tmp/matrix_evalfile.log`) :
+
+  ```
+  A  evalFile + niveau superieur : REFUSE : confirm is read only
+     A sentinelle REELLEMENT vue = false
+  B  evalFile + fonction imbriquee : REFUSE : confirm is read only
+     B sentinelle REELLEMENT vue = false
+  C  inline + niveau superieur : REFUSE : confirm is read only
+     C sentinelle REELLEMENT vue = false
+  D  inline + fonction imbriquee : REFUSE : confirm is read only
+     D sentinelle REELLEMENT vue = false
+  etat final : confirm est redevenu natif = true
+  ```
+
+- Les **deux formes** testées sont également refusées (`/private/tmp/probe_05_empreinte.log`, section 5bis) : `confirm = f` (affectation nue) → `REFUSE : confirm is read only` ; `$.global.confirm = f` (chemin explicite) → `REFUSE : confirm is read only`.
+- En `do script`, la portée globale est refusée de la même façon : `INLINE (do script, portee globale) : REFUSE : confirm is read only | restaure = true` (`/private/tmp/ctx_inline.log`) et `EVALFILE ($.evalFile, portee de la sonde) : REFUSE : confirm is read only | restaure = true` (`/private/tmp/ctx_evalfile.log`).
+- État final vérifié : `confirm natif = true | alert natif = true` (`/private/tmp/etat_final.log`) : **aucun des deux n'a été neutralisé**.
+
+**Corroboration décisive** — Le **même** `/private/tmp/run_04ter.log` enregistre `duree ms = 46106` (**46 s**) pour une sonde qui contient **5 appels `alert()`** (`tools/probe_04ter_icml.jsx`, l. 690, 701, 744, 758, 763). Les boîtes se sont donc **réellement ouvertes** : rien n'a été neutralisé, et les 46 secondes correspondent aux **clics humains**. La ligne `fonctions neutralisees = confirm` est un **artefact de la sonde**, pas une capacité de l'API.
+
+**Réserve d'honnêteté (contradiction NON résolue)** — Deux relevés antérieurs du **même** 29/09/2026 affichent au contraire `SANS ERREUR` : `/private/tmp/ctx_props.log` (`alert = f : SANS ERREUR`, `confirm = f : SANS ERREUR`, `delete $.global.confirm puis confirm = f : SANS ERREUR`, `delete $.global.alert puis alert = f : SANS ERREUR`, `confirm est-il encore actif apres ces essais = true`, `$.global.hasOwnProperty confirm = true`, `$.global.hasOwnProperty alert = true`) et `/private/tmp/ctx_shadow.log` (`apres affectation DANS une fonction, la sentinelle confirm est-elle VUE au niveau superieur = true`, `typeof confirm = function | source contient SENT_CONFIRM = true`). Je **ne prétends pas** expliquer ce point : la portée exacte que le moteur ExtendScript applique à l'affectation d'un global natif reste **non élucidée** ici. Le fait **établi et reproductible** est le **refus** (`confirm is read only`, 8/8 dans 4 contextes) — c'est cette mesure-là qu'il faut retenir pour concevoir un test.
+
+**Ce que dit la doc** — Aucune page consultée ne documente `alert` **ni `confirm`** comme réassignables en ExtendScript/ES3 ; aucune ne documente le canal `do script` et ses limites de citation. Faits **mesurés**, sans source externe à citer.
+
+**Solution** —
+
+1. **Ne jamais fonder la testabilité d'un script sur l'écrasement d'`alert` ou de `confirm`.** Aucun des deux n'est remplaçable de façon fiable. Faire passer **toutes** les boîtes par une **variable possédée par le projet** — `var demanderConfirmation = function (m) { return confirm(m, false, SCRIPT_NAME); };` — que la sonde peut remplacer **sans toucher au global** : c'est la seule voie qui rend les **deux branches** (accepter / refuser) réellement testables. Mise en œuvre dans `import_md.jsx` (`demanderConfirmationM05`) et dans `tools/probe_05ter_integration.jsx` (`demanderConfirmation`).
+2. **Concevoir la sonde pour ne pas appeler `alert`** : aucune boîte de dialogue dans un script de mesure. Si un `alert` est nécessaire en interactif, le rendre conditionnel à un **drapeau de mode** décidé par le script, jamais par l'utilisateur.
+3. Écrire la sonde dans un **fichier `.jsx` temporaire**, puis l'exécuter par `$.evalFile(new File("/chemin/x.jsx"))` — **jamais** de code inline dans la commande `osascript` (guillemets imbriqués).
+4. Journaliser **toutes** les erreurs dans un fichier de log (**aucun `catch` vide**), y compris les erreurs **attendues** — cf. T0 de 04ter : `ERREUR | contexte=T0 document existant | message=Object is invalid | ligne=397` quand `app.documents.length = 0`, erreur non bloquante et **consignée comme telle**.
+5. **Se méfier d'un journal qui affirme un succès sans le mesurer.** Ici `neutralise.push("confirm")` a produit une ligne triomphante alors que les boîtes s'affichaient toujours. Une preuve de succès doit être un **effet observé** (durée d'exécution, absence de boîte, valeur relue), jamais une **trace d'exécution**.
+
+**Portée** — Tout script de mesure non interactif. Complète le Cas 18 (journalisation systématique) : **journaliser ne suffit pas si le script peut bloquer** sur une boîte de dialogue. Complète aussi le Cas 32 (une sonde doit être sûr d'elle avant de crier au loup).
+
+---
+
+## Cas 41 — Ce qu'un ICML exporté par script contient réellement (et ce qu'il ne contient PAS)
+
+**Thème** : méthode / format d'export
+**API / objet visé** : `Story.exportFile(ExportFormat.INCOPY_MARKUP, …)`, éléments `<Content>`, `AppliedParagraphStyle`, `XMLElement` / `XMLTag`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** `fr_FR`, macOS — mesuré le **29/09/2026** (mission 04ter)
+
+**Contexte** — Après l'échec de la voie A (lien natif, cf. Cas 37), une autre voie est envisagée : et si le mapping marques→styles pouvait se faire **depuis l'ICML** plutôt que depuis le `.md` ? L'idée est séduisante parce que l'ICML est un format qu'InDesign sait relire. Avant de bâtir quoi que ce soit dessus, on **inspecte** le fichier réellement produit.
+
+**Relevé (mesuré)** — Fichier `probe_04ter_A.icml` : **36 877 octets** sur disque / **35 830 caractères** lus (UTF-8 multi-octets : accents et guillemets français).
+
+1. **Les marques markdown survivent littéralement**, en **texte brut**, dans les éléments `<Content>` :
+   ```
+   <Content># Titre B MODIFIE</Content>
+   <Content>## Sous-titre B MODIFIE</Content>
+   <Content>Paragraphe B MODIFIE.</Content>
+   ```
+2. **Aucune balise XML** : `XMLElement` = **0**, `XMLTag` = **0**, `<Tag` = **0**, `AppliedXMLTag` = **0**, `TagName` = **0**.
+3. **Style de paragraphe** : une seule valeur distincte relevée, `ParagraphStyle/$ID/[No paragraph style]`. Style de caractère : `CharacterStyle/$ID/[No character style]` et `n`.
+4. **Poids** : 35 830 caractères pour **42 caractères** de texte utile (ratio ≈ **850:1**). Le bloc `<Properties>` domine — il recopie **tout le jeu du document** (couleurs, styles, formats de renvoi croisé, listes de numérotation).
+5. La **localisation française fuit** dans l'ICML : `CrossReferenceFormat Name="Paragraphe entier et numéro de page"`, `NumberingExpression="^#.^t"`.
+
+**Interprétation** —
+
+- Ce qu'on appelle familièrement les « **tags** » d'un ICML **ne sont pas des balises InDesign** : ce sont les **marques markdown en texte brut** déposées dans `<Content>`. Il n'y a **aucun** `XMLTag` à quoi que ce soit à raccrocher ⇒ la commande « Map Tags to Styles » d'InDesign n'a **rien à lier** ici.
+- L'ICML n'est donc **pas un format balisé** au sens InDesign : c'est un **conteneur de texte** plus un **jeu de styles recopié en bloc**. La taille du fichier n'est **pas proportionnelle au texte**.
+
+**Ce que dit la doc** — Aucune page consultée ne documente le contenu d'un ICML exporté par script. Faits **mesurés**, sans source externe à citer.
+
+**Réserve de mesure déclarée (à lever)** — Le relevé n° 3 (`[No paragraph style]` seul) **ne prouve PAS** que l'ICML efface les styles. La story témoin de la sonde n'avait **aucun style appliqué** au départ (contrôle `ZZ Temoin` → **0** occurrence). Ce relevé prouve seulement qu'**il n'y avait rien à relever**. Le point 3 doit donc être considéré comme **non instruit** jusqu'à ce qu'une sonde dédiée (story avec styles nommés réellement appliqués) l'ait tranché. **Ne pas citer ce point comme un fait acquis.**
+
+**Solution / conséquence pratique** —
+
+1. **Ne pas bâtir de mapping sur l'ICML** : relire les marques md depuis l'ICML ajoute un aller-retour complet (`.md` → InDesign → ICML → relecture) sur une source **plus pauvre**, alors que l'importateur mappe déjà les marques **directement depuis le `.md`** — source plus riche, plus simple, plus proche de l'intention.
+2. **Règle d'outillage** : ne **jamais** déverser un ICML entier dans le terminal (20–29 ko observés) — cibler `<Content>`, `AppliedParagraphStyle` et les compteurs de balises par extraction ciblée.
+
+**Portée** — Toute tentative de relecture d'un export InDesign pris comme source de données. Complète le Cas 39 (`exportFile`, porteur de l'export ICML) et le Cas 37 (voie A : ce que le lien natif ne fait pas).
+
+---
+
+## Cas 42 — Un GREP ne pose qu'UN seul style de paragraphe par requête
+
+**Thème** : styles / recherche-remplacement
+**API / objet visé** : `app.findGrepPreferences`, `app.changeGrepPreferences`, `Document.changeGrep()`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** `fr_FR`, macOS — mesuré le **29/09/2026** (outil `tools/probe_grep_style.jsx` ; mesure faite avec `documents au depart = 1`, la sonde crée et referme son propre document témoin)
+
+**Contexte** — Idée de conception : « nettoyer les marques markdown (`#`, `##`) par GREP et poser les styles dans la même passe ». Avant de retenir ou d'écarter l'idée, on mesure la capacité réelle du moteur Rechercher/Remplacer.
+
+**Relevé (mesuré)** —
+
+1. `app.findGrepPreferences` expose **223 propriétés**, dont **9** contiennent « `tyle` » : `sameParaStyleSpacing`, `kentenFontStyle`, `rubyFontStyle`, `bulletsCharacterStyle`, `numberingCharacterStyle`, `appliedCharacterStyle`, **`appliedParagraphStyle`**, `fontStyle`, `otfFigureStyle`. **Une seule** concerne le style de **paragraphe**.
+2. Les **variantes plurielles n'existent pas** — toutes rejettent :
+   ```
+   findGrepPreferences.appliedParagraphStyles -> ABSENT (Object does not support the property or method 'appliedParagraphStyles')
+   findGrepPreferences.appliedCharacterStyles -> ABSENT (Object does not support the property or method 'appliedCharacterStyles')
+   findGrepPreferences.paragraphStyles -> ABSENT (Object does not support the property or method 'paragraphStyles')
+   findGrepPreferences.characterStyles -> ABSENT (Object does not support the property or method 'characterStyles')
+   findGrepPreferences.appliedParagraphStyle -> PRESENT | typeof=string | valeur=
+   ```
+   Et : `appliedParagraphStyle : typeof=string` · `appliedParagraphStyle : est un Array ? = false` · `appliedParagraphStyle : reflect.name = String` ⇒ **scalaire**, jamais une collection.
+3. **Contre-épreuve réelle** — story témoin à 3 paragraphes (`# Titre Niveau 1` / `## Titre Niveau 2` / `Paragraphe ordinaire.`), **une** requête : `findWhat = "^#\\s"`, `changeTo = ""`, `changeGrepPreferences.appliedParagraphStyle = ZZGREP Niveau1`, puis `doc.changeGrep()` :
+   ```
+   changeGrep(...) applique 1 seul style : modifications = 1
+   releve apres la requete (3 paragraphes) :
+     p[0] texte=# Titre Niveau 1/ | style=ZZGREP Niveau1
+     p[1] texte=## Titre Niveau 2/ | style=[Paragraphe standard]
+     p[2] texte=Paragraphe ordinaire./ | style=[Paragraphe standard]
+   ```
+
+**Cause** — Le moteur porte **un seul style de paragraphe et un seul style de caractère** par requête (deux propriétés scalaires). Il n'existe **aucune** forme plurielle permettant d'en poser plusieurs d'un coup : **N niveaux de titre ⇒ N requêtes.**
+
+**Ce que dit la doc** — Aucune citation verbatim collectée pour ce point ; la démonstration repose **entièrement** sur la mesure DOM ci-dessus.
+
+**Solution** —
+
+1. Concevoir tout nettoyage GREP multi-niveaux comme **N passes** (une par style), jamais comme une passe unique. En prévoir le coût : N × (recherche + remplacement + recomposition).
+2. Vérifier une capacité par **contre-épreuve réelle** (poser le style, puis *relire ce qui a été posé*), jamais par la seule lecture du nom des propriétés : `appliedParagraphStyle` est **au singulier**, et seul le test prouve qu'il n'existe pas de variante plurielle.
+
+**Portée** — Tout usage de `changeGrep()` / `findGrep()` pour poser des styles. Remettre `app.findGrepPreferences` et `app.changeGrepPreferences` à `NothingEnum.nothing` après usage (idiome employé par la sonde ; l'effet d'un oubli n'a **pas** été mesuré ici). Complète le Cas 25 (valeur par défaut silencieuse).
+
+---
+
+## Cas 43 — Un document créé par script n'a aucun bloc de texte (ni story, ni textFrame)
+
+**Thème** : modèle document / méthode (sonde)
+**API / objet visé** : `app.documents.add()`, `Document.stories`, `Document.textFrames`, `Page.textFrames.add()`, `TextFrame.parentStory`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** `fr_FR`, macOS — mesuré le **29/09/2026**
+
+**Contexte** — Une sonde a besoin d'un **document témoin** : elle le crée, écrit un texte dedans, mesure un comportement, puis le referme sans enregistrer.
+
+**Symptôme** — `ERREUR | contexte=contre-epreuve GREP | message=Object is invalid | ligne=79`, à la ligne `var t = story.texts[0];` — alors que la ligne précédente, `var story = doc.stories[0];`, était passée sans broncher. **L'erreur est signalée une ligne trop tard**, ce qui brouille le diagnostic.
+
+**Cause (mesurée)** — Juste après `app.documents.add()` :
+```
+doc cree : stories=0 | textFrames=0 | pages=1
+```
+Un document neuf comporte **une page mais aucun bloc de texte** — donc **aucune story**. L'accès à une collection vide reste **permissif** (`doc.stories[0]` ne lève rien) et rend un objet **invalide** qui n'explose qu'à l'usage suivant.
+
+**Ce que dit la doc** — Aucune page consultée ne documente ce point. Faits **mesurés**, sans source externe à citer.
+
+**Solution** — Créer explicitement le bloc de texte, puis passer par son `parentStory` — **jamais** par `doc.stories[0]` :
+```javascript
+var doc = app.documents.add();
+var page = doc.pages[0];
+var tf = page.textFrames.add();
+var story = tf.parentStory;          // story valide
+story.contents = "…\r";
+story.recompose();
+```
+Mesuré après correction : `textFrame cree : null ? = false` · `story obtenue : null ? = false` · `story temoin : longueur=57`.
+
+**Portée** — Toute sonde ou tout script qui fabrique son propre document témoin. Complète le Cas 40 (sonde non interactive), le Cas 39 (refermer le document témoin sans l'enregistrer) et le **Cas 46** (enregistrer ce document témoin).
+
+---
+
+## Cas 44 — `extractLabel` / `insertLabel` : ce que le label accepte réellement
+
+**Thème** : styles
+**API / objet visé** : `Document.insertLabel()`, `Document.extractLabel()`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS) — mesuré le **29/09/2026** (mission 05 : sonde jetable `tools/probe_05_empreinte.jsx`, puis sonde d'intégration `tools/probe_05ter_integration.jsx`)
+
+**Contexte** — Il faut mémoriser dans le document une **empreinte** de la source Markdown importée, pour pouvoir dire au moment d'un ré-import si le `.md` a changé depuis. Le label est le seul endroit où une donnée voyage avec le document **sans fichier annexe**.
+
+**Symptôme** — Une sonde qui teste « le label existe-t-il ? » par comparaison à `null` (`if (brut === null)`) ne se déclenche **jamais** : sur une clé absente, la valeur relue n'est pas `null`.
+
+**Cause / relevé mesuré** —
+
+1. **Clé absente ⇒ `extractLabel` rend `''`** — une **chaîne vide**, `typeof = "string"`. Ni `null`, ni `undefined`, et **aucune exception**. Mesuré : `extractLabel sur label ABSENT -> typeof=string | valeur=''`.
+2. **Réécriture sous la MÊME clé ⇒ ÉCRASEMENT** de l'ancienne valeur (pas d'accumulation, pas d'erreur, pas de doublon). Mesuré : `OK V2 re-insertLabel du MEME nom ECRASE l'ancienne valeur` — et la valeur relue ensuite diffère bien de la précédente.
+3. **Taille : un label de 4000 caractères se relit intégralement.** Mesuré : `label de 4000 caracteres : longueur relue=4000` puis `OK V2 un label de 4000 caracteres survit integralement | attendu=4000 | obtenu=4000`. C'est la **plus grande valeur réellement testée**, pas un maximum prouvé.
+4. **Persistance : le label survit à fermeture + réouverture du document.** Mesuré après enregistrement, `close()`, puis réouverture du `.indd` : l'empreinte **et** le mapping sont relus à l'identique (`APRES reouverture — empreinte : {"v":"1","size":"60","modified":"1790691560000","checksum":"1565740989","name":"probe_05_source.md"}`).
+5. **Les clés sont indépendantes** : `md-style-map` (`longueur=42`) et `md-source-fingerprint` (`longueur=100`) coexistent, et chaque écriture sur l'une laisse l'autre **intacte** — contrôle de non-régression passé à **chaque** étape de la sonde d'intégration.
+
+**Ce que dit la doc** — Aucune citation verbatim collectée pour les points 1 à 3 : ni l'écrasement silencieux, ni la valeur `''` sur clé absente, ni le comportement au-delà de 4000 caractères ne sont documentés dans les pages consultées. À traiter comme **mesuré**, sans source externe. Le point de départ documentaire reste le **Cas 06** (`document.labels` n'est pas une collection énumérable ⇒ passer par `insertLabel`/`extractLabel`).
+
+**Solution** —
+
+1. Tester la **présence** d'un label par la **valeur vide** : `if (!brut) { … }` — **jamais** `brut === null` ni `typeof brut === "undefined"`.
+2. Traiter toute donnée de label comme **écrasable** : une seule valeur vit sous une clé donnée ; ne pas compter sur deux écritures coexistantes sous le même nom.
+3. N'y ranger que des données **petites et textuelles**, sérialisées en `clé=valeur` en **échappant** séparateurs et guillemets, et **contre-éprouver** l'aller-retour avec une valeur hostile (un chemin contenant `"` a été testé : il survit).
+4. Verser la **version** du format dans la donnée elle-même (`v="1"`) et **refuser** une empreinte sans version : un format qui évolue ne doit pas être confondu avec une empreinte valide (testé : `m05ParseFingerprint` rend `null` sur une chaîne sans `v`, et `verifierSourceMarkdown` conclut alors `jamais_importe`).
+
+**Portée** — Toute donnée à faire voyager avec le document (paramètres, empreintes, état d'import). Complète le **Cas 06** (accès aux labels) ; le pendant « fichier » est le **Cas 45** (mesurer la source) et le **Cas 46** (enregistrer un document témoin pour tester la réouverture).
+
+---
+
+## Cas 45 — `File.modified` ne signale pas un changement de contenu, et `File.read()` normalise les fins de ligne
+
+**Thème** : méthode
+**API / objet visé** : `File.modified`, `File.length`, `File.lineFeed`, `File.read()`, `File.write()`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS) — mesuré le **29/09/2026** (mission 05, sonde jetable `tools/probe_05_empreinte.jsx`, journal `/private/tmp/probe_05_empreinte.log`)
+
+**Contexte** — Pour décider si un `.md` source a changé depuis l'import, l'idée naturelle est de comparer la **date de modification** du fichier (`File.modified`), éventuellement aidée de sa **taille** (`File.length`). Les deux sont insuffisantes — et la première est franchement trompeuse.
+
+**Symptôme** — Une empreinte qui repose sur la date (ou sur la taille) ne détecte **pas** une modification de contenu : le fichier a bien changé, l'empreinte continue d'annoncer « identique ».
+
+**Cause / relevé mesuré** —
+
+1. **La date ne bouge pas quand le contenu change dans la même seconde.** Mesuré, après passage d'un caractère `'e'` → `'a'` : `taille=60 | dateMs=1790691560000 | somme=1565740989` — **même taille**, **même date**, **somme différente**. Explicité par la sonde : `date avant=1790691560000 | date apres=1790691560000 | date a BOUGE = false`. La date de modification est une information de **système de fichiers** (granularité de l'ordre de la seconde ici), **pas un signal de contenu**.
+2. **La taille ne suffit pas non plus** : remplacer un caractère par un autre laisse `File.length` inchangé (60 → 60). Mesuré : `OK V1 sensible : 1 caractere change => taille INCHANGEE (piege confirme)`.
+3. **Une somme de contrôle, elle, est reproductible ET sensible** : deux lectures d'un fichier intact donnent `somme=1565744833` toutes les deux (`OK V1 reproductible : 2 lectures d'un fichier intact => taille identique`), et un seul caractère changé fait passer la somme de `1565744833` à `1565740989`.
+4. **`File.read()` normalise les fins de ligne en LF.** Écrit sur disque avec un `CR` (code 13), le même contenu se relit avec un `LF` (code 10) : `contenu ECRIT … ,13,…` face à `contenu LU du fichier … ,10,…`, avec `longueur ecrite = 60 | longueur lue = 60`. Relevé de stabilité par style de fin de ligne :
+
+   ```
+   LF seul : ecrit=4 | tailleDisque=4 | lu=4 | somme=2902385 | codes=97,10,98,10
+   CR seul : ecrit=4 | tailleDisque=4 | lu=4 | somme=2902385 | codes=97,10,98,10
+   CRLF    : ecrit=6 | tailleDisque=4 | lu=4 | somme=2902385 | codes=97,10,98,10
+   ```
+
+   ⇒ les trois styles se lisent avec la **même** longueur et la **même** somme. `File.write()`, lui, **écrit CRLF → CR** (6 caractères écrits ⇒ 4 octets sur disque). **Conséquence heureuse** : l'empreinte est **insensible au style de fin de ligne** ; un `.md` ré-enregistré par un autre outil qui convertit les fins de ligne ne déclenche **pas** de fausse alerte tant que le **texte** est inchangé.
+5. **`File.lineFeed` ne change pas la lecture** : valeur par défaut observée avant `open()` = `'macintosh'`, et forcer `native` ou `unix` donne la **même** longueur lue et la **même** somme (`OK lineFeed ne change PAS la somme lue (native==unix)`).
+6. **Conséquence de conception** : la somme décrit le contenu **normalisé par ExtendScript**, pas les octets bruts du disque. C'est acceptable **à une condition stricte** : que la lecture soit faite par la **même fonction** à l'import et à la comparaison — ce que fait le pipeline (`m05BuildFingerprint` miroite exactement `readMarkdownFileAt`, sans forcer d'encodage).
+
+**Ce que dit la doc** — Aucune citation verbatim collectée : ni la granularité de `File.modified`, ni la normalisation CR/CRLF en lecture et en écriture ne sont documentées dans les pages consultées. Faits **mesurés**.
+
+**Solution** —
+
+1. **Ne jamais décider « la source a changé » sur la date ni sur la taille.** L'empreinte est une **somme de contrôle du contenu normalisé** + la taille, la taille n'étant qu'un **garde-fou secondaire**, jamais une preuve.
+2. Comparer **texte normalisé à texte normalisé**, en réutilisant **exactement** la fonction de lecture du pipeline — jamais une lecture parallèle avec un autre encodage, sinon la fausse alerte est garantie.
+3. Ne **pas** inclure la date dans la décision : `m05DecideState` la stocke pour le **diagnostic** (elle est utile au journal) mais **ne s'en sert pas** pour trancher.
+4. Pour tester une empreinte, monter le cas piège — **taille identique ET date identique, contenu différent** — et vérifier que l'état bascule quand même. **Contre-épreuve obligatoire** : deux lectures du fichier **intact** doivent rendre la **même** somme (sinon la sensibilité mesurée ne prouve rien).
+
+**Portée** — Toute détection de fraîcheur d'une source (voie B de la mission 05). Complète le **Cas 44** (où ranger l'empreinte), le **Cas 46** (fabriquer un document témoin) et le **Cas 39** (`exportFile` n'écrase pas ; `/tmp` est un lien symbolique).
+
+---
+
+## Cas 46 — `doc.save()` refuse `/tmp` et `/private/tmp` ; `Folder.temp` est la seule cible qui marche
+
+**Thème** : méthode
+**API / objet visé** : `Document.save()`, `Document.saveAs`, `Folder.temp`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS) — mesuré le **29/09/2026** (mission 05, sonde jetable `tools/probe_05_empreinte.jsx`, section 2 du journal)
+
+**Contexte** — Pour vérifier qu'un label (une empreinte) **survit à fermeture + réouverture**, il faut un document **jetable qu'on puisse réellement enregistrer**. Le réflexe est d'écrire dans `/tmp` — déjà piégeux par ailleurs (cf. Cas 39 : `/tmp` est un lien symbolique).
+
+**Symptôme** — `doc.save(new File("/private/tmp/probe_05_doc.indd"))` échoue avec un message qui **accuse le dossier** : `ECHEC : Dossier "/private/tmp/probe_05_doc.indd" introuvable`. Le dossier existe pourtant, et le chemin est correct.
+
+**Cause / relevé mesuré** — Matrice de **6 tentatives**, **une seule** réussit :
+
+```
+A doc.save(new File('/private/tmp/...'))   : ECHEC : Dossier "/private/tmp/probe_05_doc.indd" introuvable | ligne=344
+B doc.saveAs(new File('/private/tmp/...')) : ECHEC : d.saveAs is not a function | ligne=345
+C doc.save('/private/tmp/...') en chaine   : ECHEC : Dossier ""/private/tmp/probe_05_doc.indd"" introuvable | ligne=346
+D app.activeDocument=d ; d.save(File)      : ECHEC : Dossier "/private/tmp/probe_05_doc.indd" introuvable | ligne=347
+E doc.save(new File(Folder.temp/...))      : OK -> /private/var/folders/2h/t8bqzrc94d3__q93mbhds67w0000gn/T/probe_05_doc.indd
+F doc.save(new File('/tmp/...'))           : ECHEC : Dossier "/tmp/probe_05_doc.indd" introuvable | ligne=349
+Folder.temp = /var/folders/2h/t8bqzrc94d3__q93mbhds67w0000gn/T
+File(Folder.temp/...) existe apres coup = true
+File('/private/tmp/...') existe apres coup = false
+```
+
+Trois faits à retenir :
+
+1. **`Document.save` refuse `/tmp` ET `/private/tmp`** (`Dossier "…" introuvable`), que la cible soit un objet `File`, une chaîne, ou qu'on ait réaffecté le document actif au préalable. Le message est **trompeur** : il désigne le dossier alors que le dossier est correct.
+2. **`Document.saveAs` n'existe pas** en ExtendScript : `d.saveAs is not a function` — la méthode attendue par analogie avec d'autres DOM n'est pas là.
+3. **`Folder.temp` fonctionne** et rend un vrai chemin (`/var/folders/2h/…/T`) : le document s'y enregistre réellement (`taille=995328`) et le fichier **existe** après coup.
+
+**Ce que dit la doc** — Aucune citation verbatim collectée sur cette restriction de cible : le comportement est **mesuré**, non documenté dans les pages consultées.
+
+**Solution** —
+
+1. Enregistrer tout document de test dans **`Folder.temp`**, **jamais** dans `/tmp` ni `/private/tmp`.
+2. Ne pas chercher `saveAs` : **`save(File)`** est la seule voie, et elle exige une cible autorisée.
+3. Après l'enregistrement, **vérifier que le fichier existe vraiment** (`File(...).exists === true`) avant de conclure au succès : l'absence de message d'erreur ne prouve rien.
+4. Fermer le document témoin avec `doc.close(SaveOptions.NO)` et **compter les documents** avant/après pour garantir qu'aucun document de l'utilisateur n'a été fermé (`tools/probe_05ter_integration.jsx`, section 5).
+
+**Portée** — Tout test qui exige un **document témoin réel** (persistance d'un label, comportement à la réouverture). Complète le **Cas 43** (fabriquer un document témoin) et le **Cas 44** (ce que le label doit prouver).
 
 ---
 

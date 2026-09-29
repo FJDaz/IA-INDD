@@ -8,6 +8,10 @@
 
 var SCRIPT_NAME = "Import MD";
 var LABEL_NAME = "md-style-map";
+// MISSION 05 (voie B) — label de l'EMPREINTE de la source Markdown.
+// Séparé de LABEL_NAME : le mapping peut être hérité de la mémoire de test tandis
+// que l'empreinte appartient en propre au document (cf. bloc MISSION 05 plus bas).
+var LABEL_SOURCE_FP = "md-source-fingerprint";
 var LOG_FILE_PATH = new File($.fileName).parent.fsName + "/import_md_errors.log";
 
 // MEMOIRE DE MAPPING INTER-DOCUMENTS (MODE TEST)
@@ -87,6 +91,203 @@ function deserializeFlatMapping(str) {
         obj[key] = value;
     }
     return obj;
+}
+
+// ============================================================================
+// MISSION 05 (voie B) — EMPREINTE DE LA SOURCE MARKDOWN (déclencheur de re-import)
+// ============================================================================
+// Objet : savoir, à l'ouverture du script, si la source .md qui a servi au dernier
+// import a CHANGÉ depuis. L'empreinte vit dans un label du document (elle suit le
+// document, pas le poste), indépendant du mapping `md-style-map` — non-régression
+// vérifiée avant/après par la sonde tools/probe_05_empreinte.jsx (36/36 puis 38/38).
+//
+// TOUTES les primitives ci-dessous ont été MESURÉES avant d'être écrites ici
+// (sonde jetable, cf. COMMUNICATION/mission_05_voie_b_empreinte_md.md) :
+//   - insertLabel() sur un nom déjà posé ÉCRASE l'ancienne valeur (mesuré) ;
+//   - un label de 4000 caractères se relit INTÉGRALEMENT (mesuré) ;
+//   - les 3 écritures de fin de ligne (LF, CR, CRLF) se relisent à l'IDENTIQUE
+//     avec la MÊME somme ⇒ réenregistrer le .md dans un autre outil ne déclenche
+//     PAS de fausse alerte tant que le texte lui-même n'a pas bougé (mesuré) ;
+//   - File.modified ne bouge PAS quand le contenu change dans la même seconde
+//     ⇒ la date n'entre PAS dans la décision (mesuré).
+//
+// DÉCISION Q4 DE LA MISSION — QU'EST-CE QU'ON STOCKE DU CHEMIN DE LA SOURCE ?
+// On stocke le chemin ABSOLU (`fsName`), et la raison est écrite ici : c'est le
+// SEUL moyen de retrouver la source sans repasser par un sélecteur de fichier
+// (File.openDialog n'accepte aucun chemin par défaut en ExtendScript — mesuré).
+// Risque assumé et documenté : un chemin absolu est fragile (déplacement du .md,
+// autre poste, montage réseau différent). Il est neutralisé par l'état
+// `source_absente`, qui est EXPLICITE et NON destructif : on signale, on ne
+// réimporte jamais à l'aveugle, et l'utilisateur choisit un autre fichier.
+//
+// Q5 — AMBIGUÏTÉ DE SÉPARATEUR DANS LE FORMAT PLAT : sans objet. Le sérialiseur
+// échappe déjà `\` et `"` (cf. serializeFlatMapping), donc un chemin chemin
+// contenant des séparateurs ou des antislashs (cas Windows `C:\...`) est relu
+// sans perte par deserializeFlatMapping. Vérifié par la sonde sur l'aller-retour.
+// ============================================================================
+
+var FINGERPRINT_VERSION = "1";
+var M05_SUM_MODULUS = 2147483647; // borne < 2^31, l'entier ExtendScript reste exact
+
+var ETAT_JAMAIS_IMPORTE = "jamais_importe";
+var ETAT_IDENTIQUE = "identique";
+var ETAT_DIFFERENT = "different";
+var ETAT_SOURCE_ABSENTE = "source_absente";
+
+/**
+ * Somme de contrôle du CONTENU lu (même fonction que celle validée par la
+ * simulation Node et par la sonde InDesign : 22/22 puis 36/36).
+ * Volontairement indépendante de File.modified : on mesure le TEXTE, pas le fichier.
+ */
+function m05ChecksumOf(content) {
+    var sum = 0;
+    var s = String(content);
+    for (var i = 0; i < s.length; i++) {
+        sum = (sum * 31 + s.charCodeAt(i)) % M05_SUM_MODULUS;
+    }
+    return sum;
+}
+
+/**
+ * Construit l'empreinte d'un fichier source. Retourne null si le fichier est
+ * absent ou illisible — l'appelant traite null comme « source absente », jamais
+ * comme « identique » (une lecture ratée ne doit PAS ressembler à un accord).
+ *
+ * POINT DE FIDÉLITÉ : on lit le fichier EXACTEMENT comme le fera l'import
+ * (readMarkdownFileAt : new File, .exists, .open("r"), .read(), .close(), SANS
+ * forcer d'encodage). C'est délibéré : si l'empreinte décodait autrement que
+ * l'import, la somme mesurerait un texte que l'import ne verrait jamais.
+ */
+function m05BuildFingerprint(file) {
+    if (!file || !file.exists) return null;
+    var contenu = null;
+    try {
+        if (!file.open("r")) return null;
+        contenu = file.read();
+        file.close();
+    } catch (eFp) {
+        // catch NON vide : la fermeture peut elle-meme echouer si l'ouverture a
+        // echoue ; on le journalise au lieu de l'avaler (regle de la mission 05).
+        try { file.close(); } catch (eFpClose) {
+            logToFile("M05-empreinte: fermeture apres echec de lecture a echoue : " + eFpClose.message);
+        }
+        return null;
+    }
+    if (contenu === null || contenu === undefined) return null;
+    var modifiedMs = "";
+    try { modifiedMs = String(file.modified ? file.modified.getTime() : ""); } catch (eMod) { modifiedMs = ""; }
+    var fp = {};
+    fp.v = FINGERPRINT_VERSION;
+    fp.size = String(String(contenu).length);
+    fp.checksum = String(m05ChecksumOf(contenu));
+    fp.modified = modifiedMs;
+    fp.name = String(file.name);
+    fp.path = String(file.fsName);
+    return fp;
+}
+
+/** Relit une empreinte stockée. Retourne null si le label est absent ou méconnaissable. */
+function m05ParseFingerprint(raw) {
+    if (!raw) return null;
+    var obj = deserializeFlatMapping(raw);
+    if (!obj || !obj.v) return null;
+    return obj;
+}
+
+/**
+ * Décide l'état de la source. Ordre des tests important : « jamais importé »
+ * AVANT « source absente », sinon un document neuf dont la source est absente
+ * serait annoncé comme une disparition alors qu'il n'a jamais rien importé.
+ */
+function m05DecideState(storedRaw, cheminSource) {
+    var stored = m05ParseFingerprint(storedRaw);
+    if (!stored) return ETAT_JAMAIS_IMPORTE;
+    if (!cheminSource) return ETAT_SOURCE_ABSENTE;
+    var f = new File(cheminSource);
+    if (!f.exists) return ETAT_SOURCE_ABSENTE;
+    var courant = m05BuildFingerprint(f);
+    if (!courant) return ETAT_SOURCE_ABSENTE;
+    if (stored.checksum === courant.checksum && stored.size === courant.size) return ETAT_IDENTIQUE;
+    return ETAT_DIFFERENT;
+}
+
+/**
+ * Boîte de dialogue du déclencheur — passe par une VARIABLE DU PROJET, pas par
+ * l'appel direct au global `confirm`. Ce n'est pas une coquetterie : la sonde 05
+ * a mesuré que le global `confirm` est REFUSÉ en écriture (« confirm is read
+ * only », 8 tentatives, 4 contextes — cf. section 5bis du journal). On ne peut
+ * donc PAS substituer `confirm` pour tester cette branche ; en passant par cette
+ * variable, la branche devient testable sans clic humain, et le wiki Cas 40 est
+ * corrigé en conséquence.
+ */
+var demanderConfirmationM05 = function (message) {
+    return confirm(message, false, SCRIPT_NAME);
+};
+
+/**
+ * Écrit l'empreinte de la source dans le document. Appelé UNIQUEMENT après un
+ * import réussi (ou après chargement du place gun, cf. l'appel en mode gun).
+ */
+function saveSourceFingerprint(file) {
+    try {
+        var doc = app.activeDocument;
+        if (!doc || !file || !file.exists) return false;
+        var fp = m05BuildFingerprint(file);
+        if (!fp) {
+            logToFile("M05-empreinte: ABANDON — lecture impossible, aucune empreinte ecrite pour " + file.fsName);
+            return false;
+        }
+        doc.insertLabel(LABEL_SOURCE_FP, serializeFlatMapping(fp));
+        logToFile("M05-empreinte: ECRITE -> " + fp.path + " | v=" + fp.v + " | size=" + fp.size + " | checksum=" + fp.checksum);
+        return true;
+    } catch (eSave) {
+        logError(eSave, "M05-empreinte saveSourceFingerprint");
+        alertUser("Erreur lors de l'enregistrement de l'empreinte de la source : " + eSave.message);
+        return false;
+    }
+}
+
+/**
+ * DÉCLENCHEUR — appelé au tout début de main(), dès qu'un document est actif et
+ * AVANT tout dialogue (sélecteur de fichier compris), pour que l'utilisateur voie
+ * la question avant toute autre. Retourne { etat, chemin, relance }.
+ *
+ * `relance` n'est vrai QUE sur l'état « different » accepté : c'est alors
+ * main() qui poursuit le pipeline complet sur la source mémorisée, sans
+ * repasser par le sélecteur de fichier. Les 3 autres états ne relancent JAMAIS
+ * d'eux-mêmes.
+ */
+function verifierSourceMarkdown(doc) {
+    var resultat = { etat: ETAT_JAMAIS_IMPORTE, chemin: null, relance: false };
+    var raw = "";
+    try { raw = doc.extractLabel(LABEL_SOURCE_FP) || ""; } catch (eLabel) {
+        logError(eLabel, "M05-empreinte extractLabel");
+        raw = "";
+    }
+    var stored = m05ParseFingerprint(raw);
+    resultat.chemin = (stored && stored.path) ? stored.path : null;
+    resultat.etat = m05DecideState(raw, resultat.chemin);
+    logToFile("M05-empreinte: etat source = " + resultat.etat
+        + " | source memorisee = " + (resultat.chemin || "(aucune)")
+        + " | empreinte memorisee = " + (stored ? (stored.v + "/" + stored.size + "/" + stored.checksum) : "(aucune)"));
+
+    if (resultat.etat === ETAT_DIFFERENT) {
+        var msg = "La source Markdown a changé depuis le dernier import.\n\n"
+            + resultat.chemin + "\n\nRelancer l'import de cette source maintenant ?";
+        if (demanderConfirmationM05(msg)) {
+            resultat.relance = true;
+            logToFile("M05-empreinte: relance CONFIRMEE — pipeline complet relance sur la source memorisee");
+        } else {
+            logToFile("M05-empreinte: relance REFUSEE par l'utilisateur — arret du script");
+        }
+    } else if (resultat.etat === ETAT_SOURCE_ABSENTE) {
+        logToFile("M05-empreinte: source memorisee ABSENTE — signale, sans relance automatique");
+        alertUser("La source Markdown mémorisée est introuvable :\n\n" + (resultat.chemin || "(chemin inconnu)")
+            + "\n\nVous pouvez choisir un autre fichier Markdown.");
+    } else if (resultat.etat === ETAT_IDENTIQUE) {
+        logToFile("M05-empreinte: source INCHANGEE depuis le dernier import — aucune alerte");
+    }
+    return resultat;
 }
 
 // Tags Markdown supportés et leur type (paragraph ou character).
@@ -2532,6 +2733,30 @@ function main() {
             return;
         }
 
+        // ====================================================================
+        // MISSION 05 (voie B) — DÉCLENCHEUR DE RE-IMPORT, AVANT TOUT DIALOGUE.
+        // Placé ICI volontairement : après la garde « document actif » (le label
+        // ne se lit que sur un document) et AVANT File.openDialog, pour que la
+        // question posée ne soit pas noyée après un choix de fichier. Le clic
+        // dans le menu Fichier réexécute ce main() de bout en bout — l'accroche
+        // est donc « réellement atteignable au runtime » (question 2 de la
+        // mission, mesurée : l'entrée de menu EST ce script, et un écouteur
+        // afterOpen est enregistrable si un jour l'ouverture devait déclencher).
+        // En cas d'échec de la vérification, on journalise et on CONTINUE :
+        // le déclencheur ne doit jamais casser un import qui marchait avant.
+        // ====================================================================
+        var relanceSourcePath = null;
+        try {
+            var verifSource = verifierSourceMarkdown(doc);
+            if (verifSource.relance) {
+                relanceSourcePath = verifSource.chemin;
+            } else if (verifSource.etat === ETAT_DIFFERENT) {
+                return; // relance refusée : on s'arrête net, rien n'est touché
+            }
+        } catch (eM05) {
+            logError(eM05, "M05-empreinte verifierSourceMarkdown");
+        }
+
         // MISSION 03 — PIVOT « SCRIPT UNIFIÉ ». Les trois modes sont TOUS déduits
         // de l'état d'InDesign, jamais demandés :
         //   - « cadre »   : un cadre texte (ou une histoire) est sélectionné ;
@@ -2635,10 +2860,23 @@ function main() {
 
         // SÉLECTEUR DE FICHIER NATIF — aucun dialogue intermédiaire : le mode
         // est DÉTECTÉ (aucune sélection ? sinon type de sélection), jamais demandé.
-        var sourceFile = File.openDialog("Choisir un fichier Markdown", "Markdown:*.md;*.markdown;*.txt");
-        if (!sourceFile) {
-            logToFile("PIVOT unifie: annulation utilisateur au choix de fichier");
-            return;
+        // MISSION 05 : sauf si l'utilisateur vient d'ACCEPTER la relance — la
+        // source mémorisée est alors imposée, sans repasser par le sélecteur
+        // (File.openDialog n'accepte aucun chemin par défaut en ExtendScript).
+        var sourceFile = null;
+        if (relanceSourcePath) {
+            sourceFile = new File(relanceSourcePath);
+            logToFile("M05-empreinte: source IMPOSEE par la relance = " + relanceSourcePath + " | existe=" + sourceFile.exists);
+            if (!sourceFile.exists) {
+                alertUser("La source Markdown mémorisée est introuvable :\n\n" + relanceSourcePath);
+                return;
+            }
+        } else {
+            sourceFile = File.openDialog("Choisir un fichier Markdown", "Markdown:*.md;*.markdown;*.txt");
+            if (!sourceFile) {
+                logToFile("PIVOT unifie: annulation utilisateur au choix de fichier");
+                return;
+            }
         }
 
         // MODE « gun » : charger le place gun, puis rendre la main — FJD clique
@@ -2654,6 +2892,13 @@ function main() {
             var gunOk = "?";
             try { gunOk = "" + doc.placeGuns.loaded; } catch (eGl) { gunOk = "ERR(" + eGl.message + ")"; }
             logToFile("PIVOT unifie: place gun charge -> " + sourceFile.name + " | doc.placeGuns.loaded=" + gunOk + " (cliquez dans la page pour deposer)");
+            // MISSION 05 — empreinte enregistrée ICI en toute honnêteté : le
+            // script a chargé le place gun et rend la main, le dépôt réel se
+            // fera par un clic de FJD que le script ne voit pas. On enregistre
+            // donc l'état « cette source a été remise au place gun », ce qui
+            // déclenchera la question au prochain lancement si le .md a bougé.
+            // C'est une APPROXIMATION ASSUMÉE, pas une mesure du dépôt.
+            saveSourceFingerprint(sourceFile);
             return;
         }
 
@@ -2754,6 +2999,11 @@ function main() {
             alertUser("Échec de l'insertion du Markdown avec les styles.");
             return;
         }
+
+        // MISSION 05 — l'empreinte n'est écrite QU'APRÈS une insertion réussie :
+        // une empreinte posée sur un import échoué ferait croire à un état
+        // « identique » alors que rien n'a été inséré.
+        saveSourceFingerprint(sourceFile);
 
         alertUser("Markdown inséré avec succès avec les styles configurés !");
 

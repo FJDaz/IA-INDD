@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Sonde Import MD</title>
+  <style>
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Helvetica Neue", sans-serif;
+      font-size: 11px;
+      padding: 8px;
+      color: #e8e8e8;
+      background: #2b2b2b;
+    }
+    h1 { font-size: 12px; margin: 0 0 2px 0; }
+    .note { opacity: 0.65; margin: 0 0 8px 0; line-height: 1.35; }
+    button {
+      display: block;
+      width: 100%;
+      margin: 3px 0;
+      padding: 5px 6px;
+      font-size: 11px;
+      text-align: left;
+      color: #e8e8e8;
+      background: #3a3a3a;
+      border: 1px solid #555;
+      border-radius: 4px;
+    }
+    input {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      margin: 6px 0 3px 0;
+      padding: 4px 5px;
+      font-size: 10px;
+      font-family: ui-monospace, Menlo, monospace;
+      color: #e8e8e8;
+      background: #1f1f1f;
+      border: 1px solid #555;
+      border-radius: 4px;
+    }
+    #journal {
+      margin: 8px 0 0 0;
+      padding: 6px;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 10px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #cfe8cf;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      max-height: 260px;
+      overflow: auto;
+    }
+    #journal .ko { color: #ffb4b4; }
+  </style>
+</head>
+<body>
+  <h1>Sonde Import MD</h1>
+  <p class="note">
+    Panneau de mesure, sans &lt;webview&gt;. Chaque test dit OK ou ECHEC.
+    Aucun resultat n'est masque.
+  </p>
+
+  <button id="btn_dom">1. Le DOM InDesign repond-il ?</button>
+  <button id="btn_doscript">2. app.doScript existe-t-il ?</button>
+  <button id="btn_moteur">3. Notre moteur import_md.jsx est-il joignable ?</button>
+  <button id="btn_fichier">4. Lire un .md sur le disque</button>
+  <button id="btn_negatif">5. Controle negatif (doit ECHOUER)</button>
+
+  <input id="chemin" type="text" />
+
+  <pre id="journal"></pre>
+
+  <script src="main.js"></script>
+</body>
+</html>

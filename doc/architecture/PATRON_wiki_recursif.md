@@ -24,6 +24,8 @@ Tout le reste s'en déduit.
 
 ## 1. État mesuré du wiki (28/09/2026)
 
+> **Rafraîchissement du 29/09/2026** : état courant = **1 412 lignes / 42 cas** (cas 41, 42 et 43 ajoutés le 29/09), dont **6 cas lourds** (24, 31, 34, 35, 36, 37 = 422 lignes ≈ **30 %**). Le tableau ci-dessous est la **photographie du 28/09/2026**, conservée telle quelle comme mesure datée.
+
 Faits vérifiés, pas des impressions :
 
 | Mesure | Valeur |

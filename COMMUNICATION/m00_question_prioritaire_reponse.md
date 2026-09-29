@@ -4,6 +4,8 @@
 **Objet** : réponse tranchée (oui/non + citations officielles) aux deux sous-questions de la « question prioritaire » de [[mission_00_ontologie_dom_indesign]], à traiter **avant** toute recherche large sur l'ontologie du DOM.
 **Statut de la mission** : ⏸️ recherche large NON lancée — en attente de la décision de FJD (voir §4).
 
+**Mise à jour du 29/09/2026** : FJD a tranché — la Mission 00 est **🔴 ABANDONNÉE** (le wiki `doc/wiki_extendscript_indesign.md`, 42 cas, joue déjà le rôle de base documentaire). **Cette décision ne remet pas en cause le présent document** : les réponses Q1/Q2 ci-dessous restent **valides** et sont citées comme fondement par la mission 03. Seule la **recherche large sur l'ontologie** est abandonnée.
+
 > Rappel de la question : « jusqu'où le scripting ExtendScript a-t-il accès aux mécanismes natifs d'import/placement d'InDesign, et où commence l'obligation de tout réinventer ? »
 
 ---
@@ -109,7 +111,7 @@ Q1 étant **positive**, un pivot est envisageable. Trois usages possibles de `Do
 **Ce que je demande à FJD** :
 1. Valider/invalider le **principe du pivot** Q1 (mettre la mission 03 en pause prolongée le temps d'explorer le placement natif) — ou au contraire acter « on garde la reconstruction manuelle » et clore la question prioritaire.
 2. Si pivot accepté : autoriser un **test minimal de faisabilité** (script de 10-15 lignes, fichier réel, inspection visuelle) avant toute réécriture de la mission 03.
-3. Confirmer la **forme de sortie** de l'ontologie (mission 00, section « Forme ») : option 1 recommandée (Markdown structuré par objet, `doc/ontologie_dom_indesign.md`), pour lancer la recherche large **une fois** Q1 tranchée.
+3. Confirmer la **forme de sortie** de l'ontologie (mission 00, section « Forme ») : option 1 recommandée (Markdown structuré par objet, `doc/ontologie_dom_indesign.md`), pour lancer la recherche large **une fois** Q1 tranchée. → **Tranché le 29/09/2026 : sans objet** — la recherche large est **abandonnée**, le wiki `doc/wiki_extendscript_indesign.md` tient ce rôle (cf. mise à jour en tête de ce document).
 
 ---
 
@@ -117,4 +119,4 @@ Q1 étant **positive**, un pivot est envisageable. Trois usages possibles de `Do
 
 - **Mission 03** : ⏸️ en pause (étape 1 validée et commitée `f3f6c68` ; étape 1bis écrite + simulée, **non** testée en réel, **non** commitée).
 - **Mission 02** : ✅ terminée côté code, test réel sur `gemini_charte.md` encore à faire.
-- **Mission 00** : recherche large **non lancée** (cette réponse couvre uniquement la question prioritaire).
+- **Mission 00** : recherche large **non lancée** (cette réponse couvre uniquement la question prioritaire) — puis **ABANDONNÉE le 29/09/2026** par décision FJD ; les réponses Q1/Q2 de ce document restent valides et citées par la mission 03.

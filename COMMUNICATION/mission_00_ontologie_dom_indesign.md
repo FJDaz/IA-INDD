@@ -1,6 +1,7 @@
 # Mission 00 — Base documentaire structurée : ontologie du DOM ExtendScript/InDesign
 
-**Statut** : 🔴 À FAIRE
+**Statut** : 🔴 ABANDONNÉE — décision FJD du **29/09/2026**, **confirmée définitivement par FJD le 29/09/2026** (aucun travail ne sera repris sur ce chantier).
+**Raison citée** : le wiki `doc/wiki_extendscript_indesign.md` (**42 cas** au 29/09, alimenté en continu) **est le dernier niveau** de documentation du projet. Une ontologie séparée ne se justifierait que pour un corpus éclaté en **plusieurs dizaines de fichiers distincts centralisés** — ce n'est pas le cas : le wiki est **un fichier unique**, et il suffit. Ce document est conservé comme **archive de la réflexion** (et non comme travail à faire).
 **Numérotation** : 00, pas 04 — ce chantier est fondationnel et rétroactif. Il aurait dû précéder la mission 01 ; il est rédigé après coup, une fois le besoin devenu visible par l'expérience (22+ bugs rencontrés en marchant).
 
 ## Contexte et origine

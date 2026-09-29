@@ -1,10 +1,72 @@
 # Mission 04 — Audit : bot pilote InDesign (GREP, gabarits PDF, suivi fabrication) — pont de transport, ex-« lien dynamique »
 
-**Statut** : 🟡 PARTIELLE (28/09/2026) — **préambule cross-platform traité, verdict RATIFIÉ par FJD** ; **complément d'audit documentaire intégré** (3 mécanismes de lien manquants + 1 affirmation trop forte corrigée) ; **recadrage de cible acté (FJD, 28/09)** — la mission porte désormais sur le **pont de pilotage d'un bot**, pas sur un panneau d'affichage de liens (le sujet lien/`Link` reste pertinent comme *option* de repli, cf. point 3 révisé) ; **point 2 réécrit par l'Architecte en conséquence** (28/09) ; **points 1, 2, 3, 4 non commencés** (le point 2 a une spec révisée, aucune mesure) ; **sonde runtime ouverte en sous-mission** (`mission_04bis_sonde_lien_runtime.md`).
+**Statut** : 🟡 PARTIELLE (mise à jour 29/09/2026) — **réorganisée le 28/09/2026 par l'Architecte en entonnoir à 3 étapes avec go/no-go** (cf. « Ordre d'exécution » ci-dessous) ; **socle documentaire ACQUIS** (préambule cross-platform ratifié par FJD + complément d'audit documentaire intégré : 3 mécanismes de lien, 2 faits négatifs, 1 affirmation trop forte corrigée) ; **étape 1 = sonde runtime (`mission_04bis` puis `mission_04ter`) : EXÉCUTÉE EN RÉEL le 29/09/2026** — **le verdict est tombé : la voie A (lien natif) ÉCHOUE pour notre besoin ⇒ BIFURCATION VERS LA VOIE B** ; **go/no-go PRONONCÉ** ; **étape 2 = décision : axe 1 TRANCHÉ (voie B retenue), axe 2 MIS DE CÔTÉ — différé, réservé, pas abandonné (décision FJD du 29/09/2026)** ; **étape 3 = périmètre de la suite : écrit et devenu la [Mission 05](mission_05_voie_b_empreinte_md.md)**. Cette mission est donc **close sur le plan décisionnel** : il ne lui reste **rien à décider**, et **elle n'implémente rien** — la suite s'exécute en **Mission 05**.
 **Cadrage (FJD, 27/09)** : la mission 03 (pipeline complet + point d'entrée menu InDesign) était le **premier exercice** du projet. Cette mission 04 ouvre le **second chapitre**.
 **Recadrage (FJD, 28/09)** : l'intention réelle n'est pas un panneau qui affiche du Markdown mis en forme, mais un **bot qui pilote InDesign** — génère et lance des requêtes GREP sur des scopes resserrés, interprète des gabarits PDF de couvertures, interprète des messages de suivi de fabrication. Le point dur devient le **pont** (exécuter du code dans InDesign depuis un process externe), pas l'UI.
 
-## Préambule OBLIGATOIRE — cross-platform Windows/macOS (ajouté 28/09/2026, FJD)
+## Ordre d'exécution (Architecte, 28/09/2026) — la réponse à « dans quel ordre ? »
+
+**Constat qui a motivé cette réorganisation** : la mission s'était construite par **accrétion** (préambule + complément documentaire + 4 points + une sous-mission), avec des notes de révision empilées (« RÉVISÉ le 28/09 », « périmé, conservé en historique »). Résultat : le fichier racontait **l'histoire de ses révisions** au lieu de porter **un plan courant**. Trois défauts d'ordre en découlaient :
+
+1. **La mesure arrivait après la décision.** Le point 1 (« `Link.update()` est-il une boîte noire ? ») **décide de l'architecture** — et il était bloqué par la sonde, elle-même numérotée `04bis`, donc **après**. Or un audit décisionnaire se mesure **avant** de recommander.
+2. **La recommandation était écrite avant toute mesure.** Le point 4 a été révisé le 28/09 alors qu'**aucune** mesure n'existait encore.
+3. **Deux questions indépendantes étaient mêlées dans une seule liste.** Les « points 1 à 4 » mélangeaient **le déclencheur** (« comment InDesign sait que le `.md` a changé ? ») et **le pont** (« comment le bot agit-il *dans* InDesign ? ») — deux axes aux dépendances différentes.
+
+### La structure retenue : 3 étapes franchies dans l'ordre, 2 axes à trancher
+
+| Étape | Contenu | État | Franchissement |
+|---|---|---|---|
+| **Étape 0 — Socle documentaire** | Préambule cross-platform + complément d'audit (3 mécanismes, 2 faits négatifs) | ✅ **ACQUISE** (ratifiée par FJD) | ne se rejoue pas |
+| **Étape 1 — SONDE RUNTIME** (= `mission_04bis` puis `mission_04ter`) | 5 questions ; **Q3 décisive** : `Link.update()` sur un lien créé par nous écrase-t-il le mapping ? | ✅ **EXÉCUTÉE EN RÉEL le 29/09/2026** | **GO / NO-GO → PRONONCÉ : voie A écartée par mesure** |
+| **Étape 2 — DÉCISION** | Une décision **par axe** (déclencheur / exécution), fondée sur l'étape 1 | 🟡 **tranchée** : axe 1 = **voie B** ; axe 2 = **mis de côté** (différé, réservé) | conditionnée à l'étape 1 — **satisfaite** |
+| **Étape 3 — RECOMMANDATION + périmètre mission 05** | Décision argumentée, ampleur, critère de déploiement | ✅ **écrite** ⇒ [Mission 05](mission_05_voie_b_empreinte_md.md) | après les étapes 1 et 2 — **satisfait** |
+
+### Axe 1 — DÉCLENCHEUR : comment InDesign sait que le `.md` a changé ?
+
+Deux voies, **tranchées par l'étape 1** :
+
+- **Voie A — lien natif** : `InsertionPoint.createTextFragmentLink()` produit un `Link` **sans** `place()` natif, puis `Link.status` signale la péremption et `Link.update()` rafraîchit. **Avantage** : icône d'alerte native du panneau Liens, gratuite. **Condition** : que Q3 (étape 1) établisse que `update()` **n'écrase pas** notre mapping.
+- **Voie B — mécanisme maison** : empreinte (timestamp/hash) du `.md` stockée dans les métadonnées du document — exactement comme le mapping l'est déjà via `saveMappingToDocument()` / `loadMappingFromDocument()` — comparée à chaque lancement, avec alerte en boîte de dialogue. **Avantage** : ExtendScript pur, **ne dépend d'aucune API incertaine**, donc **disponible quel que soit le verdict de Q3**. **Coût** : pas d'icône native.
+
+⇒ **Mise à jour du 29/09/2026 — la voie B n'est plus un repli : c'est LA voie.** La sonde a **écarté la voie A par mesure** (cf. point 1 ci-dessous, et le verdict détaillé). La voie B reste l'ex-« point 3 », **promu au rang de branche de décision** (il n'était pas un point parallèle) — et elle est désormais **l'objet de la [Mission 05](mission_05_voie_b_empreinte_md.md)**.
+
+### Axe 2 — EXÉCUTION : le bot doit-il agir *dans* InDesign ?
+
+**Cet axe ne se pose que pour les cas d'usage qui l'exigent** — GREP sur scopes resserrés, lecture de gabarits PDF de couvertures, messages de suivi de fabrication. **Pour le seul « relancer le pipeline après modification du `.md` », l'axe 1 suffit** : le bot réécrit le `.md`, notre pipeline est relancé — **aucun pont n'est nécessaire**. C'est la conséquence la plus importante du recadrage FJD, et elle doit rester écrite noir sur blanc pour éviter de construire un pont par réflexe.
+
+**MIS DE CÔTÉ — décision FJD du 29/09/2026 (« on met de côté le bot »).** L'axe 2 est **différé et réservé, pas abandonné** : il se rouvrira **le jour où les cas d'usage l'exigeront** (GREP sur scopes resserrés, gabarits PDF de couvertures, suivi de fabrication), **jamais par réflexe**. Conséquence pratique : **aucun des quatre ponts candidats ci-dessous n'est instruit** — le tableau qui suit est conservé comme **état de la recherche au 28/09/2026**, il n'est **ni validé, ni clos**. Rien dans la suite du projet ne dépend de lui.
+
+Quatre ponts candidats, à départager **par mesure** (pas par lecture seule) — c'est l'ex-« point 2 » :
+
+| Pont | Ce qu'il permet | Réserve connue |
+|---|---|---|
+| **Réseau UXP** (WebSocket / `fetch`) | Le bot pousse des ordres à un plugin UXP | WebSocket **cassé sous Windows InDesign de la version 20 à 2025**, corrigé en InDesign 2026 (topic 8528) ⇒ à retenir **seulement** si la cible de déploiement exclut les versions antérieures |
+| **`app.doScript()` depuis UXP** | Exécuter de l'ExtendScript classique déclenché par le bot | Disponibilité et signature **non vérifiées** |
+| **Polling fichier ExtendScript pur** | Le bot écrit des fichiers, un script les lit périodiquement | Latence de polling ; **aucune** dépendance réseau ni UXP |
+| **CEP** | Pont Chromium+Node historique | Fin de vie annoncée — statut réel à confirmer |
+
+### Étape 3 — la sortie : la recommandation
+
+La recommandation (ex-point 4) rend **une décision par axe**, pas une liste d'options : *déclencheur* = voie A ou B ; *exécution* = pont retenu ou « pas de pont ». Elle intègre les deux faits négatifs (le réglage « Create Links When Placing Text » **n'est pas** dans les préférences ⇒ `linkedStoryOptions` est le seul levier scriptable ; le mapping de styles **n'est pas** dans les préférences d'import ⇒ il passe par les collections `paraStyleMappings` / `charStyleMappings` / `tableStyleMappings`). Elle privilégie l'option **la plus simple à maintenir** et la moins exposée aux divergences cross-platform déjà documentées (Cas 38), sauf besoin fonctionnel contraignant.
+
+### Règle structurelle inscrite le 28/09/2026 (cause du blocage actuel)
+
+> **Aucune mission pilotée par l'Architecte ne porte un livrable de code sans exécuteur nommé.** Si l'exécuteur manque, la mission est **bloquée** — et elle doit être déclarée **bloquée**, jamais maquillée en recherche documentaire pour paraître active.
+
+**Application immédiate — SATISFAITE le 29/09/2026.** L'étape 1 (la sonde) est du **code** : FJD a nommé **DS** exécuteur le 28/09, et les deux sondes (`04bis`, `04ter`) ont été **écrites puis exécutées en réel**. La règle reste **vivante pour la suite** : la [Mission 05](mission_05_voie_b_empreinte_md.md) porte un **livrable de code** ⇒ elle **ne démarre pas** sans exécuteur nommé. **Question ouverte à FJD : qui écrit la Mission 05 ?**
+
+### Traçabilité avec l'ancienne numérotation (les « points 1 à 4 » restent des identifiants valides)
+
+Les CR et la ROADMAP citent les « points 1 à 4 » : **le numéro reste un identifiant, il n'est pas renuméroté** (une numérotation acquise ne se réécrit pas). Correspondance :
+
+- **point 1** → **étape 1 / axe 1, voie A** (mesure de `Link.update()` par la sonde) ;
+- **point 2** → **axe 2** (le pont) ;
+- **point 3** → **axe 1, voie B** (mécanisme maison — branche de décision, pas point parallèle) ;
+- **point 4** → **étape 3** (recommandation).
+
+⚠️ **Ne pas confondre deux séries de numéros** : les titres des rapports d'exécution en bas de ce fichier (« **CR 04, étape 1** (préambule) », « **CR 04, étape 2** (complément) ») sont des **étapes de CR** — chronologiques, elles racontent ce qui a **déjà été livré**. Les **étapes 0 à 3** du présent entonnoir sont l'**ordre de travail** de la mission. Les deux séries sont indépendantes.
+
+## Préambule OBLIGATOIRE — cross-platform Windows/macOS (ajouté 28/09/2026, FJD) — **= étape 0, ACQUISE**
 
 **Constat** : tout le travail de la mission 03 a été pensé, codé et testé exclusivement sur macOS (chemins `~/Library/Preferences/Adobe InDesign/.../fr_FR/Scripts/...`, locale française en dur dans certaines présélections). **Windows fait partie du périmètre réel du projet** (utilisateurs finaux sur PC), et **aucune machine Windows n'est disponible pour tester en réel**. Ce préambule doit être traité avant les points 1-4 ci-dessous, parce que sa réponse peut réorienter tout le reste de l'audit.
 
@@ -209,14 +271,21 @@ Classes associées et volumétrie relevée : `LinkedStoryOption` (**14 membres**
 
 **Sources** (consultées le 28/09/2026, HTTP 200) : `indesignjs.de/indesignapi/indesign/` — pages `Link.html`, `Story.html`, `InsertionPoint.html`, `Document.html`, `Page.html`, `Spread.html`, `Application.html`. Build de référence **InDesign 2026 / 21.5.1.73** (fichiers Adobe datés **2026-09-21**). ⚠️ `WordImportPreference.html` renvoie **HTTP 404** (nom de classe erroné — la classe réelle est `WordRTFImportPreference`).
 
-## Ce qui est demandé (audit, pas implémentation)
+## Ce qui est demandé (audit, pas implémentation) — **à lire selon l'ordre d'exécution ci-dessus**
 
-### 1. Vérifier par test réel si `Link.update()` est vraiment une boîte noire
+**Comment lire cette section** : les 4 points ci-dessous sont **conservés intégralement** (leur détail est la matière de l'audit) mais ils ne sont **pas** à traiter dans l'ordre de leur numéro. Les étiquettes `(Étape n)` / `(Axe n)` disent à quel moment de l'entonnoir chaque point se rattache : **étape 1 → axe 1 voie A** (point 1) ; **axe 2** (point 2) ; **axe 1 voie B — plancher garanti** (point 3) ; **étape 3** (point 4). Le point 2 n'est **pas** à ouvrir avant le go/no-go de l'étape 1.
+
+### 1. (Étape 1 · axe 1 voie A — la mesure décisive) Vérifier par test réel si `Link.update()` est vraiment une boîte noire
+
+**✅ EXÉCUTÉ EN RÉEL le 29/09/2026 — Q3 est TRANCHÉE : la voie A ÉCHOUE.** Mesures décisives (sondes `04bis` + `04ter`) : `place()` d'un `.md` ⇒ `doc.links.length = 0` et `parentStory.itemLink = (null)` ; `createTextFragmentLink()` vers un `.md` échoue **11 essais sur 11** ; l'ICML porte bien un lien (`linkType = InCopyMarkup`) mais son `update()` **ne recharge pas** le contenu (contrôle de fraîcheur seulement : `statut du lien apres update = LINK_OUT_OF_DATE`, story identique avant/après, `relevé des styles identique = true`) et **à la réouverture** la story affiche encore l'ancien texte (`TITRE A = true | TITRE B MODIFIE = false`) ; enfin l'ICML **ne porte aucun style de paragraphe nommé**. ⇒ **aucune voie native ne surveille notre `.md` ni ne protège notre mapping.** C'est ce verdict qui ferme la voie A et ouvre la voie B.
+
 - Créer un test minimal : placer un fichier texte simple via `place()` dans un TextFrame, styler le texte après coup (mapping simplifié), modifier le fichier source, appeler `Link.update()` par script, observer le résultat.
 - Est-ce que le style appliqué après le premier import survit à `update()`, ou est-il écrasé par un ré-import brut ?
 - Documenter la réponse avec preuve réelle (log + constat visuel), pas seulement par déduction de la doc.
 
-### 2. RÉVISÉ le 28/09/2026 (Architecte, suite au recadrage FJD) — Vérifier le pont de pilotage, pas la compatibilité d'un panneau d'affichage
+### 2. (Axe 2 — ne s'ouvre qu'après le go/no-go de l'étape 1) RÉVISÉ le 28/09/2026 (Architecte, suite au recadrage FJD) — Vérifier le pont de pilotage, pas la compatibilité d'un panneau d'affichage
+
+**MIS DE CÔTÉ le 29/09/2026 (décision FJD) — différé, réservé, PAS abandonné.** La condition d'ouverture est **techniquement levée** (le go/no-go de l'étape 1 est tombé), mais FJD **ne l'ouvre pas** : ce point ne concerne que **GREP / gabarits PDF / suivi de fabrication** — pas « relancer le pipeline après modification du `.md` », cas couvert **sans aucun pont**. Tout ce qui suit est donc conservé comme **état de la recherche au 28/09/2026 : ni validé, ni clos, non instruit**.
 
 **Ce que ce point vérifiait avant recadrage** (périmé, conservé en historique) : compatibilité d'un panneau UXP d'affichage de liens avec le code ExtendScript existant.
 
@@ -232,11 +301,16 @@ Sous-questions à trancher par mesure, pas par lecture seule (cf. recherche déj
 
 **Conséquence sur l'architecture UI** : puisque la cible n'est plus un panneau d'affichage riche, la question « UXP avec ou sans WebView » perd une partie de son enjeu — un bot pilote, il n'a pas besoin d'une interface HTML complexe. Ça ne disqualifie pas WebView pour autant si un jour une UI de supervision du bot est voulue, mais ce n'est plus le critère dimensionnant du choix technique.
 
-### 3. Vérifier si un mécanisme "maison" (sans UXP, sans `place()`/`Link` natif) est réaliste
+### 3. (Axe 1 · voie B — le plancher garanti, disponible sans condition) Vérifier si un mécanisme "maison" (sans UXP, sans `place()`/`Link` natif) est réaliste
+
+**PROMU le 29/09/2026 : ce n'est plus un plancher de repli, c'est LA voie retenue** (la voie A est écartée par mesure). Ce point **quitte donc le statut de « point à vérifier »** pour devenir une **mission d'implémentation** ⇒ [**Mission 05**](mission_05_voie_b_empreinte_md.md). Ce qui suit est conservé comme **formulation d'origine** (l'identifiant historique ne se réécrit pas) ; la version à jour, avec ses 4 temps (V1 empreinte / V2 persistance / V3 comparaison / V4 réaction) et ses critères de sortie, est la **Mission 05**.
+
 - Le script ExtendScript actuel pourrait-il, à chaque lancement, comparer un timestamp/hash du `.md` source (stocké dans les métadonnées du document InDesign, comme le mapping l'est déjà via `saveMappingToDocument()`/`loadMappingFromDocument()`) à l'état du fichier sur disque, et alerter l'utilisateur par une simple boîte de dialogue si le fichier a changé depuis le dernier import ?
 - Ce mécanisme n'aurait pas l'icône native du panneau Liens, mais serait scriptable à 100% en ExtendScript pur, sans nouveau framework à apprendre.
 
-### 4. Recommandation — RÉVISÉ le 28/09/2026 (Architecte, suite au recadrage)
+### 4. (Étape 3 — jamais avant les étapes 1 et 2) Recommandation — RÉVISÉ le 28/09/2026 (Architecte, suite au recadrage)
+
+**SUITE DONNÉE le 29/09/2026, dans un périmètre réduit.** La recommandation ne porte plus sur « quel **pont** retenir » (axe 2 **mis de côté**) mais sur **la voie B**. Le périmètre écrit est devenu la [**Mission 05**](mission_05_voie_b_empreinte_md.md). La liste de ponts qui suit est **conservée pour mémoire** : état au 28/09/2026, **non instruit**.
 
 Une fois les points 1 à 3 vérifiés par mesure (pas avant), formuler une recommandation argumentée sur le **pont de pilotage** à retenir pour le bot, parmi les options identifiées à ce jour :
 - **Pont réseau UXP** (WebSocket/`fetch`) — fragile historiquement sous Windows (bug corrigé seulement en InDesign 2026), à ne retenir que si la cible de déploiement exclut les versions antérieures, ou si un repli est prévu.
@@ -253,7 +327,8 @@ La recommandation doit tenir compte de l'ampleur du chantier déjà en cours (mi
 - Ne pas coder de solution définitive — cette mission est un audit qui doit permettre à FJD de choisir une direction, pas un livrable fonctionnel.
 
 ## Hors périmètre
-- Toute implémentation de la feature elle-même (reportée à une mission 05 une fois la direction choisie).
+- Toute implémentation de la feature elle-même (reportée à une mission 05 une fois la direction choisie). **Mise à jour du 29/09/2026 : la direction est choisie** (voie B) et la mission 05 est **écrite** ⇒ [mission_05_voie_b_empreinte_md.md](mission_05_voie_b_empreinte_md.md). **Cette mission 04 n'implémente rien** — elle reste un audit.
+- **L'axe 2 / le bot, et tous les ponts candidats** — **mis de côté le 29/09/2026** (différé, réservé, pas abandonné).
 - Toute modification du code des étapes 2-8 de la mission 03, en cours.
 
 ## Rapport d'exécution — CR 04, étape 1 (préambule cross-platform, 28/09/2026)
@@ -303,4 +378,22 @@ La recommandation doit tenir compte de l'ampleur du chantier déjà en cours (mi
 **Conséquence** : le point 1 doit désormais être testé **sur un lien créé par nous** (`createTextFragmentLink()`), pas seulement sur un lien issu du Placer natif. Une **sonde runtime** a été ouverte en sous-mission pour porter cette mesure : `COMMUNICATION/mission_04bis_sonde_lien_runtime.md`. Le **cas wiki 37** a été créé (mécanismes de lien, cf. `doc/wiki_extendscript_indesign.md`).
 
 **Validation attendue de FJD** : (1) le complément d'audit documentaire est-il ratifié comme base du point 1 ? (2) la correction de l'affirmation est-elle acceptée telle quelle ? (3) le périmètre de la sonde runtime (`mission_04bis_sonde_lien_runtime.md`) est-il conforme à l'intention ?
+
+---
+
+## Rapport d'exécution — CR 04, clôture décisionnelle (29/09/2026)
+
+**Statut** : 🟡 PARTIELLE — **close sur le plan décisionnel** : toutes les décisions que cette mission devait produire sont prises ; **aucune mesure ni implémentation ne reste à faire ici**.
+
+**Ce qui a changé ce jour**
+1. **Étape 1 exécutée en réel** (sondes `04bis` puis `04ter`, exécuteur DS) : **verdict tombé, voie A écartée par mesure**. Les CR détaillés des deux sondes sont conservés dans leurs blocs archivés (`RMA/2026-09.md`) ; le fichier `mission_04bis`/`mission_04ter` reste accessible à côté du présent fichier.
+2. **Go/no-go prononcé** ⇒ **bifurcation vers la voie B**.
+3. **Étape 2 (décision)**, une décision par axe : **axe 1 = voie B** (retenue) ; **axe 2 = mis de côté** — différé, réservé, **pas abandonné** (décision FJD du 29/09/2026 : « on met de côté le bot »).
+4. **Étape 3 (périmètre)** : écrit, et devenu la [**Mission 05**](mission_05_voie_b_empreinte_md.md) — implémentation de l'empreinte maison du `.md` en métadonnées du document.
+
+**Ce que cette mission ne fait PAS et ne fera pas** : elle **n'implémente rien** (elle reste un audit), elle **ne rouvre pas la voie A** (close par mesure), elle **n'instruit aucun pont** (axe 2 mis de côté), et elle **ne traite pas le *diff* sémantique** (besoin distinct, nommé en Mission 05 comme hors périmètre).
+
+**Réserve transmise** : le **risque « aucune machine Windows pour tester »** reste **accepté mais entier** (arbitrage FJD du 28/09). Il **migre** de la famille « WebView bi-moteur » vers la famille « transports et chemins » — il **ne s'efface pas**. Il resurgira dès que l'axe 2 (ou toute mesure cross-platform) sera rouvert. La **voie B**, elle, est **peu exposée** : ExtendScript pur, mais son empreinte repose sur `File.modified`/`File.length`, dont la **fiabilité par OS est à vérifier** (c'est une des questions à instruire de la Mission 05).
+
+**Validation attendue de FJD** : (1) cette clôture décisionnelle de la mission 04 est-elle acceptée (statut 🟡 PARTIELLE conservé, la mission n'étant pas archivée) ? (2) la mise de côté de l'axe 2 est-elle bien comprise comme **différé/réservé** et non comme un abandon ?
 
