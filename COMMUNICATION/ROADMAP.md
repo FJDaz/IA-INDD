@@ -1067,13 +1067,18 @@ $ tail -c 12 import_md.jsx                                       -> main();
 |---|---|---|
 | En-tête « Liens » | `h1` + `#statut` | **titre compact + bandeau d'état en tête** |
 | En-têtes de colonnes + lignes | `table#liste` (HTML nu) | **tableau HTML tokenisé** (mêmes colonnes, habillage Spectrum) |
-| Barre d'actions (icônes) | 4 `button` pleine largeur + `#btn_mesures` | **barre d'actions** : boutons `sp-*` **alignés**, plus le libellé d'état |
+| Barre d'actions (icônes) | 4 `button` pleine largeur + `#btn_mesures` | **barre d'actions** : boutons `sp-*` **alignés**, chacun avec son **icône `sp-icon`**, plus le libellé d'état |
 | Fiche d'informations | `pre#journal` (bloc brut, en bas) | **zone basse** = le journal (lisible, **pas** de troncature silencieuse) |
+
+**Les icônes : `sp-icon` (correction FJD, 30/09/2026)** — les 4 actions **portent une icône**, en plus de leur libellé. Widget natif, **0 dépendance** (même route que les autres `sp-*`, **pas** de SWC) :
+- **syntaxe** : `<sp-icon size="s" name="ui:Magnifier"></sp-icon>` (attribut `name`, préfixe `ui:` ; tailles T-shirt `xxs` → `xxl`, ici `s`) — [réf. `sp-icon`](https://adobedocs.github.io/uxp-photoshop/uxp-api/reference-spectrum/Spectrum%20UXP%20Widgets/User%20Interface/sp-icon/) ;
+- **icône + mot, jamais l'icône seule** : l'icône **accompagne** le libellé (lisibilité d'un journal de preuve, accessibilité) ;
+- **les icônes intégrées sont limitées** : la doc liste une **trentaine** de noms (`CheckmarkMedium`, `CrossSmall`, `Magnifier`, `Star`, `InfoMedium`…) — **aucun** ne correspond mot à mot à nos 4 actions (Lister / Actualiser / Importer / Copier le journal) ⇒ prendre le nom intégré **le plus proche**, puis **le vérifier en réel dans le runtime InDesign** — **ne pas supposer** qu'un nom existe. Si aucun ne convient, charger un **SVG** dans le `sp-icon` — **à vérifier** en réel, pas à décider de tête.
 
 **Ce que nous N'imitons PAS** (et pourquoi) — honnêteté, pour ne pas produire un faux :
 - **pas** les **miniatures** : nos sources sont des fichiers `.md`, pas des images ;
 - **pas** l'**arborescence à occurrences** (chevron dépliable, niveaux enfants, compteurs orange) : nous n'avons **pas** d'occurrences (avec N sources, une ligne = une source) ;
-- **pas** les **5 icônes** de la barre d'actions : nous gardons nos **4 actions**, nommées en clair (l'icône seule est moins lisible pour un journal de preuve) ;
+- **pas** le **nombre** d'icônes de la référence (**5** chez elle, **4** chez nous) : nous adoptons **bien** `sp-icon` (voir « Les icônes » ci-dessus), mais pour **nos 4 actions**, et toujours **icône + libellé**, jamais l'icône seule ;
 - **pas** les **coordonnées absolues** de la capture (534 px n'est **pas** une propriété du composant, c'est la **taille de la capture** — cf. §5/§28 de la DESC).
 
 **Les tokens, pas les couleurs** — exigence issue directement de la référence (§4/§5/§27 de la DESC) : la référence donne des **relations de couleur**, pas des RGB absolus. ⇒ le CSS doit exposer des **variables** (`--panel-bg`, `--panel-border`, `--panel-text`, `--panel-text-secondary`, `--panel-selection`, `--panel-warning`) et **jamais** de valeur en dur. Le thème clair/sombre vient de **l'hôte**. Séparation à tenir : **tokens système** (fournis par l'hôte) vs **tokens composant** (`--row-height`, `--indent`, `--space-*`) vs **tokens de référence** (taille de capture — **à ne pas** recopier dans le layout).
@@ -1084,6 +1089,7 @@ $ tail -c 12 import_md.jsx                                       -> main();
 
 **À faire** :
 - remplacer les contrôles bruts par des composants Spectrum, dans cet ordre de priorité : les 4 boutons (`#btn_liste`, `#btn_actualiser`, `#btn_import`, `#btn_copier`), le champ `#chemin`, le bandeau `#statut`, puis le tableau `#liste` ;
+- **ajouter une icône `sp-icon` à chacune des 4 actions** (`#btn_liste`, `#btn_actualiser`, `#btn_import`, `#btn_copier`), **sans retirer** le libellé (**icône + mot**) ;
 - **supprimer** les couleurs en dur du CSS (`#2b2b2b`, `#3a3a3a`, `#1f6f2f`…) : le thème clair/sombre est **fourni par l'hôte** ;
 - **introduire les 4 zones** du patron (en-tête / liste / actions / informations) — c'est **le** changement structurant, plus que le remplacement des balises ;
 - remplacer les valeurs CSS en dur par des **tokens** (variables) ;
