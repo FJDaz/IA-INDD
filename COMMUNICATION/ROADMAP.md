@@ -61,6 +61,16 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ---
 
+## Mission 07 — Nettoyage et publication du repo en public
+
+**Statut** : 🔴 À FAIRE — rédigée le 29/09/2026.
+
+**Fichier détaillé** : [mission_07_publication_repo_public.md](mission_07_publication_repo_public.md)
+
+**Résumé** : FJD candidate à des formations et veut ce repo comme preuve de travail public (historique de commits datés). Vérifié le 29/09 : **0 clé API**, mais **7 fichiers** (`tools/*.jsx`, `uxp/.../main.js`) contiennent le chemin absolu `~/...` en dur — à nettoyer. `IMPORT_MD_MODEL.indt` (1,3 Mo) à trancher (exclure probable). Livrables : chemins nettoyés, README public rédigé (présentation, lien ROADMAP/wiki, stack), revérification finale (0 chemin perso, 0 référence aux autres projets FJD). Le passage effectif en public reste une décision/action humaine, hors périmètre de la mission.
+
+---
+
 ## Mission 04 — Audit : lien dynamique vers le Markdown source (UXP vs update() natif vs solution maison)
 
 **Statut** : 🟡 PARTIELLE (mise à jour 29/09/2026) — **réorganisée le 28/09/2026 par l'Architecte en entonnoir à 3 étapes avec go/no-go** (cf. « ORDRE D'EXÉCUTION » ci-dessous) ; **socle documentaire ACQUIS** (préambule cross-platform ratifié par FJD + complément d'audit intégré : 3 mécanismes de lien + 2 faits négatifs + 1 affirmation trop forte corrigée) ; **cible recadrée par FJD** (bot pilote InDesign + pont de transport, pas un panneau d'affichage) ; **étape 1 = sonde runtime (`04bis` puis `04ter`) : EXÉCUTÉE EN RÉEL les 29/09/2026 — le verdict tombe : la voie A (lien natif) ÉCHOUE pour notre besoin ⇒ BIFURCATION VERS LA VOIE B** ; étapes 2 et 3 **fermées par construction**. Le **go/no-go de l'étape 1 est donc prononcé**, et **l'axe 2 (le bot / le pont) est MIS DE CÔTÉ — différé, réservé, pas abandonné (décision FJD du 29/09/2026)** : il n'est requis que pour GREP / gabarits PDF / suivi de fabrication, **pas** pour « relancer le pipeline après modification du `.md` ». **La suite du projet passe par la voie B ⇒ [Mission 05](mission_05_voie_b_empreinte_md.md).**
@@ -112,6 +122,184 @@ Autres acquis de la même recherche, tous sourcés : **(1) pas de socket brut** 
 **Hors périmètre** : **le bot / le pont (axe 2 de la mission 04) — mis de côté, différé, réservé (FJD 29/09/2026)** ; le *diff* sémantique ; UXP ; InCopy ; la réouverture de la voie A ; la réécriture du pipeline ou du mapping.
 
 **Règle structurelle** : la mission **porte un livrable de code** ⇒ elle ne démarre **pas** sans exécuteur nommé (DS) ou autorisation explicite d'exception pour l'Architecte. **Question ouverte à FJD : qui écrit cette mission ?**
+
+---
+
+# CHAPITRE — Implémentation du contenu du panneau UXP
+
+**Ouvert le 30/09/2026** (demande FJD : « tu notes ce plan dans la RM, chapitre implémentation du contenu du panneau UXP — missions 1, 2, 3… »).
+
+**Numérotation** : les missions de ce chapitre se numérotent **1, 2, 3, 4** — **numérotation LOCALE au chapitre**. Elle **ne consomme pas** les numéros globaux du projet (`Mission 00` → `Mission 06`) et **n'entre pas en collision** avec eux. Dans les échanges et les CR, on écrit **« Chapitre Panneau / Mission N »**.
+
+**Socle acquis (30/09/2026)** : le panneau `com.fjd.importmd.sonde` est **chargé dans InDesign** (via UDT, mode développeur) et **visible** — panneau dockable, disponible dans le menu « Modules externes ». Ses **5 boutons de sonde sont certifiés par log brut** (boutons 1, 2, 5 le 29/09 ; boutons 3 et 4 le 30/09 — log `UXPLogs_2026-09-30_11-13-20_026477.log`). Ce chapitre transforme la **sonde** en **outil**.
+
+**Ce que ce chapitre n'est pas** : ce n'est **pas** la Mission 05 (empreinte du `.md`, déjà implémentée — `m05BuildFingerprint`, `m05DecideState`, `saveSourceFingerprint`). Le présent chapitre **consomme** ce travail, il ne le refait pas. Ce n'est pas non plus le chantier « analyseur Markdown standard » (cf. [note d'architecture](../doc/architecture/NOTE_analyseur_markdown_standard.md)) — **différé**.
+
+**Faits techniques de départ (mesurés, à ne pas re-mesurer)** :
+- L'étiquette `md-source-fingerprint` rangée dans le document contient **déjà** : `path`, `name`, `size`, `checksum`, `modified`, `v`.
+- La fonction `m05DecideState` rend **déjà** les **4 états** : `ETAT_JAMAIS_IMPORTE` / `ETAT_SOURCE_ABSENTE` / `ETAT_IDENTIQUE` / `ETAT_DIFFERENT`.
+- ⇒ **Les « signaux de modification » et « d'absence » ne sont pas à concevoir** : ils sont calculés par du code déjà certifié. Les missions 1 à 3 sont de l'**assemblage**, pas de la conception.
+- Le bouton 3 de la sonde a prouvé que `import_md.jsx` est **joignable** depuis le panneau (`app.doScript`) ; le bouton 4 a prouvé qu'on **lit un `.md` sur le disque** et qu'on en tire les caractéristiques (mots, signes, lignes, date).
+
+**Contrainte transversale (règle FJD du 30/09)** : toute écriture dans le document devra être enveloppée dans la **méthode `app.doScript()` avec l'option `UndoModes.ENTIRE_SCRIPT`** — « sans cela, l'utilisateur devra faire `Ctrl+Z` 60 fois pour revenir en arrière ». **Mesuré dans `import_md.jsx` : 0 occurrence** de `UndoModes` / `doScript` / `undo` ⇒ la dette est réelle sur l'import existant.
+
+**Questions conditionnant la mission 2** :
+1. **Une source ou plusieurs ?** `insertLabel` **ÉCRASE** son homonyme ⇒ il n'y a aujourd'hui **qu'une seule source par document**. La « liste des `.md` » est donc un **tableau à 1 ligne** (0 si rien n'a jamais été importé).
+   → ✅ **TRANCHÉE (FJD, 30/09/2026) : une source par document pour l'instant.** L'étiquette **n'évolue pas** vers N sources. La liste est donc légitimement un tableau à 0 ou 1 ligne.
+2. **Document actif, ou tous les documents ouverts ?** Le panneau est ancré à l'**application**, pas à un document. **ENCORE OUVERTE** — *proposition de l'agent : le document actif.*
+
+---
+
+## Chapitre Panneau — Mission 1 — Lire l'identité de la source depuis le document
+
+**Statut** : 🔴 À FAIRE — premier morceau neuf ; **lecture seule**, aucun risque d'écriture.
+
+**Pourquoi elle vient en premier** : c'est le **socle**. Sans elle, le panneau n'a rien à afficher — et c'est aussi la **mesure de départ** : on verra dans le journal **ce que contient réellement l'étiquette** sur un document réel, au lieu de le supposer.
+
+**Ce qui est neuf** : la sonde actuelle **ne lit pas l'étiquette du document**. Ses 5 boutons font autre chose (DOM, `doScript`, joignabilité du moteur, lecture d'un `.md`, contrôle négatif). **Lire l'étiquette = le vrai nouveau morceau.**
+
+**À faire** : depuis le panneau, interroger le document actif et récupérer l'étiquette `md-source-fingerprint` ; en extraire **chemin, nom, taille, date, empreinte** ; les exposer au panneau.
+
+**Critère de fin** : log brut montrant la lecture réelle sur un document où un import MD a **déjà** été fait (chemin, taille, date, empreinte), **et** le cas « document sans étiquette » (jamais importé) correctement distingué du cas « lecture ratée ».
+
+**Cas limite à ne pas confondre** : *jamais importé* ≠ *lecture échouée*. Une lecture ratée ne doit **jamais** ressembler à un état normal (règle déjà appliquée par `m05BuildFingerprint` qui rend `null` explicitement).
+
+---
+
+## Chapitre Panneau — Mission 2 — La liste et ses signaux
+
+**Statut** : 🔴 À FAIRE — dépend de la Mission 1.
+
+**Contenu (spec FJD du 30/09)** : un **tableau** — une ligne par source — portant :
+- le **signal d'état** : `identique` / `modifié dans la source` / `source absente` ;
+- le **chemin** de la source ;
+- la **date de dernière modification** ;
+- les **caractéristiques** : **nombre de mots**, **nombre de signes** (calibrage).
+
+**Ce qui est de l'assemblage** : les états viennent de `m05DecideState`, les caractéristiques du bouton 4 de la sonde (déjà certifié). **Rien à réinventer.**
+
+**Contrôle négatif obligatoire** (méthode du projet) : la liste doit afficher **0 ligne** sur un document vierge — jamais une ligne vide ou un état inventé.
+
+**Ouvert** : la question 2 (document actif vs tous les documents). La question 1 est **tranchée** : **1 source par document** (l'étiquette n'évolue pas vers N).
+
+---
+
+## Chapitre Panneau — Mission 3 — Bouton « Actualiser »
+
+**Statut** : 🔴 À FAIRE — dépend de la Mission 2.
+
+**À faire** : recalculer les états et rafraîchir le tableau **sans rien écrire dans le document**.
+
+**Pourquoi c'est presque gratuit** : c'est la **même fonction** que la Mission 2 qu'on relance. Le bouton n'ajoute pas de logique, il ajoute un **déclencheur**.
+
+**Cas limite à traiter** : le fichier source **disparaît entre deux actualisations** ⇒ le signal doit passer à « source absente » **sans erreur** et sans effacer l'historique affiché.
+
+---
+
+## Chapitre Panneau — Mission 4 — Bouton « Importer »
+
+**Statut** : 🔴 À FAIRE — **volontairement en DERNIER** : c'est la **seule** mission du chapitre qui **ÉCRIT dans le document**.
+
+### Signature du tube panneau → moteur (DRAFT — à geler après mesure du canal)
+
+**Pourquoi un draft et pas une signature figée** : le « tube » qui portera les arguments du panneau vers le moteur **n'existe pas encore**. Sa forme **dépend du canal** : un canal intégré (`app.scriptArgs`, *piste à vérifier — non mesurée*) préfère des chaînes courtes ; un **fichier temporaire** accepte sans douleur une structure riche. **La forme suit le canal ⇒ on mesure le canal d'abord, on gèle la signature ensuite.**
+
+**À quoi servent les arguments — trois métiers, pas un** :
+
+| Métier | Réponse transportée |
+|---|---|
+| **Commande** | qui appelle, et pour faire quoi |
+| **Source** | quelle source, et de quoi la reconnaître |
+| **Indice de mapping** | ce qui peut aider à retrouver le bon mapping |
+
+**Noyau — ce dont on ne peut PAS se passer** :
+
+| Champ | Métier | Pourquoi |
+|---|---|---|
+| **Appelant** (panneau / menu) | commande | **Fondateur** : c'est lui qui autorise le répartiteur à **ne pas** réenregistrer le menu quand c'est le panneau qui appelle |
+| **Action** (importer / actualiser) | commande | Deux boutons, deux comportements |
+| **Chemin** | source | Le seul changement de fond du moteur : il le reçoit au lieu de le demander |
+| **Empreinte** (taille + checksum) | source | Le moteur peut la recalculer ; utile si le panneau l'a déjà |
+
+**Indices optionnels** :
+
+| Champ | Métier | Statut |
+|---|---|---|
+| **Mode d'import initial** (cadre / curseur / gun) | comportement | **Nécessaire** — c'est lui qui distingue *rafraîchir* de *réparer* (cf. encadré gun ci-dessous) |
+| **Identité de story** + **décalage de caractère** | position | Pour le mode curseur. Le moteur lit **déjà** `options.insertAt.index` = offset **caractère** dans la story (pas un n° de paragraphe). ⚠️ L'identité de story **n'est pas** enregistrée aujourd'hui |
+| **Provenance** (GPT / Claude / Gemini…) | indice mapping | **À DÉCLARER, jamais devinée.** Aujourd'hui non lisible ⇒ vaut `inconnu` (cf. décision ci-dessous) |
+| **Projet / charte** | indice mapping | Même esprit que la provenance : une **clé de rangement** de la mémoire de mapping |
+| **Document cible** | commande | Dépend de la question 2 (actif vs tous les docs), **encore ouverte** |
+
+**Ce qui n'entre JAMAIS dans le tube** :
+- **Le mapping lui-même** — **le panneau PROPOSE, le moteur TRANCHE** (document → mémoire → dialogue). Mettre le mapping dans le tube déplacerait la décision dans le panneau et créerait **deux endroits** qui décident la même chose.
+- **Le mode d'insertion forcé** (cadre / curseur / gun) — le mode reste **détecté** par le moteur, jamais reçu du panneau. On transmet le mode **initial** (pour mémoire), pas le mode de **cette** exécution.
+- **Le numéro de page / de paragraphe** comme identité — 🔴 **fragile** (la pagination bouge dès qu'on édite au-dessus). Toléré **en affichage humain**, jamais comme identité.
+
+#### Décisions actées sur la provenance (30/09/2026)
+- **La provenance ne se devine JAMAIS.** Trois routes possibles — *déclarée* dans le MD, *saisie* par l'humain, *détectée* par heuristique — et seule la route **déclarée** est retenue à terme : le marqueur de la route A (identifiant de bloc) peut porter **aussi** la provenance. **Synergie** avec le futur taggeur.
+- **En attendant : `inconnu`**, et la mémoire de mapping retombe sur son comportement actuel (dernier mapping gagnant).
+- **La provenance est un INDICE de pré-remplissage, jamais une autorité** : le mapping du **document** reste prioritaire. Sinon on risque d'appliquer un mapping GPT à un document dont la feuille de styles n'a rien à voir.
+- **Perspective** : cette clé transformera la mémoire de mapping (**un seul fichier, le dernier gagne**) en **mémoire indexée par provenance** (« pour un MD Claude, propose *ce* mapping d'abord »).
+
+#### Encadré — le mode GUN : limite dure (mesuré dans le code, 30/09)
+En mode gun, le script **charge le place gun**, journalise, enregistre l'empreinte, puis **`return`** : il n'applique **AUCUN style** et **ne voit jamais le dépôt** (qui se fait au clic de FJD). Conséquences :
+- **La position est INCONNUE** (on sait *quoi*, pas *où*) ⇒ non enregistrable, assumé.
+- Un import gun = contenu **jamais stylé** ⇒ sa mise à jour n'est **pas un rafraîchissement, c'est une RÉPARATION** : on récupère la story telle quelle et on lui applique **enfin** la route normale de stylage. Ce cas doit être **nommé comme tel**, jamais confondu avec une simple actualisation.
+
+##### Décision actée (FJD, 30/09/2026) — traitement du gun : récupération → vérif → mapping par défaut au retour
+Principe : **au moins cette route existe**. On ne cherche pas encore la perfection, on garantit qu'un contenu gun **n'est jamais laissé dans son état brut sans issue**.
+1. **Récupération** — on relit le contenu déposé tel quel (lecture pure : styles appliqués paragraphe par paragraphe ; le moteur sait déjà le faire, cf. `appliedParagraphStyle`). Aucune écriture, aucun risque.
+2. **Vérif** — on constate ce que ce contenu porte (uniforme / différencié, conforme ou non au mapping du document). Aucune décision automatique n'en découle **tout de suite** : la finesse de ce contrôle **se règle plus tard**.
+3. **Mapping par défaut au retour** — pour la mise à jour, on repasse par la **route normale de stylage** (mapping par défaut / mapping du document). C'est la **réparation** : le contenu gun reçoit enfin son stylage.
+- **Limite assumée qui reste ouverte** : la **position** de la story gun est inconnue (voir ci-dessous) ⇒ la réparation a besoin d'une cible. Tant que l'identifiant stable de bloc (route A) n'existe pas, **la story à réparer doit être désignée au moment de la mise à jour** (sélection). Ce n'est pas un défaut : c'est la limite honnête de l'état actuel.
+
+##### Piste « page + index » au prochain regard (à MESURER — non retenue comme décision)
+Idée : **la page ne peut pas être lue au `loadPlaceGun()`** — à cet instant rien n'est déposé, le dépôt est le clic physique de FJD, hors script. Lire une page à ce moment donnerait **la page sous la souris, pas la page d'atterrissage** = fausse information.
+Route honnête, **à la deuxième observation** :
+1. **Au chargement du gun** : mémoriser la **liste des stories existantes** du document (leurs identifiants).
+2. **Au prochain regard** (actualisation du panneau ou prochaine ouverture) : **recomparer** — toute story **nouvelle** = le dépôt gun.
+3. On en dérive : **la page** (`textContainers[0].parentPage.name`) et **l'index dans la story** (`0`, par définition du point de départ).
+Réserves : la **page reste fragile** (déjà écartée comme identité — affichage humain seulement) ; le **stable** est l'index dans la story.
+🔬 **À mesurer avant toute décision** : (a) le **diff de stories** est-il fiable ? (b) un dépôt crée-t-il **toujours exactement une** story ? (c) l'écouteur au dépôt existe-t-il en ExtendScript (seuls `Event.AFTER_OPEN`/`AFTER_NEW` ont été testés comme enregistrables/retirables) ?
+
+##### Reporté — « Chapitre GUN » ouvert en DERNIER (décision FJD, 30/09/2026)
+Les raffinements gun sont **groupés et renvoyés à un chapitre dédié, ouvert en dernier** :
+- **piste page + index** ci-dessus (localiser le dépôt gun) ;
+- **alimentation des tags internes** (`index` + nom de style en commentaire dans le MD — moisson de terminologie) ;
+- **et cie** (les finesses qui découlent de ces deux-là).
+Raison : le panneau (Missions 1→4) passe d'abord ; ces raffinements dépendent de la **route A** (identifiant stable de bloc) et de la **lecture des commentaires par `parseMarkdown`** (acquis, différé). On **ne les ouvre pas maintenant**.
+
+#### Règle de prudence (position)
+La position mémorisée (story + offset caractère) ne vaut que **tant que le texte au-dessus n'a pas bougé**. La parade réelle est l'**identifiant stable de bloc** (route A) — **on ne règle pas ce problème maintenant, on le nomme**. ⚠️ **Ne pas inventer un second système de position** : « story + offset » **est la même famille** que l'identifiant de bloc ; une seule mécanique, réutilisée.
+
+#### Points à mesurer avant de geler la signature
+1. **Le canal** : `app.scriptArgs` transport-t-il un argument du panneau vers ExtendScript, sans perte ? (piste documentée, **non mesurée**)
+2. **Le répartiteur** : comment le moteur distingue « appelé par le menu » de « appelé par le panneau » — et ce que le panneau doit fournir.
+3. **Le contournement du sélecteur** : le précédent existe (**relance M05** : chemin mémorisé ⇒ `File.openDialog` sauté). C'est le **crochet à généraliser**.
+
+---
+
+**Pourquoi en dernier** : d'abord parce qu'**on lit avant d'écrire** — si les missions 1 à 3 sont fausses, on les corrige sans dégât. Ensuite parce qu'**importer par-dessus une liste qui n'existe pas encore, c'est tester deux inconnues à la fois** : si ça rate, on ne saura pas *quelle* moitié a raté.
+
+**À faire** : brancher le bouton sur le moteur `import_md.jsx` (joignabilité déjà prouvée par le bouton 3), en enveloppant l'exécution dans **`app.doScript()` + `UndoModes.ENTIRE_SCRIPT`**.
+
+**Questions ouvertes à instruire AVANT de coder (à remonter, pas à trancher seul)** — détail dans la section « Signature du tube » ci-dessus :
+- **Le panneau réutilise-t-il le pipeline complet** (sélecteur de fichier + dialogue de mapping inclus) **ou** une variante sans dialogue ? Le panneau a déjà le chemin : rouvrir un sélecteur serait redondant. Le précédent existe (**relance M05**) : c'est le **crochet à généraliser**.
+- **`import_md.jsx` se termine par un appel `main();` au niveau racine** ⇒ l'évaluer déclenche **aussi** le bloc d'enregistrement du menu (l. 3077-3086, hors `main()`). Il faut un **répartiteur** qui distingue « appelé par le menu » de « appelé par le panneau », donc l'argument **Appelant** du tube.
+
+**Critère de fin** : un **seul** `Ctrl+Z` annule **tout** l'import (preuve : nombre de pas d'annulation constaté, pas estimé), et le mapping `md-style-map` est **intact** après import (contrôle avant/après).
+
+---
+
+## Chapitre Panneau — Règles de clôture (communes aux 4 missions)
+
+- **CR inline** : le compte rendu se met **dans le bloc de sa mission**, après `**Statut**` (preuve inline : log brut, sortie réelle) — **jamais** dans un fichier `cr_mXXX_*.md` séparé. *(Principe CR-inline dans la RM, universel — décision FJD du 14/09/2026.)*
+- **Statut** : signalétique stricte, un seul format — `**Statut** : <marqueur> — <preuve en une phrase>`, avec exactement un de ✅ TERMINÉE / 🔴 À FAIRE / 🟡 PARTIELLE / 🔴 ABANDONNÉE. Mise à jour **dans le même tour** que le CR.
+- **Encodage** : avant de rendre un CR, `grep -c $'\xef\xbf\xbd' COMMUNICATION/ROADMAP.md` doit renvoyer **0** — **ligne de Statut incluse** (le marqueur 🟡 est le coupable historique connu).
+- **Preuve de dock** : la preuve d'ancrage à côté de « Liens » (`preferredDockedSize` 320×520) exige un **contrôle négatif** associé.
+- **Wiki** : le wiki `doc/wiki_extendscript_indesign.md` est nourri **après le succès**, jamais avant (cible réservée, non éditée).
+- **Périmètre** : ne pas ouvrir ici le chantier « analyseur Markdown standard » ni la modification de `parseMarkdown` (lecture de nos commentaires) — **acquis mais différé** (cf. [note d'architecture](../doc/architecture/NOTE_analyseur_markdown_standard.md), §5.3).
 
 ---
 
