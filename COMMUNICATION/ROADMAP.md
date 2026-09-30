@@ -67,7 +67,7 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 **Fichier détaillé** : [mission_07_publication_repo_public.md](mission_07_publication_repo_public.md)
 
-**Résumé** : FJD candidate à des formations et veut ce repo comme preuve de travail public (historique de commits datés). L'audit réel du 29/09 a infirmé le chiffrage de la rédaction : ce n'était pas **7** fichiers mais **14** (7 de code + 7 de documentation) qui portaient le chemin absolu du dossier utilisateur — la mission détaillée a été corrigée en conséquence. `IMPORT_MD_MODEL.indt` (1,3 Mo) : **exclu** (binaire de test, non essentiel à la démonstration). Livrables : chemins nettoyés, README public rédigé, revérification finale par grep. Le passage effectif en public reste une décision/action humaine, hors périmètre de la mission.
+**Résumé** : FJD candidate à des formations et veut ce repo comme preuve de travail public (historique de commits datés). L'audit réel du 29/09 a infirmé le chiffrage de la rédaction : ce n'était pas **7** fichiers mais **14** (7 de code + 7 de documentation) qui portaient le chemin absolu du dossier utilisateur — la mission détaillée a été corrigée en conséquence. `IMPORT_MD_MODEL.indt` (1,3 Mo) : **exclu** (binaire de test, non essentiel à la démonstration). Livrables : chemins nettoyés, README public rédigé, revérification finale par grep. Le passage effectif en public reste une décision/action humaine, hors périmètre de la mission — **il a été autorisé et exécuté le 30/09/2026** (commit `09d8d43`, remote `origin`, push de `main`), cf. « CR — Mission 07, suite » ci-dessous.
 
 ---
 
@@ -117,6 +117,36 @@ uxp/com.fjd.importmd.sonde/main.js   OK   (node --check)
 ```
 
 La condition de sortie de la mission — « 0 chemin personnel en dur, README rédigé et lisible pour un tiers » — est satisfaite. **Reste hors périmètre, par décision explicite de la mission** : l'action GitHub elle-même (déclaration du remote, `git push`, bascule en public), qui est une décision humaine.
+
+### CR — Mission 07, suite : publication effective (30/09/2026)
+
+FJD a autorisé et demandé l'action GitHub (« push stp »), qui était hors périmètre de la mission.
+
+- **Commit de nettoyage** : `09d8d43` « M07: nettoyage pour publication publique + README public » (27 fichiers, +1219/−211). Le commit antérieur `2fd98e2` ne contenait que le brief de mission (ROADMAP + fichier détaillé) — tout le nettoyage restait dans l'arbre de travail.
+- **Remote ajouté** : `origin` = `https://github.com/FJDaz/IA-INDD.git` (aucun remote n'existait).
+- **Push** : `git push -u origin main` → branche `main` liée à `origin/main`.
+
+**Échec rencontré et cause identifiée** — le premier push a rendu :
+
+```
+error: RPC failed; HTTP 400 curl 22 The requested URL returned error: 400
+send-pack: unexpected disconnect while reading sideband packet
+fatal: the remote end hung up unexpectedly
+```
+
+Le dépôt distant existait bien et était **vide** (`git ls-remote origin` sans aucun ref, `curl` → HTTP 200 sur le dépôt et sur le compte). La cause est **HTTP/2**, cassé pour `git push` sur ce poste (git 2.39.2 Apple, macOS 22) ; le correctif est `git config http.version HTTP/1.1` (posé en configuration **locale du dépôt**, pas globale), avec `http.postBuffer 524288000`. Le second essai a réussi.
+
+**Vérification du push — sorties brutes** :
+
+```
+refs distants :  09d8d434162a27483d0721be789f00df4e0822de  HEAD
+                 09d8d434162a27483d0721be789f00df4e0822de  refs/heads/main
+local  : 09d8d434162a27483d0721be789f00df4e0822de
+origin : 09d8d434162a27483d0721be789f00df4e0822de
+README.md distant -> HTTP 200   (contenu = « # Import Markdown → InDesign »)
+```
+
+**Limite signalée à FJD — le nettoyage couvre l'arbre, pas l'historique.** Le contrôle de sortie de la mission porte sur les fichiers de l'arbre courant (tous au vert). Mais un dépôt public expose **tous** les commits : `git log -S` retrouve le chemin utilisateur dans **8 commits**, dont l'initial `647f691`, sur **15 fichiers** — dont `COMMUNICATION/mission_03_reconstruction_minimale.md`, qui n'existe plus dans l'arbre actuel mais reste lisible dans l'historique. **Aucune clé API ni aucun secret dans l'historique** (vérifié par `git grep` sur toutes les révisions). Remédiation possible (branche orpheline / squash + force-push) : **décision FJD, non tranchée**.
 
 ---
 
