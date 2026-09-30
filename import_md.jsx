@@ -1740,9 +1740,42 @@ function insertMarkdownWithStyles(story, blocks, mapping, options) {
                 + " => baseParSoustraction=" + baseParaIndex
                 + " | indexAffiche(inutilisable, offset caractere)=" + indexAffiche
                 + " contents.length=" + ("" + targetPoint.contents).length);
-            if (baseParaIndex <= 0 && paraSnapshot.length > insertedParaCount) {
+
+            // MISSION 04 — CORRECTIF 01/10/2026 : ANCRAGE PAR L'OFFSET CARACTERE.
+            // La soustraction (story_total - N) est fausse des que l'insertion ne
+            // se fait pas a la toute fin de la story. Mesure reelle du 30/09 :
+            // 527 paragraphes avant + 44 blocs => total 570 (et non 571) car le
+            // DERNIER bloc insere fusionne avec l'ancien premier paragraphe ;
+            // la soustraction (526) designait donc le mauvais paragraphe, et
+            // l'etape 4 relisait des plages hors du paragraphe vise.
+            // On ne devine plus : `baseCharOffset` est l'offset CARACTERE reel du
+            // point d'insertion (verifie plus bas par la sonde `offsetCheck`).
+            // En InDesign, le numero de paragraphe = NOMBRE DE RETOURS PARAGRAPHE
+            // situes AVANT cet offset. Deterministe, sans comparaison de contenu
+            // (donc aucune collision possible avec un import precedent du meme
+            // fichier deja present dans la story).
+            var baseParOffset = -1;
+            try {
+                var avantCurseur = "" + liveStory.contents.substring(0, baseCharOffset);
+                var nbRetoursAvant = 0;
+                for (var ci = 0; ci < avantCurseur.length; ci++) {
+                    if (avantCurseur.charAt(ci) === "\r") { nbRetoursAvant++; }
+                }
+                baseParOffset = nbRetoursAvant;
+            } catch (ePbO) { logError(ePbO, "etape2 ancrage offset caractere"); }
+
+            logToFile("M03-etape2: ancrage offset — baseCharOffset=" + baseCharOffset
+                + " => baseParOffset(nb retours paragraphe avant)=" + baseParOffset
+                + " | baseSoustraction=" + baseParaIndex);
+            if (baseParOffset >= 0) {
+                if (baseParOffset !== baseParaIndex) {
+                    logToFile("M03-etape2: CORRECTIF ancrage offset — la soustraction etait fausse de "
+                        + (baseParaIndex - baseParOffset) + " paragraphe(s) ; base retenue=" + baseParOffset);
+                }
+                baseParaIndex = baseParOffset;
+            } else if (baseParaIndex <= 0 && paraSnapshot.length > insertedParaCount) {
                 baseIndexKnown = false;
-                logToFile("M03-etape2: ABANDON — soustraction incoherente (base=0 alors que la story contient des paragraphes avant le bloc insere). Aucun style applique (jamais au hasard sur le texte voisin).");
+                logToFile("M03-etape2: ABANDON — soustraction incoherente (base=0) ET ancrage offset indisponible. Aucun style applique (jamais au hasard sur le texte voisin).");
             }
         }
 
@@ -2724,7 +2757,53 @@ function readMarkdownFileAt(path) {
 /**
  * Point d'entrée du script
  */
-function main() {
+// ============================================================================
+// MISSION 04 — RÉPARTITEUR DU TUBE PANNEAU -> MOTEUR
+// ============================================================================
+// Mesuré le 30/09/2026 (wiki Cas 47) : `app.doScript(src, lang, ARGS)` dépose les
+// arguments dans l'objet **`arguments` de niveau RACINE** du script exécuté ; un
+// appel par le MENU n'en fournit AUCUN (`arguments` vaut `undefined`). C'est le
+// SEUL test dont on a besoin pour distinguer les deux appels.
+//
+// SIGNATURE GELÉE (décisions FJD 30/09) : cases NOMMÉES (`Appelant=panneau`),
+// noyau = Appelant / Action / Chemin. L'EMPREINTE NE VOYAGE PAS : le moteur la
+// recalcule depuis le Chemin (il a déjà m05BuildFingerprint) — « le panneau
+// PROPOSE, le moteur TRANCHE ». Le mapping, le mode d'insertion forcé et les
+// numéros de page/paragraphe n'entrent JAMAIS dans le tube.
+//
+// NON-RÉGRESSION : M04_TUBE reste null tant que personne ne fournit d'arguments
+// racine ⇒ l'appel par le menu emprunte EXACTEMENT le chemin d'avant.
+// ============================================================================
+
+var M04_TUBE = null;
+
+/**
+ * Lit la liste d'arguments portée par le tube et en extrait les champs NOMMÉS.
+ * ES3 strict (pas de JSON, pas de let/const) : on découpe sur le PREMIER « = »,
+ * de sorte qu'un chemin contenant « = » reste intact au-delà du premier.
+ * Les champs inconnus ne sont jamais jetés : ils vont dans `indices` (le tube a
+ * le droit de s'enrichir sans casser un moteur qui ne les connaît pas encore).
+ */
+function lireTube(args) {
+    var t = { appelant: "", action: "", chemin: "", indices: {}, nb: 0 };
+    if (!args) return t;
+    try { t.nb = args.length; } catch (eNb) { t.nb = -1; }
+    for (var i = 0; i < t.nb; i++) {
+        var s = "";
+        try { s = String(args[i]); } catch (eIt) { continue; }
+        var eq = s.indexOf("=");
+        if (eq < 0) continue; // case nue ou illisible : ignorée, jamais devinée
+        var cle = s.substring(0, eq);
+        var val = s.substring(eq + 1);
+        if (cle === "Appelant") { t.appelant = val; }
+        else if (cle === "Action") { t.action = val; }
+        else if (cle === "Chemin") { t.chemin = val; }
+        else { t.indices[cle] = val; }
+    }
+    return t;
+}
+
+function mainInterne() {
     try {
         // Vérifier qu'un document est ouvert
         var doc = app.activeDocument;
@@ -2732,6 +2811,14 @@ function main() {
             alertUser("Aucun document InDesign actif. Veuillez ouvrir un document.");
             return;
         }
+
+        // ====================================================================
+        // MISSION 04 — APPEL PAR LE PANNEAU (tube). `M04_TUBE` est renseigné par
+        // le répartiteur (en fin de script) UNIQUEMENT quand `app.doScript(...)
+        // a fourni des arguments racine. Un appel par le MENU le laisse à null
+        // ⇒ aucune ligne ci-dessous ne change de comportement.
+        // ====================================================================
+        var appelPanneau = !!M04_TUBE;
 
         // ====================================================================
         // MISSION 05 (voie B) — DÉCLENCHEUR DE RE-IMPORT, AVANT TOUT DIALOGUE.
@@ -2746,15 +2833,21 @@ function main() {
         // le déclencheur ne doit jamais casser un import qui marchait avant.
         // ====================================================================
         var relanceSourcePath = null;
-        try {
-            var verifSource = verifierSourceMarkdown(doc);
-            if (verifSource.relance) {
-                relanceSourcePath = verifSource.chemin;
-            } else if (verifSource.etat === ETAT_DIFFERENT) {
-                return; // relance refusée : on s'arrête net, rien n'est touché
+        if (appelPanneau) {
+            // Le panneau a DÉJÀ décidé (il a envoyé Action) : poser la question du
+            // déclencheur ici serait une seconde décision sur la même chose.
+            logToFile("M04: appel PANNEAU -> declencheur M05 SAUTE | action=" + M04_TUBE.action);
+        } else {
+            try {
+                var verifSource = verifierSourceMarkdown(doc);
+                if (verifSource.relance) {
+                    relanceSourcePath = verifSource.chemin;
+                } else if (verifSource.etat === ETAT_DIFFERENT) {
+                    return; // relance refusée : on s'arrête net, rien n'est touché
+                }
+            } catch (eM05) {
+                logError(eM05, "M05-empreinte verifierSourceMarkdown");
             }
-        } catch (eM05) {
-            logError(eM05, "M05-empreinte verifierSourceMarkdown");
         }
 
         // MISSION 03 — PIVOT « SCRIPT UNIFIÉ ». Les trois modes sont TOUS déduits
@@ -2795,6 +2888,21 @@ function main() {
             }
         }
         logToFile("PIVOT unifie: selection.length=" + selLen + " | mode detecte=" + mode);
+
+        // MISSION 04 (30/09/2026, retour FJD) : « 1ere fois erreur silencieuse :
+        // importer sans choisir un bloc. il faut une alerte. »
+        // Le MENU garde le mode gun (décision FJD 26/09 : Echap = place gun).
+        // Mais le PANNEAU, lui, PROMET « importer la source dans le document » :
+        // charger un place gun serait une AUTRE action, et l'utilisateur ne voit
+        // rien se passer. On REFUSE donc ici — AVANT tout nettoyage du document
+        // (rien n'est touché : ni le document, ni le place gun) — avec une
+        // alerte explicite. Une seule autorité : c'est le moteur qui juge la
+        // sélection (constat mesuré : l'état de sélection diffère selon le focus).
+        if (appelPanneau && mode === "gun") {
+            logToFile("M04: REFUS - aucun bloc de texte actif | appel PANNEAU refuse (mode gun interdit au panneau) | selection.length=" + selLen);
+            alertUser("Aucun bloc de texte n'est actif dans le document.\n\nLe panneau a besoin de savoir OU ecrire : placez le curseur dans un bloc de texte, ou selectionnez un bloc de texte, puis recliquez sur « Importer ».\n\nRien n'a ete modifie : ni le document, ni le place gun.");
+            return;
+        }
 
         if (mode === "invalide") {
             alertUser("Aucun bloc de texte exploitable n'est actif.\n\nPlacez le curseur dans un bloc de texte, selectionnez un bloc de texte, ou desactivez toute selection (Echap) pour charger le place gun, puis relancez le script.");
@@ -2864,11 +2972,18 @@ function main() {
         // source mémorisée est alors imposée, sans repasser par le sélecteur
         // (File.openDialog n'accepte aucun chemin par défaut en ExtendScript).
         var sourceFile = null;
-        if (relanceSourcePath) {
-            sourceFile = new File(relanceSourcePath);
-            logToFile("M05-empreinte: source IMPOSEE par la relance = " + relanceSourcePath + " | existe=" + sourceFile.exists);
+        // MISSION 04 — généralisation du précédent M05 : un chemin IMPOSÉ (par le
+        // panneau ou par la relance) court-circuite `File.openDialog`. Le panneau
+        // envoie donc le chemin au lieu de le demander (seul changement de fond
+        // de la signature). `File.openDialog` n'accepte aucun chemin par défaut
+        // en ExtendScript (mesuré) : le contournement est donc la seule voie.
+        var cheminImpose = relanceSourcePath || ((M04_TUBE && M04_TUBE.chemin) ? M04_TUBE.chemin : null);
+        if (cheminImpose) {
+            sourceFile = new File(cheminImpose);
+            logToFile((appelPanneau ? "M04: source IMPOSEE par le PANNEAU = " : "M05-empreinte: source IMPOSEE par la relance = ")
+                + cheminImpose + " | existe=" + sourceFile.exists);
             if (!sourceFile.exists) {
-                alertUser("La source Markdown mémorisée est introuvable :\n\n" + relanceSourcePath);
+                alertUser("La source Markdown demandée est introuvable :\n\n" + cheminImpose);
                 return;
             }
         } else {
@@ -3014,6 +3129,37 @@ function main() {
 }
 
 // ============================================================================
+// MISSION 04 — ANNULATION EN UN SEUL PAS (dette Ctrl+Z, regle FJD 30/09/2026)
+// ============================================================================
+// Regle : toute ecriture dans le document doit tenir dans UN SEUL pas
+// d'annulation — « sans cela, l'utilisateur devra faire Ctrl+Z 60 fois ».
+// Mesure du 30/09 : import_md.jsx contenait 0 occurrence de doScript/UndoModes.
+//
+// Le 4e parametre de app.doScript est UndoModes (wiki Cas 47, l.1608) :
+//   app.doScript(fn, ScriptLanguage.JAVASCRIPT, [], UndoModes.ENTIRE_SCRIPT)
+// execute TOUT le corps de l'import comme UN SEUL pas d'annulation.
+//
+// main() reste le point d'entree COMMUN (menu ET panneau) : le dernier repere
+// `main();` du fichier est conserve TEL QUEL (parade de troncature du panneau).
+// Seul le corps a ete renomme `mainInterne` et enveloppe ici.
+// Si UndoModes / app.doScript manque dans le runtime, on retombe sur l'appel
+// direct : jamais de regression, seulement l'absence du regroupement.
+function main() {
+    var fait = false;
+    try {
+        if (typeof UndoModes !== "undefined" && typeof app.doScript === "function") {
+            app.doScript(mainInterne, ScriptLanguage.JAVASCRIPT, [], UndoModes.ENTIRE_SCRIPT);
+            fait = true;
+        }
+    } catch (eUndo) {
+        logToFile("M04-undo: app.doScript(EntireScript) indisponible -> execution directe | message=" + eUndo.message);
+    }
+    if (!fait) {
+        mainInterne();
+    }
+}
+
+// ============================================================================
 // ÉTAPE 9 — POINT D'ENTRÉE NATIF DANS LE MENU (Fichier > Importer un MD)
 // ============================================================================
 //
@@ -3084,6 +3230,48 @@ if (typeof importMdRegisterMenuEntry !== "undefined") {
 } else {
     logToFile("M03-etape9: importMdRegisterMenuEntry ABSENT apres chargement -> entree de menu non creee");
 }
+
+// ---------------------------------------------------------------------------
+// MISSION 04 — DÉTECTION DU TUBE, JUSTE AVANT L'ENTRÉE EN SCÈNE.
+//
+// `arguments` est lu ICI, au NIVEAU RACINE du script (c'est là que
+// `app.doScript(src, lang, ARGS)` les dépose — mesuré, wiki Cas 47). On ne peut
+// PAS déléguer cette lecture à une fonction : dans une fonction, `arguments`
+// désigne les paramètres DE CETTE FONCTION, pas ceux du script.
+//
+// Rien n'est supposé : l'accès est protégé, et l'absence d'arguments est le cas
+// NORMAL de l'appel par le menu (aucune régression).
+//
+// ⚠️ La dernière ligne du fichier reste EXACTEMENT `main();` — c'est le repère
+//    utilisé par la sonde du panneau pour charger le moteur sans l'exécuter.
+// ---------------------------------------------------------------------------
+try {
+    if (typeof arguments !== "undefined" && arguments && arguments.length > 0) {
+        M04_TUBE = lireTube(arguments);
+    }
+} catch (eM04Detect) {
+    logToFile("M04-repartiteur: lecture des arguments racine a echoue : " + eM04Detect.message);
+}
+
+// Repli MISSION 04 — le panneau charge le moteur par $.evalFile, et non comme
+// un texte : c'est INDISPENSABLE, car le moteur deduit son journal
+// (LOG_FILE_PATH, ligne 15) et l'entree de menu de $.fileName. Or $.evalFile
+// ne transmet AUCUN argument : le panneau depose donc le MEME tube, avec les
+// memes cas nommes, dans un global lu ici en dernier recours.
+// Le global est a USAGE UNIQUE : on l'efface aussitot, pour qu'un appel par le
+// MENU, plus tard, ne soit jamais pris pour un appel du panneau.
+try {
+    if (!M04_TUBE && $.global && $.global.__M04_TUBE_IMPOSE && $.global.__M04_TUBE_IMPOSE.length > 0) {
+        M04_TUBE = lireTube($.global.__M04_TUBE_IMPOSE);
+    }
+} catch (eM04Repli) {
+    logToFile("M04-repartiteur: lecture du tube de repli a echoue : " + eM04Repli.message);
+}
+try { $.global.__M04_TUBE_IMPOSE = null; } catch (eM04Purge) { }
+
+logToFile(M04_TUBE
+    ? ("M04-repartiteur: appel PANNEAU | appelant=" + M04_TUBE.appelant + " | action=" + M04_TUBE.action + " | chemin=" + M04_TUBE.chemin + " | n=" + M04_TUBE.nb)
+    : "M04-repartiteur: appel MENU (aucun argument) -> main() inchange");
 
 // Exécuter le script
 main();

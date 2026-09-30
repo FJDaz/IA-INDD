@@ -73,7 +73,7 @@ les 6 rubriques habituelles, dans cet ordre.
 
 ## Table des matières
 
-**État du wiki** : **45 cas** | build de référence **InDesign 21.x** (`21.6.0.57`, `fr_FR`, macOS) | dernière revue : **29/09/2026**.
+**État du wiki** : **47 cas** | build de référence **InDesign 21.x** (`21.6.0.57`, `fr_FR`, macOS) | dernière revue : **30/09/2026**.
 
 Index de navigation rapide — utile pour ne charger/scanner que la section pertinente plutôt que tout le fichier avant une nouvelle mission. Les liens pointent vers les ancres de titre (`## Cas NN — ...`).
 
@@ -128,6 +128,8 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 - [Cas 44](#cas-44--extractlabel--insertlabel--ce-que-le-label-accepte-réellement) — **`mesuré`** — `extractLabel` sur une clé **absente** rend **`''`** (`typeof="string"`, ni `null` ni `undefined`, sans exception) ⇒ tester par la valeur vide, jamais par `null` ; `insertLabel` sous la **même** clé **ÉCRASE** l'ancienne valeur ; un label de **4000** caractères se relit **intégralement** et **survit à fermeture + réouverture** du document.
 - [Cas 45](#cas-45--filemodified-ne-signale-pas-un-changement-de-contenu-et-fileread-normalise-les-fins-de-ligne) — **`mesuré`** — `File.modified` **ne bouge pas** quand le contenu change dans la même seconde (`date a BOUGE = false` alors que la somme change) et `File.length` reste inchangé ⇒ **ni la date ni la taille ne sont un signal de contenu** ; `File.read()` **normalise les fins de ligne en LF** et `File.write()` **écrit CRLF → CR** ⇒ la somme décrit le texte **normalisé**, pas les octets bruts (bonne nouvelle : un `.md` ré-enregistré par un autre outil ne déclenche **pas** de fausse alerte).
 - [Cas 46](#cas-46--docsave-refuse-tmp-et-privatetmp--foldertemp-est-la-seule-cible-qui-marche) — **`mesuré`** — `Document.save()` refuse `/tmp` **et** `/private/tmp` (`ECHEC : Dossier "…" introuvable`), `Document.saveAs` **n'existe pas** (`d.saveAs is not a function`) ⇒ seule **`Folder.temp`** permet d'enregistrer le document témoin d'un test fermeture/réouverture.
+- [Cas 47](#cas-47--le-canal-darguments-de-appdoscript--lobjet-arguments-racine-jamais-appscriptargs) — **`mesuré`** — Le canal d'arguments de `app.doScript()` est l'objet **`arguments` de niveau racine** du script exécuté (`n=4`, les 4 valeurs **dans l'ordre**) ; **jamais** `app.scriptArgs` (objet **non indexable** ici : ni `length`, ni `[0]`, ni `getArguments`, **identique** avec et sans argument) ; **sans** argument `arguments` est **`undefined`** ⇒ test de discrimination menu/panneau direct ; le 3e paramètre exige une **liste** (`Array of Any Types attendu(e)`).
+- [Cas 48](#cas-48--le-numéro-de-paragraphe-absolu-se-compte-en-retours-paragraphe-avant-loffset-caractère-jamais-par-soustraction) — **`mesuré`** — Pour désigner un paragraphe par son **rang absolu** dans une story, il faut **compter les retours paragraphe (`\r`) avant l'offset caractère** du point d'insertion, **jamais** soustraire `story_total − N` : le **dernier bloc inséré fusionne** avec le paragraphe suivant ⇒ **N paragraphes insérés ≠ N paragraphes décomptés** (mesure réelle : 527 avant + 44 blocs ⇒ total **570**, pas 571 ⇒ soustraction **526** au lieu de **527** ⇒ tout le mapping décalé d'un cran).
 
 ### 2. Index par thème
 
@@ -156,6 +158,7 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 - [Cas 26](#cas-26--paragraphindex-nest-pas-un-index-de-paragraphe) — `.index` n'est pas un index de paragraphe
 - [Cas 29](#cas-29--une-sonde-de-vérification-doffset-basée-sur-indexof-peut-rendre-un-faux-négatif) — sonde `indexOf` faux négatif
 - [Cas 43](#cas-43--un-document-créé-par-script-na-aucun-bloc-de-texte-ni-story-ni-textframe) — un document créé par script n'a aucune story
+- [Cas 48](#cas-48--le-numéro-de-paragraphe-absolu-se-compte-en-retours-paragraphe-avant-loffset-caractère-jamais-par-soustraction) — index de paragraphe absolu : compter les `\r`, jamais soustraire
 
 **Styles (paragraphe/caractère/objet/table/cellule)**
 - [Cas 05](#cas-05--duck-typing-sur-les-groupes-de-styles-paragraphstylegroup-vs-characterstylegroup) — duck-typing groupes de styles
@@ -180,6 +183,9 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 - [Cas 35](#cas-35--un-script-déposé-dans-startup-scripts-est-bien-exécuté-au-lancement-et-la-barre-de-menus-y-est-déjà-construite) — `Startup Scripts` et barre de menus
 - [Cas 36](#cas-36--une-entrée-de-menu-durable--module-partagé-evalfile--chargeur-de-démarrage-implémentation-mesurée) — entrée durable : module `$.evalFile` + chargeur
 
+**Canal d'appel — passage d'arguments panneau UXP → moteur ExtendScript**
+- [Cas 47](#cas-47--le-canal-darguments-de-appdoscript--lobjet-arguments-racine-jamais-appscriptargs) — `app.doScript(src, lang, [args])` → `arguments` racine ; `app.scriptArgs` ne transporte rien
+
 **Lien dynamique / fichier lié (`Link`, `place`, story liée)**
 - [Cas 37](#cas-37--lien-natif-vers-un-fichier-source-sans-place--le-modèle-dobjet-link) — modèle d'objet `Link` : ce qui marche (`place(.icml)`) et ce qui ne marche pas (`createTextFragmentLink()`, `update()` qui ne recharge rien)
 
@@ -201,6 +207,8 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 Chercher par ce qu'on a **vu à l'écran** (message d'erreur, comportement observé), pas par le concept qu'on devrait déjà connaître.
 
 - **« undefined is not a function » / objet ou méthode inexistants** → [Cas 02](#cas-02--appactivewindowalert-nexiste-pas), [Cas 03](#cas-03--new-window-avec-un-objet-de-config), [Cas 04](#cas-04--collectioneveryitem-itéré-avec-un-for-classique), [Cas 05](#cas-05--duck-typing-sur-les-groupes-de-styles-paragraphstylegroup-vs-characterstylegroup), [Cas 08](#cas-08--arrayprototypeindexof-nexiste-pas-nativement-en-extendscript), [Cas 09](#cas-09--insertionpoints-1paragraphsadd-nexiste-pas), [Cas 22](#cas-22--storyparagraphsi-invalide-en-cours-de-boucle--utiliser-getelements), [Cas 32](#cas-32--cheminexists-sur-une-chaîne-renvoie-undefined--la-sonde-qui-crie-au-loup)
+- **Un argument passé à un script exécuté n'arrive pas / `app.scriptArgs` vide ou inutilisable** → [Cas 47](#cas-47--le-canal-darguments-de-appdoscript--lobjet-arguments-racine-jamais-appscriptargs)
+- **Les styles se posent un cran à côté / décalage d'un paragraphe en insertion au curseur (surtout document non vide)** → [Cas 48](#cas-48--le-numéro-de-paragraphe-absolu-se-compte-en-retours-paragraphe-avant-loffset-caractère-jamais-par-soustraction)
 - **Erreur de syntaxe / mot inattendu** → [Cas 01](#cas-01--char-est-un-mot-réservé)
 - **`JSON` introuvable / `JSON.parse` ne fonctionne pas** → [Cas 07](#cas-07--json-nexiste-pas-nativement-en-extendscript)
 - **`.indexOf` sur un tableau qui échoue** → [Cas 08](#cas-08--arrayprototypeindexof-nexiste-pas-nativement-en-extendscript)
@@ -1557,6 +1565,116 @@ Trois faits à retenir :
 4. Fermer le document témoin avec `doc.close(SaveOptions.NO)` et **compter les documents** avant/après pour garantir qu'aucun document de l'utilisateur n'a été fermé (`tools/probe_05ter_integration.jsx`, section 5).
 
 **Portée** — Tout test qui exige un **document témoin réel** (persistance d'un label, comportement à la réouverture). Complète le **Cas 43** (fabriquer un document témoin) et le **Cas 44** (ce que le label doit prouver).
+
+---
+
+## Cas 47 — Le canal d'arguments de `app.doScript` : l'objet `arguments` racine, jamais `app.scriptArgs`
+
+**Thème** : canal d'appel / méthode (UXP → ExtendScript)
+**API / objet visé** : `Application.doScript(script, language, withArguments)`, objet `arguments` de niveau racine, `app.scriptArgs`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS), runtime UXP `uxp-9.3.0-local` — mesuré le **30/09/2026** (mission 04, sonde `uxp/com.fjd.importmd.sonde`, bouton 7, section Q7 du journal)
+
+**Contexte** — Un panneau UXP doit transmettre des arguments (**Appelant**, **Action**, **Chemin**) à un moteur ExtendScript (`import_md.jsx`) **sans les écrire dans le texte du script**. Question posée : **quel canal porte ces arguments ?** Deux pistes étaient en concurrence — `app.scriptArgs` (piste documentée) et l'objet `arguments` racine du script exécuté.
+
+**Symptôme** — `app.scriptArgs` se présente bien comme un `object` côté moteur, mais **n'expose rien d'exploitable** : ni `length`, ni `[0]`, ni `getArguments`. Le témoin passé en 3e paramètre de `doScript` **n'y apparaît jamais**.
+
+**Cause / relevé mesuré** — Les **deux** lectures partagent le **même `src`** ; seul le 3e paramètre de `doScript` change. Verbatim du journal :
+
+```
+B1  ... app.scriptArgs
+      sans argument : type=object | longueur=ERREUR:Object does not support the property or method 'length'
+                    | [0]=ERREUR:Object does not support the property or method '0' | getArguments=ABSENT
+      avec argument : (strictement identique)
+      => le temoin n'apparait PAS dans app.scriptArgs
+
+B2  ... objet `arguments` racine
+      sans argument : ERREUR:arguments is undefined
+      avec argument : n=4 | [0]=TEMOIN-20260930-1790790883963 | [1]=Appelant=panneau
+                    | [2]=Action=importer | [3]=Chemin=/tmp/source.md
+```
+
+Quatre faits à retenir :
+
+1. **`app.scriptArgs` ne transporte rien ici** : objet **non indexable** (`length` et `[0]` lèvent « Object does not support the property or method… », `getArguments` absent), et **identique** avec et sans argument. Il ne signale pas non plus l'échec — il ne dit rien.
+2. **Le canal réel est l'objet `arguments` de niveau racine** du script exécuté : `n=4` et les **4 valeurs dans l'ordre** (`[0]`…`[3]`). C'est l'idiome InDesign.
+3. **Sans argument fourni, `arguments` vaut `undefined`** (`ERREUR:arguments is undefined`) ⇒ c'est un **test de discrimination direct** : appel « menu » (pas d'arguments) vs appel « panneau » (arguments fournis).
+4. Le 3e paramètre de `doScript` exige une **liste** — erreur observée avec une chaîne seule : *« Array of Any Types attendu(e), mais "TEMOIN-…" reçu(e) »*. On passe donc `[a0, a1, …]`.
+
+**Ce que dit la doc** — Les pages consultées présentaient `withArguments` comme le canal d'arguments sans préciser **où** le script exécuté les relit ; la mesure tranche : **`arguments` racine**, pas `app.scriptArgs`.
+
+**Solution** —
+
+1. Transmettre par **`app.doScript(src, lang, [a0, a1, …])`** ; relire dans le script par **`arguments.length`** / **`arguments[i]`**.
+2. **Ne pas compter sur `app.scriptArgs`** : dans ce runtime il ne rend rien et ne lève aucune erreur.
+3. **Répartiteur** : un `doScript` **sans** 3e paramètre ⇒ `arguments` **undefined** ⇒ `typeof arguments === "undefined" ? "menu" : "panneau"`.
+4. Le **4e** paramètre de `doScript` est `UndoModes` — c'est **là que l'annulation de script se règle**. **Dette soldée le 30/09/2026** : `import_md.jsx` enveloppe désormais son corps d'import dans `app.doScript(mainInterne, ScriptLanguage.JAVASCRIPT, [], UndoModes.ENTIRE_SCRIPT)` ⇒ **un import entier = un seul pas de `Ctrl+Z`** (validé en réel par FJD).
+
+**Portée** — Tout appel d'un script ExtendScript **avec arguments** depuis un panneau UXP (ou tout autre appelant). Complète le **Cas 33** (`$.global` ne transporte pas d'état au-delà de la frontière de script) et le **Cas 36** (le module **définit**, les appelants **décident**).
+
+---
+
+## Cas 48 — Le numéro de paragraphe absolu se compte en retours paragraphe avant l'offset caractère, jamais par soustraction
+
+**Statut source** : `mesuré`
+**Build de référence** : InDesign 2026 `21.6.0.57`, `fr_FR`, macOS — mesuré le **30/09/2026**.
+**Contexte** : mission 04 (import Markdown). Le moteur insère une série de blocs au
+**point d'insertion** (curseur), puis doit **relire chacun** pour lui poser son style
+de paragraphe. Il lui faut donc, pour chaque bloc inséré, son **rang absolu** dans
+la story.
+
+**Symptôme observé** — Les styles se posaient **un cran à côté** : le premier bloc
+relu portait le style du **second**, etc. Sur **document neuf** (insertion en toute
+fin de story), le défaut **n'apparaissait pas** ; sur **document non vide** (curseur
+au milieu), **oui**.
+
+**Cause mesurée** — Le moteur calculait le rang de base ainsi :
+
+```
+baseParaIndex = story_total − insertedParaCount
+```
+
+C'est **faux** dès que l'insertion n'est pas à la toute fin de la story. Raison
+exacte, vérifiée dans le journal du moteur (tir réel du 30/09/2026) :
+
+```
+M03-etape1: blocs texte attendus=283 / total blocs parses=289 | crCount=293
+          | paragraphes attendus=294 | insertAtCursor=true
+```
+
+Mesure intermédiaire d'un cas réduit : **527** paragraphes **avant** le point
+d'insertion + **44** blocs insérés. Le **total** attendu serait `527 + 44 = 571` —
+or la story en compte **570**. Pourquoi ? Parce que **le dernier bloc inséré
+fusionne avec le paragraphe qui suivait** le curseur (il n'y a **pas** de coupure
+ajoutée après lui). Donc :
+
+- **N paragraphes insérés** n'ajoute **pas** N paragraphes à la story : **N−1**
+  (le dernier se greffe sur la suite) ;
+- la soustraction `story_total − N` désigne alors le **mauvais** paragraphe (ici
+  **526** au lieu de **527**) → **tout le mapping décalé d'un cran** ;
+- l'erreur était **masquée** sur document neuf : `base = 0 − 294` ⇒ borné à **0**,
+  ce qui **tombait juste par accident**.
+
+**Solution** — Ne **jamais** déduire le rang par soustraction. Désigner le point
+d'insertion par son **offset caractère** (`baseCharOffset`), puis obtenir le rang
+du paragraphe par **comptage direct des retours paragraphe (`\r`)** avant cet
+offset :
+
+```
+baseParOffset = nombre de "\r" dans liveStory.contents.substring(0, baseCharOffset)
+```
+
+C'est **déterministe**, **indépendant** du contenu (donc **aucune collision** si un
+import antérieur du **même** fichier est déjà présent), et **exact** que
+l'insertion soit en fin ou au milieu de la story. Si l'offset caractère est
+indisponible **et** que la soustraction est incohérente, le moteur **abandonne
+explicitement** (`baseIndexKnown=false`) plutôt que de poser un style **au hasard**
+sur le texte voisin.
+
+**Portée** — Toute écriture par script qui doit ensuite **styler/reparcourir** des
+paragraphes insérés (pas seulement l'import Markdown). Se combine au **Cas 26**
+(`.index` n'est pas un index de paragraphe) et au **Cas 24** (la story capturée se
+détache après une assignation de contenu).
 
 ---
 

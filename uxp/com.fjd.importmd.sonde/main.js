@@ -34,10 +34,93 @@ const PROJET_DIR = "/chemin/vers/INDD/IMPORT_MD";
 const CHEMIN_MD = PROJET_DIR + "/atelier_importateur_md.md";
 const CHEMIN_JSX = PROJET_DIR + "/import_md.jsx";
 
+/* Le dossier du projet TEL QUE SAISI dans le panneau (champ « chemin »).
+   Les constantes ci-dessus ne sont que des valeurs par defaut : sans cette
+   resolution, les tests moteur chercheraient import_md.jsx dans le dossier
+   placeholder /chemin/vers/... et echoueraient meme sur une installation
+   correcte. Le champ est prerempli avec le chemin du .md de reference : on
+   en deduit le dossier (un .md/.jsx -> on prend le parent ; sinon le champ
+   est deja un dossier). */
+function dossierProjet() {
+  const champ = document.getElementById("chemin");
+  let v = (champ && champ.value) ? String(champ.value).trim() : "";
+  if (!v) v = CHEMIN_MD;
+  v = v.replace(/\/+$/, "");
+  if (/\.(md|jsx)$/i.test(v)) {
+    const i = v.lastIndexOf("/");
+    if (i > 0) v = v.substring(0, i);
+  }
+  return v;
+}
+
+function cheminMoteur() {
+  return dossierProjet() + "/import_md.jsx";
+}
+
+/* DEVINER le dossier du projet sans rien taper : le panneau sait ou il est
+   installe. Le plugin vit dans <projet>/uxp/com.fjd.importmd.sonde, donc
+   deux parents au-dessus = le dossier du projet. On ne l'ecrit nulle part
+   dans le source (aucun chemin personnel en dur : la portabilite est
+   preservee) — on le DEDUIT a l'execution.
+   Ne remplace JAMAIS une valeur deja saisie par l'utilisateur, et echoue en
+   silence : en cas d'echec on retombe sur le placeholder, le champ reste
+   utilisable a la main. */
+async function devinerDossierProjet() {
+  try {
+    const champ = document.getElementById("chemin");
+    if (!champ) return false;
+
+    const uxp2 = require("uxp");
+    const lfs = (uxp2 && uxp2.storage) ? uxp2.storage.localFileSystem : null;
+    if (!lfs || typeof lfs.getPluginFolder !== "function") return false;
+
+    const dossier = await lfs.getPluginFolder();
+    if (!dossier || typeof dossier.nativePath !== "string") return false;
+
+    /* On remonte DEUX niveaux par le TEXTE du chemin, sans dependre d'une
+       methode « parent » dont l'existence n'est pas certifiee ici :
+       <projet>/uxp/com.fjd.importmd.sonde  ->  <projet>. */
+    let chemin = dossier.nativePath.replace(/\/+$/, "");
+    for (let i = 0; i < 2; i++) {
+      const j = chemin.lastIndexOf("/");
+      if (j <= 0) return false;
+      chemin = chemin.substring(0, j);
+    }
+    if (chemin.charAt(0) !== "/") return false;
+
+    // On ne remplace pas un chemin deja saisi par l'utilisateur.
+    const actuel = (champ.value || "").trim();
+    if (actuel && actuel.indexOf(PROJET_DIR) !== 0) return false;
+
+    champ.value = chemin + "/atelier_importateur_md.md";
+    dire("dossier du projet deduit depuis l'emplacement du panneau :");
+    dire("      " + chemin);
+    return true;
+  } catch (e) {
+    dire("dossier du projet non deduit (" + messageDe(e) + ") -> saisir le champ a la main.");
+    return false;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Journal                                                             */
 /* ------------------------------------------------------------------ */
 const journal = [];
+
+/* Index de depart de l'AFFICHAGE a l'ecran. Le tableau « journal » reste
+   ENTIER (c'est lui qui part sur le disque, donc la preuve est preservee),
+   mais l'ecran ne montre que les lignes a partir d'ici. Sans cela, chaque
+   clic rajoutait ses lignes aux precedentes et l'ecran devenait illisible
+   (constat FJD du 30/09 : « on s'y retrouve plus trop »). */
+let debutAffichage = 0;
+
+/* Purge l'ECRAN seulement : le fichier sur disque garde tout. Appelee au
+   debut de chaque clic (cf. cabler) pour qu'un clic = un ecran propre. */
+function purgerEcranJournal() {
+  debutAffichage = journal.length;
+  const zone = document.getElementById("journal");
+  if (zone) zone.textContent = "";
+}
 
 function messageDe(e) {
   if (!e) return "erreur inconnue (valeur falsy)";
@@ -54,7 +137,7 @@ function dire(ligne) {
   journal.push(ligne);
   const zone = document.getElementById("journal");
   if (zone) {
-    zone.textContent = journal.join("\n");
+    zone.textContent = journal.slice(debutAffichage).join("\n");
     // Le journal a une hauteur limitee : sans ce defilement, les lignes
     // ecrites par un test partent SOUS LE PLI et l'ecran semble ne pas
     // bouger alors que le test a bien tourne. On force donc la vue en bas
@@ -262,7 +345,7 @@ function testerMoteur() {
      tourne), creation d'entree de menu (danger : elle serait pointee vers
      la copie temporaire supprimee), ou simple verification (inoffensif). */
   const src =
-    'var CHEMIN = "' + CHEMIN_JSX + '";\n' +
+    'var CHEMIN = ' + chaineExtendScript(cheminMoteur()) + ';\n' +
     'var PARENT = new File(CHEMIN).parent.fsName;\n' +
     'var CHEMIN_JOURNAL = PARENT + "/import_md_errors.log";\n' +
     'function lireJournal() {\n' +
@@ -722,6 +805,385 @@ function lireMapBrute(doc) {
 }
 
 /* ------------------------------------------------------------------ */
+/* MISSION 2 (Chapitre Panneau) — LA LISTE DES SOURCES ET SES SIGNAUX   */
+/* ------------------------------------------------------------------ */
+/* Objet : afficher un TABLEAU, une ligne par source (1 source par        */
+/* document, cf. ROADMAP question 1), portant :                          */
+/*   - le signal d'etat : identique / modifie dans la source / source     */
+/*     absente ;                                                         */
+/*   - le chemin de la source ;                                          */
+/*   - la date de derniere modification ;                                */
+/*   - les caracteristiques : nombre de mots et nombre de signes.        */
+/*                                                                       */
+/* REPARTITION DES ROLES (regle du projet « le panneau PROPOSE, le moteur */
+/* TRANCHE ») :                                                          */
+/*   - l'ETAT est decide par m05DecideState() DANS LE MOTEUR (charge sans  */
+/*     executer main(), meme parade que le test 3). Le panneau ne          */
+/*     recalcule JAMAIS la somme de controle : deux endroits qui          */
+/*     decideraient la meme chose finiraient par diverger.                */
+/*   - les CARACTERISTIQUES viennent de la lecture disque deja certifiee   */
+/*     par le test 4 (getEntryWithUrl + read, clef dateModified).          */
+/*                                                                       */
+/* CONTROLE NEGATIF OBLIGATOIRE : document vierge => 0 ligne. Jamais une  */
+/* ligne vide, jamais un etat invente. Un document vierge et une lecture  */
+/* ratee restent DEUX cas distincts (meme regle qu'en Mission 1).         */
+/* ------------------------------------------------------------------ */
+
+/* Libelles lisibles des etats rendus par le moteur. */
+function libelleEtat(etat) {
+  if (etat === "identique") return "identique";
+  if (etat === "different") return "modifie dans la source";
+  if (etat === "source_absente") return "source absente";
+  if (etat === "jamais_importe") return "jamais importe";
+  return "(" + etat + ")";
+}
+
+/* La REPONSE EN CLAIR, telle qu'elle doit s'afficher dans le bandeau.
+   Le bandeau est la seule chose du panneau qu'on ne peut pas rater : il dit
+   donc une PHRASE, pas un code d'etat interne. C'est ce qui permet de
+   comprendre ce qui se passe sans connaitre le vocabulaire du moteur. */
+function phraseEtat(etat) {
+  if (etat === "identique") return "la source n'a pas bouge depuis l'import";
+  if (etat === "different") return "la source A BOUGE depuis l'import";
+  if (etat === "source_absente") return "la source n'est PLUS LA (renommee, deplacee ou supprimee)";
+  if (etat === "jamais_importe") return "ce document n'a jamais recu d'import MD";
+  return "etat rendu par le moteur : " + libelleEtat(etat);
+}
+
+/* Vide le corps du tableau sans innerHTML (retrait explicite des enfants). */
+function viderListe() {
+  const corps = document.getElementById("liste_corps");
+  if (!corps) return null;
+  while (corps.firstChild) corps.removeChild(corps.firstChild);
+  return corps;
+}
+
+function ajouterLigneListe(corps, cellules) {
+  const ligne = document.createElement("tr");
+  for (let i = 0; i < cellules.length; i++) {
+    const cellule = document.createElement("td");
+    cellule.textContent = cellules[i];
+    ligne.appendChild(cellule);
+  }
+  corps.appendChild(ligne);
+}
+
+function majNoteListe(nb, detail) {
+  const note = document.getElementById("liste_note");
+  if (!note) return;
+  note.textContent = (nb === 0 ? "0 source" : nb + " source") + "  -  " + detail;
+}
+
+/* Compte les lignes REELLEMENT affichees dans le tableau.
+   Necessaire a l'actualisation (Mission 3), qui n'efface pas l'historique : la
+   note doit annoncer le TOTAL affiche, et pas seulement ce que la mesure
+   vient d'ajouter. N'utilise que des API deja certifiees dans ce fichier
+   (childNodes / nodeType), pas « children » ni « childElementCount ». */
+function compterLignesListe() {
+  const corps = document.getElementById("liste_corps");
+  if (!corps || !corps.childNodes) return 0;
+  let n = 0;
+  for (let i = 0; i < corps.childNodes.length; i++) {
+    if (corps.childNodes[i].nodeType === 1) n++;
+  }
+  return n;
+}
+
+/* Date courte JJ/MM/AAAA HH:MM, sans jamais afficher « Invalid Date ». */
+function formaterDateCourte(ms) {
+  const n = Number(ms);
+  if (!isFinite(n) || n <= 0) return "(inconnue)";
+  const d = new Date(n);
+  const p2 = (v) => (v < 10 ? "0" + v : String(v));
+  return p2(d.getDate()) + "/" + p2(d.getMonth() + 1) + "/" + d.getFullYear() +
+    " " + p2(d.getHours()) + ":" + p2(d.getMinutes());
+}
+
+/* Enveloppe une chaine dans un litteral ExtendScript, en echarpant ce qui
+   casserait la source (antislash, guillemet, retours ligne). */
+function chaineExtendScript(s) {
+  const t = String(s === null || s === undefined ? "" : s);
+  return '"' + t
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n") + '"';
+}
+
+/* L'ETAT, decide par le moteur. La copie sans « main(); » est ecrite dans le
+   dossier du moteur (indispensable : il resout son journal via $.fileName)
+   puis supprimee aussitot — meme parade que le test 3. */
+async function etatParLeMoteur(brut, chemin) {
+  if (!inDesignModule || typeof inDesignModule.app.doScript !== "function") {
+    return { etat: null, erreur: "app.doScript indisponible" };
+  }
+  const sl = inDesignModule.ScriptLanguage;
+  const lang = sl ? sl.JAVASCRIPT : undefined;
+
+  const src =
+    'var CHEMIN = ' + chaineExtendScript(cheminMoteur()) + ';\n' +
+    'var etat = "(non calcule)";\n' +
+    'try {\n' +
+    '  if (typeof m05DecideState !== "function") {\n' +
+    '    var PARENT = new File(CHEMIN).parent.fsName;\n' +
+    '    var f = new File(CHEMIN); f.encoding = "UTF-8"; f.open("r");\n' +
+    '    var txt = f.read(); f.close();\n' +
+    '    var idx = txt.lastIndexOf("\\nmain();");\n' +
+    '    if (idx < 0) { etat = "ABANDON:main();introuvable"; }\n' +
+    '    else {\n' +
+    '      var tmp = new File(PARENT + "/_sonde_moteur_sans_main.jsx");\n' +
+    '      tmp.encoding = "UTF-8"; tmp.open("w");\n' +
+    '      tmp.write(txt.substring(0, idx) + "\\n"); tmp.close();\n' +
+    '      $.evalFile(tmp); tmp.remove();\n' +
+    '    }\n' +
+    '  }\n' +
+    '  if (typeof m05DecideState === "function") {\n' +
+    '    etat = String(m05DecideState(' + chaineExtendScript(brut) + ', ' +
+                     chaineExtendScript(chemin) + '));\n' +
+    '  }\n' +
+    '} catch (e) { etat = "ERREUR:" + e.message; }\n' +
+    'etat;';
+
+  try {
+    return { etat: String(inDesignModule.app.doScript(src, lang)), erreur: null };
+  } catch (e) {
+    return { etat: null, erreur: e };
+  }
+}
+
+/* Les CARACTERISTIQUES : lecture disque reelle (route certifiee au test 4).
+   Une lecture ratee rend une erreur, JAMAIS des compteurs inventes ni zero. */
+async function caracteristiquesDisque(chemin) {
+  const res = { mots: null, signes: null, dateMs: null, erreur: null };
+  try {
+    const uxp2 = require("uxp");
+    const lfs = (uxp2 && uxp2.storage) ? uxp2.storage.localFileSystem : null;
+    if (!lfs) { res.erreur = "uxp.storage.localFileSystem absent"; return res; }
+
+    const entree = await lfs.getEntryWithUrl("file://" + chemin);
+    let contenu = await entree.read();
+    if (typeof contenu !== "string") contenu = String(contenu);
+    res.signes = contenu.length;
+    res.mots = contenu.split(/\s+/).filter((m) => m.length > 0).length;
+
+    // Clef exacte mesuree au test 4 : dateModified (PAS modificationDate).
+    if (typeof entree.getMetadata === "function") {
+      const meta = await entree.getMetadata();
+      if (meta && meta.dateModified !== undefined && meta.dateModified !== null) {
+        res.dateMs = new Date(meta.dateModified).getTime();
+      }
+    }
+    if (res.dateMs === null) {
+      const fs2 = require("fs");
+      if (typeof fs2.lstat === "function") {
+        const st = await fs2.lstat("file://" + chemin);
+        if (st && st.mtime !== undefined && st.mtime !== null) {
+          res.dateMs = new Date(st.mtime).getTime();
+        }
+      }
+    }
+  } catch (e) {
+    res.erreur = e;
+  }
+  return res;
+}
+
+/* Mission 2 : la liste des sources. Mission 3 : le MEME calcul, relance par le
+   bouton « Actualiser ». Le bouton n'ajoute AUCUNE logique de mesure — il
+   n'ajoute qu'un DECLENCHEUR. Seule difference, l'affichage :
+     - sans option            -> le tableau repart de zero (bouton 7, le test) ;
+     - garderHistorique:true  -> la mesure est AJOUTEE au tableau, donc l'etat
+       precedent reste visible : on VOIT la bascule (« identique » ->
+       « source absente ») au lieu de la perdre. */
+async function construireListe(options) {
+  const garderHistorique = !!(options && options.garderHistorique === true);
+  const etiquetteMode = garderHistorique ? "M3" : "M2";
+  const dejaAffichees = garderHistorique ? compterLignesListe() : 0;
+
+  titre(etiquetteMode + (garderHistorique ? "  actualisation de la liste" : "  la liste des sources"));
+  dire(garderHistorique
+    ? "clic « Actualiser » recu a " + new Date().toLocaleTimeString()
+    : "clic recu a " + new Date().toLocaleTimeString());
+  if (garderHistorique) {
+    dire("mode : actualisation SANS effacement (" + dejaAffichees + " ligne(s) deja affichee(s))");
+    dire("      lecture seule : rien n'est ecrit dans le document.");
+  }
+
+  const corps = garderHistorique
+    ? document.getElementById("liste_corps")
+    : viderListe();
+  if (!corps) { ko("tableau de la liste", "element #liste_corps introuvable"); return; }
+
+  // Note de bas de tableau : elle annonce le TOTAL affiche, historique compris.
+  // En mode test, dejaAffichees vaut 0 : le texte reste celui de la Mission 2.
+  const mentionHistorique = dejaAffichees > 0
+    ? " - historique conserve (" + dejaAffichees + " ligne(s) precedente(s))"
+    : "";
+  const note = function (detail) { majNoteListe(dejaAffichees, detail + mentionHistorique); };
+
+  if (!inDesignModule) {
+    inDesignModule = essai("require('indesign')", () => require("indesign"));
+  }
+  if (!inDesignModule) {
+    dire("Suite impossible : require('indesign') a echoue.");
+    note("module indesign indisponible");
+    afficherStatut(false, "Liste impossible : require('indesign') a echoue");
+    return;
+  }
+  const app = inDesignModule.app;
+
+  let nbDocs = 0;
+  try {
+    nbDocs = app.documents.length;
+  } catch (eDoc) {
+    ko("app.documents.length", eDoc);
+    note("nombre de documents illisible");
+    afficherStatut(false, "Liste impossible : app.documents illisible");
+    return;
+  }
+
+  // CAS 1 — aucun document ouvert : 0 ligne (ce n'est pas une lecture ratee).
+  if (nbDocs === 0) {
+    dire("documents ouverts : 0");
+    dire("CAS « AUCUN DOCUMENT OUVERT » -> 0 ligne ajoutee.");
+    if (dejaAffichees > 0) {
+      dire("      => " + dejaAffichees + " ligne(s) precedente(s) CONSERVEE(S) (historique non efface).");
+    }
+    note("aucun document ouvert");
+    afficherStatut(true, "aucun document ouvert dans InDesign - il n'y a rien a regarder");
+    return;
+  }
+
+  let doc = null;
+  try {
+    doc = app.activeDocument;
+  } catch (eAct) {
+    ko("app.activeDocument", eAct);
+    note("document actif illisible");
+    afficherStatut(false, "Liste impossible : app.activeDocument illisible");
+    return;
+  }
+  essai("document actif", () => doc.name);
+
+  // Lecture de l'etiquette (les deux routes mesurees en Mission 1).
+  const lu = await lireEtiquetteDocument(doc);
+  dire("route utilisee : " + lu.route);
+
+  // CAS 2 — lecture ratee : erreur reelle, jamais confondue avec un document vierge.
+  if (lu.route === "aucune" && lu.erreur) {
+    dire("CAS « LECTURE RATEE » : aucune route n'a pu lire l'etiquette.");
+    dire("=> ce n'est PAS un document vierge : c'est une erreur reelle.");
+    note("lecture ratee - PAS un document vierge");
+    afficherStatut(false, "Lecture de l'etiquette ratee (voir journal)");
+    return;
+  }
+
+  const brut = (lu.brut === null || lu.brut === undefined) ? "" : String(lu.brut);
+  dire("longueur de l'etiquette brute : " + brut.length + " caractere(s)");
+
+  // CAS 3 — etiquette absente : document vierge => CONTROLE NEGATIF = 0 ligne.
+  if (brut === "") {
+    dire("CAS « ETIQUETTE ABSENTE » : document sans import MD.");
+    dire("VERDICT " + etiquetteMode + " : 0 ligne ajoutee (controle negatif satisfait).");
+    note("document sans import - 0 ligne (normal)");
+    afficherStatut(true, "ce document n'a jamais recu d'import MD - il n'y a rien a regarder");
+    return;
+  }
+
+  const fp = decoderEtiquettePlate(brut);
+
+  // CAS 4 — etiquette presente mais illisible : ni vierge, ni lisible.
+  if (!fp.v) {
+    dire("CAS « ETIQUETTE PRESENTE mais ILLISIBLE » -> 0 ligne.");
+    dire("brut (tronque a 200) : " + brut.substring(0, 200));
+    note("etiquette illisible - PAS un document vierge");
+    afficherStatut(false, "Etiquette presente mais illisible (voir journal)");
+    return;
+  }
+
+  // CAS 5 — une source a lister.
+  const chemin = fp.path ? String(fp.path) : "";
+  dire("nom enregistre : " + (fp.name || "(sans nom)"));
+  dire("chemin         : " + (chemin || "(vide dans l'etiquette)"));
+
+  // L'ETAT : c'est le moteur qui tranche (le panneau ne recalcule rien).
+  const verdict = await etatParLeMoteur(brut, chemin);
+  let etat = verdict.etat;
+  let etatIndetermine = false;
+  dire("etat rendu par le moteur : " + etat);
+  if (verdict.erreur) {
+    ko("etat par le moteur", verdict.erreur);
+    etatIndetermine = true;
+  } else if (!etat || etat.indexOf("ERREUR:") === 0 || etat.indexOf("ABANDON") === 0) {
+    dire("      => le moteur n'a PAS rendu d'etat exploitable.");
+    etatIndetermine = true;
+  }
+
+  // Les CARACTERISTIQUES : lecture disque reelle.
+  const car = await caracteristiquesDisque(chemin);
+  let mots, signes, dateTexte;
+  if (car.erreur) {
+    // Quand le moteur a deja tranche « source absente », l'echec de la lecture
+    // disque est la CONSEQUENCE attendue, pas une panne : on ne le presente
+    // donc pas comme un ECHEC (cas limite de la Mission 3).
+    if (etat === "source_absente") {
+      dire("      source absente : lecture disque impossible PAR CONSEQUENCE (attendu, pas une panne).");
+      dire("      => compteurs NON affiches (aucun chiffre invente).");
+    } else {
+      ko("caracteristiques (lecture disque)", car.erreur);
+      dire("      => source illisible : compteurs NON affiches (aucun chiffre invente).");
+    }
+    mots = "(non lues)";
+    signes = "(non lues)";
+    // Repli honnete : la taille archivee au moment de l'import, et sa date.
+    dateTexte = fp.modified
+      ? formaterDateCourte(fp.modified) + " (import)"
+      : "(inconnue)";
+  } else {
+    mots = String(car.mots);
+    signes = String(car.signes);
+    dateTexte = formaterDateCourte(car.dateMs);
+  }
+
+  ajouterLigneListe(corps, [
+    etatIndetermine ? "(indetermine)" : libelleEtat(etat),
+    chemin || (fp.name || "(sans nom)"),
+    dateTexte,
+    mots,
+    signes
+  ]);
+
+  const detailNote = etatIndetermine
+    ? "etat indetermine - voir le journal"
+    : libelleEtat(etat) + " - " + mots + " mot(s), " + signes + " signe(s)";
+  const totalAffiche = dejaAffichees + 1;
+  majNoteListe(totalAffiche, detailNote + mentionHistorique);
+  // BANDEAU — on y met la REPONSE EN CLAIR (cf. phraseEtat). C'est le signal
+  // principal du panneau : il ne doit contenir ni code interne ni chemin de
+  // fichier (l'ecriture automatique du journal ne l'ecrase plus, cf. le
+  // correctif du 30/09 dans ecrireJournalFichier).
+  afficherStatut(!etatIndetermine,
+    etatIndetermine
+      ? "je n'ai pas pu savoir l'etat de la source (voir le journal ci-dessous)"
+      : phraseEtat(etat));
+
+  dire("");
+  dire("VERDICT " + etiquetteMode + " : " + totalAffiche +
+    " ligne(s) affichee(s), derniere mesure = " +
+    (etatIndetermine ? "etat indetermine" : libelleEtat(etat)) + ".");
+
+  // Cas limite de la Mission 3 : la source a disparu entre deux actualisations.
+  // L'etat vient du moteur (« source absente »), il est rendu SANS erreur, et
+  // la ligne precedente reste affichee (aucun effacement de l'historique).
+  if (etat === "source_absente") {
+    dire("      => SOURCE ABSENTE : la source n'est plus sur le disque a cet instant.");
+    dire("      => rendu SANS erreur" + (garderHistorique
+      ? " et SANS effacement : les " + dejaAffichees + " ligne(s) precedente(s) restent affichee(s)."
+      : "."));
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Sortie du journal vers un FICHIER                                   */
 /* L'UXP de ce runtime n'expose PAS de presse-papier (mesure du 30/09 :   */
 /* uxp.clipboard.copyText indisponible) et un panneau UXP ne laisse pas   */
@@ -774,18 +1236,24 @@ async function ecrireJournalFichier(silencieux) {
     const fichier = await dossier.createFile(NOM_FICHIER_JOURNAL, { overwrite: true });
     await fichier.write(journalTexte(), { append: false });
     cheminJournal = fichier.nativePath || cheminJournal;
-    // Bandeau de succes : visible en permanence, meme pendant les ecritures
-    // silencieuses (le chemin du fichier reste ainsi sous les yeux).
-    afficherStatut(true,
-      "journal enregistre :\n" + cheminJournal +
-      "\n(" + journalTexte().length + " caracteres)");
+    // BANDEAU — DEFECT CORRIGE LE 30/09 : cette ecriture AUTOMATIQUE (declenchee
+    // 400 ms apres chaque « dire ») ecrasait le bandeau et REMPLACAIT le
+    // resultat de la mesure par un chemin de fichier. Consequence : FJD
+    // cliquait, le resultat apparaissait, puis disparaissait aussitot —
+    // « pas visible dans le panneau ». Le bandeau n'est donc mis a jour que
+    // sur une ACTION EXPLICITE (bouton « Enregistrer le journal » ou demarrage).
     if (!silencieux) {
+      afficherStatut(true,
+        "journal enregistre :\n" + cheminJournal +
+        "\n(" + journalTexte().length + " caracteres)");
       ok("journal ecrit dans un fichier",
         cheminJournal + "  (" + journalTexte().length + " caracteres)");
       dire("      -> ouvrez ce fichier dans un editeur de texte : le contenu est copiable.");
     }
     return true;
   } catch (e) {
+    // L'echec reste TOUJOURS visible, meme en ecriture automatique : un
+    // journal qui ne s'ecrit plus est une panne, pas un detail.
     afficherStatut(false, "ecriture du journal : " + messageDe(e));
     if (!silencieux) ko("ecriture du journal dans un fichier", e);
     return false;
@@ -801,6 +1269,173 @@ function programmerEcritureJournal() {
     minuteurEcriture = null;
     ecrireJournalFichier(true);
   }, 400);
+}
+
+/* ------------------------------------------------------------------ */
+/* Q7 — LE TUYAU : par quel canal un argument peut-il voyager ?        */
+/* ------------------------------------------------------------------ */
+/* Question unique : par quel chemin le panneau peut-il TRANSMETTRE une
+   valeur au moteur ? Trois candidats sont mesures ensemble, chacun
+   journalise separement ; aucun chiffre n'est invente : ce que le moteur
+   renvoie est recopie tel quel, y compris une erreur.
+
+   Ce test N'ECRIT RIEN dans le document : il fait seulement voyager un
+   temoin (une chaine reconnaissable) et le lit au retour. */
+async function testerCanal() {
+  titre("Q7  le tuyau : quel canal porte un argument ?");
+  dire("lecture seule : aucun octet n'est ecrit dans le document.");
+
+  // Meme idiome que les autres sondes : charger le module InDesign s'il ne
+  // l'est pas encore. Sans cette ligne, la sonde demandait doScript a un
+  // module pas encore charge et repondait « indisponible » a tort (observe
+  // au premier essai du 30/09).
+  if (!inDesignModule) {
+    inDesignModule = essai("require('indesign')", () => require("indesign"));
+  }
+  if (!inDesignModule || typeof inDesignModule.app.doScript !== "function") {
+    dire("Non mesurable : app.doScript indisponible (cf. Q2).");
+    return;
+  }
+  const sl = inDesignModule.ScriptLanguage;
+  const lang = sl ? sl.JAVASCRIPT : undefined;
+
+  // Le temoin : une chaine assez reconnaissable pour ne jamais se confondre
+  // avec un fragment du moteur. L'horodatage evite qu'une vieille reponse
+  // (cache, relecture) ne passe pour un succes.
+  const TEMOIN = "TEMOIN-20260930-" + (new Date().getTime());
+
+  // Les ARGUMENTS A TRIMBALLER — pas un temoin seul : on transporte deja la
+  // forme reelle du tube (Appelant / Action / Chemin). Si le canal passe un
+  // seul temoin mais perd les suivants, ce test le dit.
+  const ARGS = [
+    TEMOIN,
+    "Appelant=panneau",
+    "Action=importer",
+    "Chemin=/tmp/source.md"
+  ];
+
+  // --- Canal C, cote panneau : on ecrit un petit fichier temoin dans NOTRE
+  //     dossier de donnees (le meme que le journal). Le moteur le relira.
+  let cheminTemoin = "(non ecrit)";
+  try {
+    const dossier = await resoudreDossierJournal();
+    const f = await dossier.createFile("sonde_temoin_canal.txt", { overwrite: true });
+    await f.write("temoin-fichier:" + TEMOIN, { append: false });
+    cheminTemoin = f.nativePath || cheminTemoin;
+    ok("C1  le panneau a ecrit un fichier temoin", cheminTemoin);
+  } catch (eC1) {
+    ko("C1  le panneau a ecrit un fichier temoin", eC1);
+  }
+
+  // Le script execute DANS le moteur : il recueille les trois temoins dans
+  // une chaine « A##B##C » et la renvoie. Chaque temoin est isole dans son
+  // try : un canal qui echoue ne cache pas les deux autres.
+  const src =
+    'var TEMOIN_A = ' + chaineExtendScript(TEMOIN) + ';\n' +
+    'var A = "(non mesure)";\n' +
+    'var B = "(non mesure)";\n' +
+    'var C = "(non mesure)";\n' +
+    'try { A = TEMOIN_A; } catch (eA) { A = "ERREUR:" + eA.message; }\n' +
+    // On relit app.scriptArgs de PLUSIEURS facons, sans supposer sa forme :
+    // le premier essai du 30/09 a montre qu'il existe ([object ScriptArg]).
+    'try {\n' +
+    '  var sa = app.scriptArgs;\n' +
+    '  var p = [];\n' +
+    '  p.push("type=" + (typeof sa));\n' +
+    '  try { p.push("longueur=" + sa.length); } catch (eL) { p.push("longueur=ERREUR:" + eL.message); }\n' +
+    '  try { p.push("[0]=" + sa[0]); } catch (e0) { p.push("[0]=ERREUR:" + e0.message); }\n' +
+    '  if (sa && typeof sa.getArguments === "function") {\n' +
+    '    try { var ga = sa.getArguments(); p.push("getArguments().length=" + ga.length); p.push("getArguments()[0]=" + ga[0]); }\n' +
+    '    catch (eG) { p.push("getArguments=ERREUR:" + eG.message); }\n' +
+    '  } else { p.push("getArguments=ABSENT"); }\n' +
+    '  B = p.join(" | ");\n' +
+    '} catch (eB) { B = "ERREUR:" + eB.message; }\n' +
+    // Piste NON testee jusqu'au 30/09 : l'idiome InDesign veut que les
+    // arguments d'un doScript arrivent dans l'objet `arguments` de NIVEAU
+    // RACINE du script execute (et non dans app.scriptArgs). On lit donc
+    // arguments.length et les 4 positions, sans rien supposer.
+    'var B2 = "(non mesure)";\n' +
+    'try {\n' +
+    '  var n = -1, a0 = "(rien)", a1 = "(rien)", a2 = "(rien)", a3 = "(rien)";\n' +
+    '  n = arguments.length;\n' +
+    '  if (n > 0) { a0 = String(arguments[0]); }\n' +
+    '  if (n > 1) { a1 = String(arguments[1]); }\n' +
+    '  if (n > 2) { a2 = String(arguments[2]); }\n' +
+    '  if (n > 3) { a3 = String(arguments[3]); }\n' +
+    '  B2 = "n=" + n + " | [0]=" + a0 + " | [1]=" + a1 + " | [2]=" + a2 + " | [3]=" + a3;\n' +
+    '} catch (eB2) { B2 = "ERREUR:" + eB2.message; }\n' +
+    'try {\n' +
+    '  var fC = new File(' + chaineExtendScript(cheminTemoin) + ');\n' +
+    '  if (!fC.exists) { C = "ABSENT"; }\n' +
+    '  else { fC.encoding = "UTF-8"; fC.open("r"); C = fC.read(); fC.close(); }\n' +
+    '} catch (eC) { C = "ERREUR:" + eC.message; }\n' +
+    'A + "##" + B + "##" + B2 + "##" + C;';
+
+  function decouper(retour) {
+    const p = String(retour).split("##");
+    return { A: p[0], B: p[1], B2: p[2], C: p.slice(3).join("##") };
+  }
+
+  // Deux appels : le premier SANS argument supplementaire (reference), le
+  // second AVEC les vrais arguments du tube. Attention : le 3e parametre de
+  // app.doScript n'est PAS une chaine — l'essai du 30/09 a montre qu'il exige
+  // une LISTE (« Array of Any Types attendu »). On passe donc ARGS.
+  let r1 = null;
+  let r2 = null;
+  try { r1 = decouper(inDesignModule.app.doScript(src, lang)); }
+  catch (e1) { ko("appel 1 (sans argument supplementaire)", e1); }
+  try { r2 = decouper(inDesignModule.app.doScript(src, lang, ARGS)); }
+  catch (e2) { ko("appel 2 (" + ARGS.length + " arguments)", e2); }
+
+  // --- Canal A : le tube deja en service (Missions 1 a 3) — la valeur est
+  //     ECRITE dans le texte du script. Attendu : le temoin revient identique.
+  dire("A  tube « texte de source » (celui des Missions 1 a 3)");
+  if (r1 && r1.A === TEMOIN) ok("A  temoin recu identique", "OUI");
+  else ko("A  temoin recu identique", "recu = " + (r1 ? r1.A : "(pas d'appel)"));
+
+  // --- Canal B : le 3e argument de app.doScript, relu par app.scriptArgs.
+  //     Piste NON mesuree jusqu'ici. On ne juge pas : on recopie les deux
+  //     valeurs (sans argument / avec argument).
+  dire("B1  tube « app.doScript(..., ARGS) » relu par app.scriptArgs");
+  dire("      sans argument : " + (r1 ? r1.B : "(pas d'appel)"));
+  dire("      avec argument : " + (r2 ? r2.B : "(pas d'appel)"));
+  const bArrive = !!(r2 && r2.B && r2.B.indexOf(TEMOIN) >= 0);
+  if (bArrive) ok("B1  le temoin est ARRIVE par app.scriptArgs", "OUI");
+  else dire("      => le temoin n'apparait PAS dans app.scriptArgs");
+
+  // --- Canal B2 : le MEME appel, mais relu dans l'objet `arguments` de
+  //     niveau racine du script execute. C'est l'idiome InDesign : le temoin
+  //     ET les arguments suivants doivent s'y trouver dans l'ordre.
+  dire("B2  tube « app.doScript(..., ARGS) » relu par l'objet `arguments` racine");
+  dire("      sans argument : " + (r1 ? r1.B2 : "(pas d'appel)"));
+  dire("      avec argument : " + (r2 ? r2.B2 : "(pas d'appel)"));
+  const b2Complet = !!(r2 && r2.B2 &&
+    r2.B2.indexOf(TEMOIN) >= 0 &&
+    r2.B2.indexOf("Appelant=panneau") >= 0 &&
+    r2.B2.indexOf("Action=importer") >= 0 &&
+    r2.B2.indexOf("Chemin=/tmp/source.md") >= 0);
+  const b2Partiel = !!(r2 && r2.B2 && r2.B2.indexOf(TEMOIN) >= 0 && !b2Complet);
+  if (b2Complet) ok("B2  les 4 arguments sont ARRIVES, dans l'ordre", "OUI");
+  else if (b2Partiel) ko("B2  arguments partiels", "le temoin passe, pas les suivants");
+  else dire("      => rien n'est arrive par ce canal (voir la ligne ci-dessus)");
+
+  // --- Canal C : un fichier temoin ecrit par le panneau, lu par le moteur.
+  dire("C  tube « fichier temoin » ecrit par le panneau");
+  if (r1 && r1.C === "temoin-fichier:" + TEMOIN) ok("C  fichier lu par le moteur", "OUI");
+  else ko("C  fichier lu par le moteur", "recu = " + (r1 ? r1.C : "(pas d'appel)"));
+
+  const aOk = !!(r1 && r1.A === TEMOIN);
+  const cOk = !!(r1 && r1.C === "temoin-fichier:" + TEMOIN);
+  const bOk = bArrive || b2Complet;
+  afficherStatut(true,
+    "tuyau — A (texte de source) : " + (aOk ? "PASSE" : "NON") +
+    " · B1 (app.scriptArgs) : " + (bArrive ? "PASSE" : "NON") +
+    " · B2 (arguments racine) : " + (b2Complet ? "PASSE" : (b2Partiel ? "PARTIEL" : "NON")) +
+    " · C (fichier temoin) : " + (cOk ? "PASSE" : "NON"));
+  dire("=> A est le tube deja en service. B1 et B2 portent le MEME appel :");
+  dire("   B1 lit app.scriptArgs, B2 lit l'objet `arguments` racine du script.");
+  if (bOk) dire("   => un canal d'arguments EXISTE (voir le detail ci-dessus).");
+  else dire("   => aucun des deux canaux d'arguments ne rend les arguments ici.");
 }
 
 /* ------------------------------------------------------------------ */
@@ -837,6 +1472,179 @@ async function copierJournal() {
 /* ------------------------------------------------------------------ */
 /* Cablage des boutons                                                 */
 /* ------------------------------------------------------------------ */
+/* Mission 3 — bouton « Actualiser » : le MEME calcul que la Mission 2, relance
+   a la demande et SANS rien ecrire dans le document (construireListe ne fait
+   que lire : le document n'est jamais touche). Le declencheur est le seul
+   apport ; l'ajout au tableau au lieu du remplacement est ce qui rend la
+   bascule d'etat VISIBLE. */
+function actualiserListe() {
+  return construireListe({ garderHistorique: true });
+}
+
+/* ------------------------------------------------------------------ */
+/* Lecture d'un fichier texte par la voie UXP (la seule API de lecture */
+/* mesuree ici, cf. Q4). Retourne le texte, ou null si absent/illisible. */
+/* ------------------------------------------------------------------ */
+async function lireFichierTexte(chemin) {
+  try {
+    const uxp2 = require("uxp");
+    const lfs = (uxp2 && uxp2.storage) ? uxp2.storage.localFileSystem : null;
+    if (!lfs) return null;
+    const entree = await lfs.getEntryWithUrl("file://" + chemin);
+    if (!entree || !entree.isFile) return null;
+    let t = await entree.read();
+    return (typeof t === "string") ? t : String(t);
+  } catch (e) {
+    return null;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* MISSION 4 - bouton « Importer »                                     */
+/* C'est la SEULE action du panneau qui ECRIT dans le document. Le      */
+/* panneau n'ecrit RIEN lui-meme : il donne l'ordre au moteur           */
+/* (import_md.jsx), qui DECIDE et execute. Le tube porte la signature   */
+/* gelee du 30/09/2026 : cas nommes Appelant / Action / Chemin.         */
+/* ------------------------------------------------------------------ */
+async function importerDepuisPanneau() {
+  titre("Import - le panneau demande l'import au moteur");
+  dire("cette action ECRIT dans le document (c'est la seule).");
+
+  if (!inDesignModule) {
+    inDesignModule = essai("require('indesign')", () => require("indesign"));
+  }
+  if (!inDesignModule || typeof inDesignModule.app.doScript !== "function") {
+    dire("Non mesurable : app.doScript indisponible (cf. Q2).");
+    afficherStatut(false, "import impossible : app.doScript indisponible");
+    return;
+  }
+  const sl = inDesignModule.ScriptLanguage;
+  const lang = sl ? sl.JAVASCRIPT : undefined;
+
+  // La source : le chemin saisi dans le panneau (champ prerempli au demarrage).
+  const champ = document.getElementById("chemin");
+  const cheminMd = (champ && champ.value) ? String(champ.value).trim() : "";
+  if (!cheminMd) {
+    dire("Aucune source indiquee : renseigner le champ « chemin » (section Mesures techniques).");
+    afficherStatut(false, "import impossible : aucune source Markdown indiquee");
+    return;
+  }
+
+  // On verifie ICI que la source est lisible, AVANT d'occuper le moteur : une
+  // erreur de chemin doit se lire dans le panneau, pas se perdre dans l'import.
+  const texteSource = await lireFichierTexte(cheminMd);
+  if (texteSource === null) {
+    dire("Source introuvable ou illisible : " + cheminMd);
+    afficherStatut(false, "import impossible : source introuvable\n" + cheminMd);
+    return;
+  }
+
+  const cheminJsx = cheminMoteur();
+  dire("source      : " + cheminMd + "  (" + texteSource.length + " caracteres)");
+  dire("moteur      : " + cheminJsx);
+
+  // Le tube - signature GELEE : 3 champs, cas nommes, dans cet ordre.
+  const ARGS = [
+    "Appelant=panneau",
+    "Action=importer",
+    "Chemin=" + cheminMd
+  ];
+  dire("tube        : " + ARGS.join("  |  "));
+
+  // Le moteur doit s'executer COMME UN FICHIER : il deduit son journal
+  // (LOG_FILE_PATH, ligne 15) et l'entree de menu de $.fileName. Une simple
+  // chaine de source ne donnerait pas de $.fileName valable. On execute donc
+  // une ENVELOPPE minuscule qui, dans le moteur : (1) depose le tube dans un
+  // global a usage unique, (2) charge le VRAI import_md.jsx par $.evalFile.
+  // ($.evalFile ne transmet aucun argument : c'est ce global que le moteur
+  // relit, puis efface, pour qu'un appel ulterieur par le MENU reste normal.)
+  const src =
+    '$.global.__M04_TUBE_IMPOSE = [ ' +
+      ARGS.map(function (a) { return chaineExtendScript(a); }).join(', ') +
+    ' ];\n' +
+    '$.evalFile(new File(' + chaineExtendScript(cheminJsx) + '));';
+
+  // Le journal DU MOTEUR (pas le notre) : on le lit AVANT et APRES, et on ne
+  // juge QUE sur les lignes ajoutees. Sans cela, une reussite precedente
+  // passerait pour celle d'aujourd'hui.
+  const cheminJournalMoteur = dossierProjet() + "/import_md_errors.log";
+  const avant = await lireFichierTexte(cheminJournalMoteur);
+
+  dire("Envoi au moteur...");
+  try {
+    const retour = inDesignModule.app.doScript(src, lang);
+    dire("      retour brut : " + String(retour));
+  } catch (eImport) {
+    ko("appel du moteur", eImport);
+    afficherStatut(false, "import : " + messageDe(eImport));
+    return;
+  }
+
+  const apres = await lireFichierTexte(cheminJournalMoteur);
+  if (apres === null) {
+    dire("      journal du moteur illisible ou introuvable : " + cheminJournalMoteur);
+    afficherStatut(false, "import envoye, mais journal moteur illisible\n" + cheminJournalMoteur);
+    return;
+  }
+
+  let ajout;
+  if (avant !== null && apres.indexOf(avant) === 0) ajout = apres.substring(avant.length);
+  else ajout = apres;
+
+  const lignes = ajout.split(/\r?\n/).filter(function (l) { return l.length > 0; });
+  const dernieres = lignes.slice(-14);
+  dire("      --- lignes AJOUTEES au journal du moteur ---");
+  if (dernieres.length === 0) dire("      (aucune ligne ajoutee)");
+  for (let i = 0; i < dernieres.length; i++) dire("      " + dernieres[i]);
+
+  const vuAppel = /M04-repartiteur: appel PANNEAU/.test(ajout);
+  const vuSource = /M04: source IMPOSEE par le PANNEAU/.test(ajout);
+  if (vuAppel) ok("le moteur a vu l'appel du PANNEAU", "OUI");
+  else ko("le moteur a vu l'appel du PANNEAU", "non trouve dans les lignes ajoutees");
+  if (vuSource) ok("le moteur a utilise la source imposee", "OUI");
+  else dire("      => source imposee non retrouvee (voir les lignes ci-dessus).");
+
+  // MISSION 04 (30/09/2026, retour FJD) : « 1ere fois erreur silencieuse :
+  // importer sans choisir un bloc. il faut une alerte. »
+  // Le moteur REFUSE ce cas (aucun bloc de texte actif, appel PANNEAU) et
+  // l'ecrit dans le journal. On l'annonce en clair — et surtout on ne dit PAS
+  // « succes » alors que RIEN n'a ete importe.
+  const vuRefus = /M04: REFUS/.test(ajout);
+  if (vuRefus) {
+    ko("le moteur a refuse l'import", "aucun bloc de texte actif");
+    afficherStatut(false,
+      "import REFUSE : aucun bloc de texte n'est actif dans le document.\n" +
+      "Placez le curseur dans un bloc de texte (ou selectionnez un bloc), puis recliquez sur « Importer ».\n" +
+      "Rien n'a ete modifie : ni le document, ni le place gun.\n" +
+      "journal moteur : " + cheminJournalMoteur);
+    return;
+  }
+
+  afficherStatut(true,
+    "import demande au moteur.\n" +
+    "appel PANNEAU vu : " + (vuAppel ? "OUI" : "NON") +
+    "   |   source imposee : " + (vuSource ? "OUI" : "NON") +
+    "\njournal moteur : " + cheminJournalMoteur);
+}
+
+/* ------------------------------------------------------------------ */
+/* Menage de l'affichage — section « Mesures techniques »              */
+/* Les boutons de mesure ont servi a CONSTRUIRE le panneau : on ne les   */
+/* supprime pas (le controle negatif reste une preuve), on les range.    */
+/* Repli par style.display : technique deja certifiee dans ce fichier    */
+/* (aucune API incertaine : pas de <details>, pas de hidden).            */
+/* ------------------------------------------------------------------ */
+function basculerMesures() {
+  const zone = document.getElementById("mesures");
+  const bouton = document.getElementById("btn_mesures");
+  if (!zone || !bouton) { dire("ECHEC menage -> section « Mesures techniques » introuvable."); return; }
+  const etaitOuverte = zone.style.display !== "none";
+  zone.style.display = etaitOuverte ? "none" : "block";
+  bouton.textContent = etaitOuverte
+    ? "Mesures techniques (repliees) - cliquer pour ouvrir"
+    : "Mesures techniques (ouvertes) - cliquer pour replier";
+}
+
 function cabler() {
   const liens = [
     ["btn_dom", testerDom],
@@ -845,13 +1653,32 @@ function cabler() {
     ["btn_fichier", testerFichier],
     ["btn_negatif", testerNegatif],
     ["btn_identite", testerIdentite],
-    ["btn_copier", copierJournal]
+    ["btn_canal", testerCanal],
+    // Enveloppe explicite : sans elle, l'evenement de clic serait passe comme
+    // premier argument a construireListe (options), ce qui est fragile.
+    ["btn_liste", function () { construireListe(); }],
+    ["btn_copier", copierJournal],
+    ["btn_actualiser", actualiserListe],
+    ["btn_import", importerDepuisPanneau],
+    ["btn_mesures", basculerMesures]
   ];
 
   for (let i = 0; i < liens.length; i++) {
     const bouton = document.getElementById(liens[i][0]);
     if (bouton) {
-      bouton.addEventListener("click", liens[i][1]);
+      // Purge de l'ECRAN avant chaque action : un clic = un ecran propre
+      // (le fichier sur disque, lui, garde tout — c'est la preuve).
+      // Exception : « Mesures techniques » (ouvrir/replier) ne doit RIEN
+      // effacer, sinon ouvrir la zone ferait disparaitre le dernier resultat.
+      if (liens[i][0] === "btn_mesures") {
+        bouton.addEventListener("click", liens[i][1]);
+      } else {
+        const action = liens[i][1];
+        bouton.addEventListener("click", function () {
+          purgerEcranJournal();
+          action();
+        });
+      }
     } else {
       dire("ECHEC cablage -> bouton introuvable : " + liens[i][0]);
     }
@@ -865,7 +1692,12 @@ try {
   demarrer();
   cabler();
   dire("");
-  dire("Panneau pret. Cliquez les tests 1 a 6.");
+  dire("Panneau pret. Les 4 boutons utiles : « Voir la liste des sources », « Actualiser », « Importer », « Enregistrer le journal ».");
+  dire("Les mesures techniques (1 a 6) sont repliees en bas du panneau.");
+  // Le dossier du projet est DEDUIT de l'emplacement du panneau : FJD n'a
+  // rien a taper. Si la deduction echoue, le champ reste modifiable a la
+  // main (on le dit dans le journal).
+  devinerDossierProjet();
   // Ecrit le journal immediatement pour REVELER le chemin du fichier de
   // sortie : c'est notre seul moyen de recuperer la preuve (pas de
   // presse-papier UXP, pas de selection dans un panneau).
@@ -883,6 +1715,9 @@ window.sondeImportMd = {
   fichier: testerFichier,
   negatif: testerNegatif,
   identite: testerIdentite,
+  liste: construireListe,
+  actualiser: actualiserListe,
+  importer: importerDepuisPanneau,
   copier: copierJournal,
   statut: afficherStatut,
   cheminFichierJournal: function () { return cheminJournal; }

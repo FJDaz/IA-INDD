@@ -62,6 +62,36 @@
     }
     #journal .ko { color: #ffb4b4; }
     #btn_copier { margin-top: 6px; }
+    /* Tableau de la LISTE (Mission 2) : une ligne par source.
+       Le tableau est TOUJOURS present, meme vide : une liste vide est un
+       resultat (0 ligne), pas une absence d'affichage. */
+    table#liste {
+      width: 100%;
+      margin: 8px 0 3px 0;
+      border-collapse: collapse;
+      font-size: 10px;
+      background: #1f1f1f;
+      border: 1px solid #444;
+      border-radius: 4px;
+    }
+    table#liste th {
+      text-align: left;
+      padding: 4px 5px;
+      font-weight: 600;
+      color: #cfd8cf;
+      background: #333;
+      border-bottom: 1px solid #555;
+      white-space: nowrap;
+    }
+    table#liste td {
+      padding: 4px 5px;
+      vertical-align: top;
+      border-top: 1px solid #3a3a3a;
+      word-break: break-word;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+    #liste_note { opacity: 0.7; margin: 0 0 4px 0; }
     /* Bandeau de statut : la seule chose que l'on ne peut PAS rater.
        Vert = succes, Rouge = echec. Affiche le chemin du fichier journal. */
     #statut {
@@ -95,21 +125,48 @@
   <h1>Sonde Import MD</h1>
   <div id="statut"></div>
   <p class="note">
-    Panneau de mesure, sans &lt;webview&gt;. Chaque test dit OK ou ECHEC.
-    Aucun resultat n'est masque. Le journal est aussi ecrit dans un fichier
-    .txt (le bouton 7 affiche son chemin).
+    Ce panneau repond a UNE question : la source Markdown de ce document
+    a-t-elle bouge depuis l'import ? Quatre boutons suffisent. Les trois
+    premiers ne font que LIRE ; « Importer » est le SEUL a ECRIRE dans le
+    document, en donnant l'ordre au moteur import_md.jsx. Les mesures
+    techniques qui ont servi a construire le panneau sont rangees dans la
+    section repliee, en bas.
   </p>
 
-  <button id="btn_dom">1. Le DOM InDesign repond-il ?</button>
-  <button id="btn_doscript">2. app.doScript existe-t-il ?</button>
-  <button id="btn_moteur">3. Notre moteur import_md.jsx est-il joignable ?</button>
-  <button id="btn_fichier">4. Lire un .md sur le disque</button>
-  <button id="btn_negatif">5. Controle negatif (doit ECHOUER)</button>
-  <button id="btn_identite">6. Identite de la source (etiquette du doc)</button>
+  <button id="btn_liste">Voir la liste des sources</button>
+  <button id="btn_actualiser">Actualiser (sans rien ecrire)</button>
+  <button id="btn_import">Importer la source Markdown dans le document</button>
+  <button id="btn_copier">Enregistrer le journal (.txt)</button>
 
-  <input id="chemin" type="text" />
+  <table id="liste">
+    <thead>
+      <tr>
+        <th>Etat</th>
+        <th>Source</th>
+        <th>Modifiee</th>
+        <th>Mots</th>
+        <th>Signes</th>
+      </tr>
+    </thead>
+    <tbody id="liste_corps"></tbody>
+  </table>
+  <div id="liste_note">liste non construite - cliquer « Voir la liste des sources ».</div>
 
-  <button id="btn_copier">7. Enregistrer le journal dans un fichier .txt</button>
+  <!-- MESURES TECHNIQUES : rangees ici, repliees par defaut.
+       RIEN N'EST SUPPRIME : ce sont les outils qui ont permis de certifier le
+       panneau (dont le controle negatif, qui DOIT echouer). Ils restent
+       utilisables, mais ils ne polluent plus la lecture du panneau. -->
+  <button id="btn_mesures">Mesures techniques (repliees) - cliquer pour ouvrir</button>
+  <div id="mesures" style="display: none;">
+    <button id="btn_dom">1. Le DOM InDesign repond-il ?</button>
+    <button id="btn_doscript">2. app.doScript existe-t-il ?</button>
+    <button id="btn_moteur">3. Notre moteur import_md.jsx est-il joignable ?</button>
+    <button id="btn_fichier">4. Lire un .md sur le disque</button>
+    <button id="btn_negatif">5. Controle negatif (doit ECHOUER)</button>
+    <button id="btn_identite">6. Identite de la source (etiquette du doc)</button>
+    <button id="btn_canal">7. Le tuyau : quel canal porte un argument ?</button>
+    <input id="chemin" type="text" />
+  </div>
 
   <pre id="journal"></pre>
 

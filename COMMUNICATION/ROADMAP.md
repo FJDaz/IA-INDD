@@ -146,7 +146,54 @@ origin : 09d8d434162a27483d0721be789f00df4e0822de
 README.md distant -> HTTP 200   (contenu = « # Import Markdown → InDesign »)
 ```
 
-**Limite signalée à FJD — le nettoyage couvre l'arbre, pas l'historique.** Le contrôle de sortie de la mission porte sur les fichiers de l'arbre courant (tous au vert). Mais un dépôt public expose **tous** les commits : `git log -S` retrouve le chemin utilisateur dans **8 commits**, dont l'initial `647f691`, sur **15 fichiers** — dont `COMMUNICATION/mission_03_reconstruction_minimale.md`, qui n'existe plus dans l'arbre actuel mais reste lisible dans l'historique. **Aucune clé API ni aucun secret dans l'historique** (vérifié par `git grep` sur toutes les révisions). Remédiation possible (branche orpheline / squash + force-push) : **décision FJD, non tranchée**.
+**Limite signalée à FJD — le nettoyage couvre l'arbre, pas l'historique.** Le contrôle de sortie de la mission porte sur les fichiers de l'arbre courant (tous au vert). Mais un dépôt public expose **tous** les commits : `git log -S` retrouve le chemin utilisateur dans **8 commits**, dont l'initial `647f691`, sur **15 fichiers** — dont `COMMUNICATION/mission_03_reconstruction_minimale.md`, qui n'existe plus dans l'arbre actuel mais reste lisible dans l'historique. **Aucune clé API ni aucun secret dans l'historique** (vérifié par `git grep` sur toutes les révisions). Remédiation possible (branche orpheline / squash + force-push) : **décision FJD — TRANCHÉE ET EXÉCUTÉE le 30/09/2026, cf. « CR — Mission 07, clôture » ci-dessous.**
+
+### CR — Mission 07, clôture : réécriture d'historique (30/09/2026)
+
+FJD a tranché la limite ci-dessus et demandé l'action : « **Tu force push stp** ».
+
+**Levée d'ambiguïté préalable.** Au moment de la demande, local et distant étaient **identiques** (`85fcdfe`) : un `--force` simple n'aurait alors rien changé. Le seul sens possible était donc une **réécriture d'historique** — la seule remédiation qui retire réellement le chemin personnel des commits publics. C'est cette lecture qui a été retenue.
+
+**Décisions FJD (non ambiguës)** :
+- **Conserver les commits** (pas de squash) : purger le chemin des commits concernés sans écraser l'histoire de construction.
+- **Outil : `git filter-repo`** (ni branche orpheline, ni `filter-branch`).
+- **Neutraliser l'email d'auteur** → adresse `noreply` GitHub.
+
+**Pipeline exécuté** :
+1. Sauvegarde complète : `git bundle create IA-INDD-backup-20260930_163318.bundle --all` → **l'unique filet de sécurité** (réécriture = irréversible).
+2. `/tmp/fr-expressions.txt` : `francois-jeandazin==>~` (+ chemin absolu complet `==>~`).
+3. `/tmp/fr-mailmap.txt` : `François Jean Dazin <FJDaz@users.noreply.github.com> François Jean Dazin <francois.jean.dazin@gmail.com>`.
+4. `git filter-repo --force --replace-text /tmp/fr-expressions.txt --mailmap /tmp/fr-mailmap.txt`.
+5. `git remote add origin …` — **`filter-repo` supprime `origin`** : il faut le re-déclarer avant de pousser.
+6. `git push --force-with-lease origin main` (correctif **HTTP/1.1** déjà posé en config locale du dépôt).
+
+**Preuve de la correspondance des hashes (empreinte d'arbre, bundle de sauvegarde vs dépôt réécrit)** — les hashes cités dans le CR de publication ci-dessus sont **pré-réécriture** et n'existent plus (`git cat-file -t 09d8d43` → `fatal: Not a valid object name`) :
+
+```
+85fcdfe  (CR M07)     arbre 8b14ba456f440de82bd1174c0bcfa99b15d7aa60  ->  f4942a0  arbre 8b14ba456f440de82bd1174c0bcfa99b15d7aa60  (IDENTIQUE)
+09d8d43  (nettoyage)  arbre 32a9e85e7cedbf78427aa26fcad693dfc58ac774  ->  662ccd6  arbre 32a9e85e7cedbf78427aa26fcad693dfc58ac774  (IDENTIQUE)
+2fd98e2  (brief)      arbre 105fe11e312eefbe0d785dcca35e7b1440c64b3d  ->  8311d26  arbre 4bcea7cacffff76567c6883aeccc157d8b5aa13a  (DIFFÈRE : le chemin perso y est remplacé par ~)
+```
+
+**Vérification finale — sorties brutes du dépôt réel** :
+
+```
+git rev-parse HEAD               7e3f3224c7c8748dae8a91953f62835326e6c332
+git ls-remote origin             7e3f3224… HEAD   /   7e3f3224… refs/heads/main
+git status -sb                   ## main...origin/main          (local == distant)
+git rev-list --count HEAD        69                             (histoire conservée, aucun squash)
+git log -S 'francois-jeandazin'  -> 0                           (chemin perso ABSENT de l'historique)
+grep -rIl 'francois-jeandazin' . -> 0                           (chemin perso ABSENT de l'arbre)
+git log --format='%ae' | sort -u -> FJDaz@users.noreply.github.com   (email UNIQUE)
+```
+
+**Résultat** : la **limite signalée est LEVÉE** — le dépôt public n'expose plus le chemin personnel, ni dans l'arbre ni dans l'historique, l'histoire de construction est intégralement préservée (69 commits) et l'email d'auteur est neutralisé.
+
+**Deux réserves honnêtes** :
+- **Irréversibilité** : `--force` a réécrit l'historique **public** ; le bundle de sauvegarde est l'unique recours.
+- **Identité git globale** : `~/.gitconfig` émet encore `francois.jean.dazin@gmail.com` sur les **futurs** commits (le mailmap n'a corrigé que le passé). À changer dans `~/.gitconfig` ou via `git config --local user.email …` pour rendre la neutralisation durable.
+
+**Question résiduelle du README — close.** Le doc « Personnaliser son UI INDD avec l'IA » cité par FJD **existe** : `doc/formation/Personnaliser son UI INDD avec L'IA.xml` (+ `doc/formation/images/`, 4 JPEG). Un rendu Markdown fidèle en a été tiré : `fixtures/formation_reference.md` (136 lignes, 86 puces, 0 U+FFFD). Ces deux chemins sont encore **non suivis** par git à l'instant de ce CR.
 
 ---
 
@@ -283,7 +330,7 @@ VERDICT M1 : jamais importe -> la liste du panneau aura 0 ligne.
 
 ## Chapitre Panneau — Mission 2 — La liste et ses signaux
 
-**Statut** : 🔴 À FAIRE — dépend de la Mission 1.
+**Statut** : ✅ TERMINÉE — 30/09/2026 : **les deux moitiés du critère sont prouvées en réel** — contrôle négatif **0 ligne** sur document vierge (CR du 30/09, journal brut) **et** cas positif **1 ligne** sur document étiqueté, avec l'état **réel** rendu par le moteur (`identique`, CR ci-dessous).
 
 **Contenu (spec FJD du 30/09)** : un **tableau** — une ligne par source — portant :
 - le **signal d'état** : `identique` / `modifié dans la source` / `source absente` ;
@@ -297,11 +344,131 @@ VERDICT M1 : jamais importe -> la liste du panneau aura 0 ligne.
 
 **Ouvert** : la question 2 (document actif vs tous les documents). La question 1 est **tranchée** : **1 source par document** (l'étiquette n'évolue pas vers N).
 
+### CR — 30/09/2026 — la liste et ses signaux (code livré, clic InDesign à faire)
+
+**Livré (lecture seule — aucune écriture dans le document)** :
+- Bouton **7** « La liste des sources (tableau) » ; le bouton du journal passe de 7 à **8**.
+- Tableau à 5 colonnes : **Etat / Source / Modifiee / Mots / Signes**, plus une ligne de note sous le tableau (« 0 source - … » ou « 1 source - … »). Le tableau est toujours présent, même vide : **une liste vide est un résultat**, pas une absence d'affichage.
+- **Répartition des rôles respectée** : l'**état** est décidé **dans le moteur** par `m05DecideState` (même parade que le test 3 : copie de `import_md.jsx` sans `main();`, évaluée puis supprimée aussitôt) — le panneau **ne recalcule jamais** la somme de contrôle. Les **caractéristiques** viennent de la lecture disque **déjà certifiée** au test 4. Rien de réinventé.
+- Les **4 cas** restent **séparés** : aucun document / lecture ratée / étiquette absente (vierge) / source à lister.
+
+**Ce qui est DÉJÀ prouvé, hors InDesign** (journal brut) :
+```
+node --check main.js                          -> OK (1187 lignes)
+boutons declares (index.html)                 -> 8
+boutons cables (main.js)                      -> 8   (aucun orphelin, aucun manquant)
+tube panneau->moteur, cas pire (guillemets + antislash + chemin Windows) :
+  source ExtendScript generee                 -> syntaxe valide
+  valeur rendue                               -> etat_recu|brut={"v":"1",...}|chemin=C:\dossier\a.md
+  => les chaines traversent SANS perte
+```
+
+**Ce qui RESTE À FAIRE (FJD, dans InDesign)** — c'est le critère de fin :
+1. document **déjà importé**, cliquer **7** ⇒ **1 ligne** (etat + chemin + date + mots + signes) ;
+2. document **vierge**, cliquer **7** ⇒ **0 ligne** et la note dit « 0 source » (contrôle négatif obligatoire) ;
+3. reporter les deux journaux bruts ici ⇒ clôture en ✅.
+
+**Report de signature honnête (si la source a disparu)** : quand le fichier n'est plus lisible sur le disque, **Mots** et **Signes** affichent `(non lues)` — **jamais un chiffre inventé** — et la date affichée est celle **archivée à l'import**, marquée `(import)`.
+
+**Décision provisoire, réversible — question 2** : la liste porte sur le **document actif** (la proposition de la Mission 1). Passer à « tous les documents ouverts » ne changerait que la boucle d'appel, **pas** le tableau.
+
+### CR — 30/09/2026 — contrôle négatif EXÉCUTÉ EN RÉEL (point 2 du critère : ACQUIS)
+
+Run réel de FJD, clique sur le bouton 7. Journal brut (`PluginData/sonde_import_md_journal.txt`) :
+```
+--- M2  la liste des sources ---
+clic recu a 5:06:51 PM
+OK    require('indesign')  ->  [object ID]
+OK    document actif  ->  Personnalisr su-on UI INDD avec L'AI.indd
+route utilisee : DOM UXP doc.extractLabel()
+longueur de l'etiquette brute : 0 caractere(s)
+CAS « ETIQUETTE ABSENTE » : document sans import MD.
+VERDICT M2 : la liste a 0 ligne (controle negatif satisfait).
+```
+**Ce que ça prouve** : sur un document **sans import MD**, la liste affiche **0 ligne** et le panneau **nomme le cas** (« étiquette absente ») au lieu d'inventer un état. Le **contrôle négatif obligatoire est satisfait en réel**.
+
+**Ce qui manque encore** : le **point 1** du critère — un document **déjà importé** ⇒ **1 ligne**. Aucun document portant une étiquette n'a encore été cliqué ce run (`longueur = 0`). ⇒ statut **maintenu en 🟡** : on ne clôture pas sur une moitié de critère.
+
+### CR — 30/09/2026 — cas POSITIF EXÉCUTÉ EN RÉEL : 1 ligne, mais état INDÉTERMINÉ (défaut réel trouvé et corrigé)
+
+Deuxième run réel de FJD. Journal brut, second bloc `M2` :
+```
+--- M2  la liste des sources ---
+clic recu a 5:08:37 PM
+OK    document actif  ->  Sans titre-4
+route utilisee : DOM UXP doc.extractLabel()
+longueur de l'etiquette brute : 206 caractere(s)
+nom enregistre : mission_03_nonregression_all.md
+chemin         : /Users/francois-jeandazin/INDD/IMPORT_MD/fixtures/mission_03_nonregression_all.md
+etat rendu par le moteur : ABANDON:main();introuvable
+      => le moteur n'a PAS rendu d'etat exploitable.
+
+VERDICT M2 : 1 ligne affichee (etat indetermine).
+```
+
+**Ce que ça prouve (acquis)** : sur un document **portant une étiquette** (206 caractères), la liste affiche bien **1 ligne**, lit le **nom** et le **chemin** enregistrés. Le **point 1** du critère est donc **atteint sur sa moitié « 1 ligne »**.
+
+**Ce que ça révèle (défaut réel)** : l'état n'est **pas** décidé par le moteur — `ABANDON:main();introuvable`. Cause trouvée : le panneau cherchait `import_md.jsx` dans un **dossier placeholder en dur** (`/chemin/vers/INDD/IMPORT_MD`), au lieu du dossier saisi dans le champ du panneau. Sur une installation réelle, le moteur était donc **introuvable par construction**, pour le test 3 **comme** pour M2. Le panneau a bien **refusé d'inventer** un état (« indéterminé » + renvoi au journal) : le défaut est dans la résolution du chemin, pas dans la décision.
+
+**Correction appliquée** : `dossierProjet()` + `cheminMoteur()` résolvent désormais le dossier depuis le champ du panneau (un `.md`/`.jsx` ⇒ on prend le parent ; sinon le champ est déjà un dossier), et **le test 3 comme M2** passent par cette résolution. Contrôles : `node --check` OK (1210 lignes), 0 U+FFFD.
+
+**Ce qui reste** : relancer **une** fois le bouton 7 sur ce document (`Sans titre-4`) après rechargement du panneau dans UDT ⇒ l'état doit être **réel** (« identique » ou « modifié dans la source »), plus « indéterminé ». ⇒ statut **maintenu en 🟡** (le critère n'est pas encore satisfait en entier).
+
+### CR — 30/09/2026 — le dossier n'a plus à être tapé : il est DÉDUIT
+
+**Décision : on supprime le travail manuel.** FJD a buté sur la consigne « remplir le champ » ; la question posée (« mettre le vrai dossier : `IMPORT_MD` ? ») a montré que **le formulaire lui-même était le problème**, pas FJD. Plutôt que de lui faire recopier un chemin, le panneau le **déduit de sa propre installation**.
+
+**Mécanisme** (`devinerDossierProjet()`, appelée au démarrage) : le panneau demande à UXP son **dossier de plugin** (`localFileSystem.getPluginFolder()`), puis remonte **deux niveaux** — par le **texte** du chemin, pas par une méthode `parent` dont l'existence n'était pas certifiée (premier jet corrigé en `lastIndexOf("/")` ; `grep getParent` → **0**). Le plugin vit dans `<projet>/uxp/com.fjd.importmd.sonde` ⇒ deux niveaux au-dessus = `<projet>`, arrimé sur `.../atelier_importateur_md.md`.
+
+**Garde-fous (anti-régression)** : ne remplace **jamais** un chemin déjà saisi par un humain (`indexOf(PROJET_DIR) !== 0` ⇒ on ne touche à rien) ; **échec silencieux** (le champ reste modifiable, avec une ligne au journal qui le dit). **Aucun chemin personnel en dur** dans le source : le dossier est **déduit à l'exécution** ⇒ portabilité préservée.
+
+**Contrôles** : `node --check` OK (**1259 lignes**), 0 U+FFFD.
+
+**Ce qui reste** : **1 clic** (bouton 7, puis 8) sur `Sans titre-4`, panneau rechargé dans UDT. Pas de champ à remplir. ⇒ statut **maintenu en 🟡** : le clic réel n'a pas encore été fait.
+
+### CR — 30/09/2026 — CLÔTURE : état RÉEL rendu par le moteur (`identique`)
+
+Troisième run réel de FJD, après rechargement du panneau dans UDT. Journal brut :
+```
+Panneau pret. Cliquez les tests 1 a 6, puis 7 (la liste).
+dossier du projet deduit depuis l'emplacement du panneau :
+      /Users/francois-jeandazin/INDD/IMPORT_MD
+
+--- M2  la liste des sources ---
+clic recu a 5:25:44 PM
+document actif  ->  Sans titre-4
+longueur de l'etiquette brute : 206 caractere(s)
+nom enregistre : mission_03_nonregression_all.md
+chemin         : /Users/francois-jeandazin/INDD/IMPORT_MD/fixtures/mission_03_nonregression_all.md
+etat rendu par le moteur : identique
+
+VERDICT M2 : 1 ligne affichee (identique).
+```
+
+**Ce que ça prouve — le critère est COMPLET** :
+| Point du critère | Preuve | Verdict |
+|---|---|---|
+| 1 ligne sur document **étiqueté** | `1 ligne affichee` + nom + chemin lus | **ACQUIS** |
+| L'état vient du **moteur**, pas du panneau | `etat rendu par le moteur : identique` | **ACQUIS** |
+| **0 ligne** sur document **vierge** | `VERDICT M2 : la liste a 0 ligne` (CR du 30/09) | **ACQUIS** |
+| Aucun état inventé | « indéterminé » affiché tant que le moteur n'avait pas répondu | **ACQUIS** |
+
+**Déduction du dossier : CONFIRMÉE EN RÉEL** — `devinerDossierProjet()` a trouvé `/Users/francois-jeandazin/INDD/IMPORT_MD` tout seul, sans qu'aucun chemin soit tapé. Le placeholder n'est plus jamais utilisé sur cette installation.
+
+**Note de traçabilité honnête** : le journal sur disque est **écrasé à chaque rechargement du panneau** (il repart de zéro). Le log brut du **contrôle négatif** est donc conservé dans le **CR du 30/09** plus haut dans ce document, pas dans le fichier courant — celui-ci ne contient plus que le run de clôture.
+
+**Bilan des 3 défauts réels trouvés par ces clics** (aucun n'était visible hors InDesign) :
+1. chemin du moteur figé sur le placeholder ⇒ **corrigé** (résolution depuis le champ) ;
+2. consigne de saisie manuelle ⇒ **supprimée** (déduction depuis l'emplacement du panneau) ;
+3. `getParent()` non certifiée en UXP ⇒ **remplacée** par un calcul sur le texte du chemin.
+
+⇒ **Mission 2 TERMINÉE** : la liste affiche le vrai état, les vrais identifiants et les vrais compteurs, ou **rien** quand il n'y a rien — jamais d'invention.
+
 ---
 
 ## Chapitre Panneau — Mission 3 — Bouton « Actualiser »
 
-**Statut** : 🔴 À FAIRE — dépend de la Mission 2.
+**Statut** : ✅ TERMINÉE — 30/09 : **les 4 étapes du protocole sont passées en réel**, chacune constatée par FJD à l'écran : `identique` (17:36 puis 17:51) → **`source absente` sans erreur ni effacement** (17:40 et 17:49) → retour à `identique` avec historique conservé (17:51) → aucun document ouvert, 0 ligne (17:54) ; **bonus** contrôle négatif 0 ligne sur un document sans import MD (17:53). Le défaut de visibilité du bandeau (écrasé par l'écriture automatique du journal) a été trouvé, corrigé et **constaté corrigé** ; le bandeau expose désormais l'état **en clair**. FJD a validé le 30/09 (« OK ») et le fichier de référence a été restauré.
 
 **À faire** : recalculer les états et rafraîchir le tableau **sans rien écrire dans le document**.
 
@@ -309,15 +476,253 @@ VERDICT M1 : jamais importe -> la liste du panneau aura 0 ligne.
 
 **Cas limite à traiter** : le fichier source **disparaît entre deux actualisations** ⇒ le signal doit passer à « source absente » **sans erreur** et sans effacer l'historique affiché.
 
+### CR — Mission 3, 30/09 : le bouton existe, et il ne fait que RELANCER
+
+**Décision d'implémentation** — le bouton n'ajoute **aucune** mesure. Il appelle
+la **même fonction** que la Mission 2 (`construireListe`) avec une seule option :
+`garderHistorique: true`. Lectures seules : `import_md.jsx` n'est **pas** touché
+et `construireListe` n'appelle aucune API d'écriture du document.
+
+**Pourquoi « garder l'historique » et pas seulement relancer** : relancer en
+vidant le tableau ferait **disparaître la ligne précédente** — exactement ce que
+le cas limite interdit. En mode actualisation la mesure est donc **ajoutée** au
+tableau : on VOIT `identique` puis `source absente` l'une sous l'autre. En mode
+test (bouton 7), le tableau repart de zéro : comportement de la Mission 2
+**inchangé**.
+
+**Cas limite — la source disparaît entre deux actualisations** : traité en deux
+endroits, tous deux vérifiés par **lecture du moteur** :
+1. **L'état** vient du moteur, pas du panneau : `m05DecideState()` retourne
+   `ETAT_SOURCE_ABSENTE` dès que `!f.exists` (`import_md.jsx` l.207).
+2. **La lecture disque** échoue forcément ensuite. Cet échec était journalisé en
+   `ECHEC`, ce qui faisait passer une **conséquence attendue** pour une panne.
+   Corrigé : quand le moteur a dit `source_absente`, la ligne est neutre
+   (« lecture disque impossible PAR CONSEQUENCE (attendu, pas une panne) »), les
+   compteurs restent `(non lues)` — **aucun chiffre inventé** — et la ligne
+   précédente reste affichée.
+
+**Contrôles passés (machine, avant tout clic)** :
+
+| Contrôle | Résultat |
+|---|---|
+| Syntaxe (`node --check` sur copie `.js` — il refuse le `.jsx`) | **OK** |
+| Boutons déclarés dans `index.html` / câblés dans `cabler()` | **10 / 10** |
+| Encaractères de remplacement U+FFFD (`main.js`, `index.html`) | **0** |
+| `FileEntry.getParent()` (non certifiée en UXP) | **0** |
+| `import_md.jsx` modifié ? | **non** |
+
+**Ménage du panneau (demande FJD du 30/09 : « c'est illisible devant »)** : les
+6 boutons de mesure ont été rangés dans une section **repliée** en bas du
+panneau (« Mesures techniques »), avec le champ du dossier. **Rien n'est
+supprimé** — le contrôle négatif reste une preuve utilisable — mais l'avant du
+panneau ne montre plus que trois boutons, nommés par ce qu'ils font :
+« Voir la liste des sources », « Actualiser (sans rien écrire) »,
+« Enregistrer le journal (.txt) ». Repli par `style.display` : même technique
+que `#statut`, déjà certifiée ici (pas de `<details>`, non certifié en UXP).
+Contrôle : **10 boutons déclarés = 10 câblés**, listes comparées et identiques.
+
+**Protocole de clic (à exécuter par FJD, après rechargement UDT — toute édition
+du panneau l'exige)** :
+1. Document étiqueté ouvert, cliquer **« Voir la liste des sources »**
+   ⇒ 1 ligne `identique`.
+2. Faire **disparaître** `fixtures/mission_03_nonregression_all.md` (le renommer),
+   cliquer **« Actualiser »** ⇒ **2 lignes** : la 1re toujours `identique`, la 2e
+   `source absente`, compteurs `(non lues)`, **aucun ECHEC** de lecture disque.
+3. Restaurer le nom du fichier, cliquer **« Actualiser »** ⇒ **3 lignes**, la
+   dernière revenue à `identique`.
+4. Aucun document ouvert, cliquer **« Actualiser »** ⇒ 0 ligne ajoutée, les
+   lignes précédentes **restent**, la note annonce l'historique conservé.
+
+**Clics réels déjà obtenus — run du 30/09 17:36** (journal brut ; rechargement
+UDT et section repliée confirmés par FJD) :
+```
+Panneau pret. Les 3 boutons utiles : « Voir la liste des sources », « Actualiser », « Enregistrer le journal ».
+Les mesures techniques (1 a 6) sont repliees en bas du panneau.
+dossier du projet deduit depuis l'emplacement du panneau :
+      /Users/francois-jeandazin/INDD/IMPORT_MD
+
+--- M3  actualisation de la liste ---
+clic « Actualiser » recu a 5:36:36 PM
+mode : actualisation SANS effacement (0 ligne(s) deja affichee(s))
+      lecture seule : rien n'est ecrit dans le document.
+document actif  ->  Sans titre-4
+route utilisee : DOM UXP doc.extractLabel()
+nom enregistre : mission_03_nonregression_all.md
+etat rendu par le moteur : identique
+
+VERDICT M3 : 1 ligne(s) affichee(s), derniere mesure = identique.
+```
+- **Étape 1 du protocole : ACQUISE** — la même réponse que la Mission 2
+  (`identique`), obtenue par le nouveau bouton, avec l'annonce explicite
+  « lecture seule : rien n'est ecrit dans le document ».
+- **Le ménage est constaté en vrai** : le panneau dit lui-même que les mesures
+  sont repliées ⇒ c'est bien le panneau nettoyé qui a été rechargé.
+
+**Clics réels — run du 30/09 17:40** (journal brut, second passage de FJD) :
+```
+--- M2  la liste des sources ---
+clic recu a 5:40:18 PM
+OK    document actif  ->  Sans titre-4
+nom enregistre : mission_03_nonregression_all.md
+chemin         : /Users/francois-jeandazin/INDD/IMPORT_MD/fixtures/mission_03_nonregression_all.md
+etat rendu par le moteur : source_absente
+      source absente : lecture disque impossible PAR CONSEQUENCE (attendu, pas une panne).
+      => compteurs NON affiches (aucun chiffre invente).
+VERDICT M2 : 1 ligne(s) affichee(s), derniere mesure = source absente.
+      => SOURCE ABSENTE : la source n'est plus sur le disque a cet instant.
+      => rendu SANS erreur.
+
+--- M3  actualisation de la liste ---
+clic « Actualiser » recu a 5:40:23 PM
+mode : actualisation SANS effacement (1 ligne(s) deja affichee(s))
+      lecture seule : rien n'est ecrit dans le document.
+etat rendu par le moteur : source_absente
+      source absente : lecture disque impossible PAR CONSEQUENCE (attendu, pas une panne).
+      => compteurs NON affiches (aucun chiffre invente).
+VERDICT M3 : 2 ligne(s) affichee(s), derniere mesure = source absente.
+      => SOURCE ABSENTE : la source n'est plus sur le disque a cet instant.
+      => rendu SANS erreur et SANS effacement : les 1 ligne(s) precedente(s) restent affichee(s).
+```
+- **Étape 2 du protocole : ACQUISE** — source disparue, clic « Actualiser » ⇒
+  **2 lignes**, la 2e à `source_absente`, **aucun ECHEC** de lecture disque, la
+  1re ligne conservée. Le cas limite de la Mission 3 est donc **prouvé côté
+  journal**.
+- **Correctif non encore vu à l'écran** : le run du 17:40 est correct dans le
+  journal, mais FJD répond **« pas dans le panneau, pas visible »**. Cause
+  trouvée et corrigée (voir ci-dessous) ; le correctif exige un **rechargement
+  UDT** avant d'être constatable.
+
+**Clics réels — run du 30/09 17:49, APRÈS le correctif de visibilité** (journal
+brut ; c'est ce run que FJD a **VU** — il répond « source absente », mot pour mot
+ce que le bandeau affiche désormais) :
+```
+--- M3  actualisation de la liste ---
+clic « Actualiser » recu a 5:49:00 PM
+mode : actualisation SANS effacement (0 ligne(s) deja affichee(s))
+      lecture seule : rien n'est ecrit dans le document.
+OK    require('indesign')  ->  [object ID]
+OK    document actif  ->  Sans titre-4
+route utilisee : DOM UXP doc.extractLabel()
+longueur de l'etiquette brute : 206 caractere(s)
+nom enregistre : mission_03_nonregression_all.md
+chemin         : /Users/francois-jeandazin/INDD/IMPORT_MD/fixtures/mission_03_nonregression_all.md
+etat rendu par le moteur : source_absente
+      source absente : lecture disque impossible PAR CONSEQUENCE (attendu, pas une panne).
+      => compteurs NON affiches (aucun chiffre invente).
+
+VERDICT M3 : 1 ligne(s) affichee(s), derniere mesure = source absente.
+      => SOURCE ABSENTE : la source n'est plus sur le disque a cet instant.
+      => rendu SANS erreur et SANS effacement : les 0 ligne(s) precedente(s) restent affichee(s).
+```
+- **Cas limite VU À L'ÉCRAN : ACQUIS.** FJD annonce « source absente » après ce
+  clic : c'est **mot pour mot** ce que le bandeau affiche désormais (via
+  `phraseEtat()`). La chaîne est donc prouvée **de bout en bout** et **observée
+  par l'humain**, pas seulement présente dans le journal :
+  moteur → `source_absente` → bandeau en clair → œil de FJD.
+- *Nuance honnête (levée au run suivant)* : ce run avait démarré tableau vide
+  (`0 ligne(s) deja affichee(s)`) — un rechargement UDT vide la table.
+  La **conservation de l'historique** (« sans effacement ») est finalement
+  prouvée en direct par le run du **17:51** : 1 ligne avant le clic, 2 après.
+- **Fichier de référence RESTAURÉ** par mes soins (pas par FJD) :
+  `fixtures/mission_03_nonregression_all.md` est de nouveau en place (20389 o).
+  FJD n'avait pas à sortir du panneau — le renommage précédent était ma
+  demande, et elle était de trop.
+
+**Clics réels — run du 30/09 17:51, ÉTAPE 3** (journal brut ; FJD répond
+« identique » — le fichier venait d'être restauré par mes soins) :
+```
+--- M3  actualisation de la liste ---
+clic « Actualiser » recu a 5:51:58 PM
+mode : actualisation SANS effacement (1 ligne(s) deja affichee(s))
+      lecture seule : rien n'est ecrit dans le document.
+OK    document actif  ->  Sans titre-4
+nom enregistre : mission_03_nonregression_all.md
+chemin         : /Users/francois-jeandazin/INDD/IMPORT_MD/fixtures/mission_03_nonregression_all.md
+etat rendu par le moteur : identique
+
+VERDICT M3 : 2 ligne(s) affichee(s), derniere mesure = identique.
+```
+- **Étape 3 : ACQUISE.** Source restaurée ⇒ retour à `identique`.
+- **La conservation de l'historique est désormais prouvée À L'ÉCRAN** : le run
+  part de **1 ligne déjà affichée** et finit à **2** (`sans effacement`). C'est
+  la démonstration que la nuance laissée ouverte au 17:49 était un simple effet
+  de mesure (tableau vide après rechargement), **pas** un défaut.
+- Cycle complet parcouru par FJD à l'écran : `identique` → `source absente` →
+  `identique`, **sans qu'une seule ligne soit perdue**.
+
+**Clics réels — run du 30/09 17:53, CONTRÔLE NÉGATIF** (journal brut ; FJD avait
+par erreur plusieurs documents ouverts — ce run en a profité pour couvrir un cas
+supplémentaire, **non prévu au protocole**, et il passe) :
+```
+--- M3  actualisation de la liste ---
+clic « Actualiser » recu a 5:53:29 PM
+mode : actualisation SANS effacement (2 ligne(s) deja affichee(s))
+      lecture seule : rien n'est ecrit dans le document.
+OK    document actif  ->  Sans titre-2
+longueur de l'etiquette brute : 0 caractere(s)
+CAS « ETIQUETTE ABSENTE » : document sans import MD.
+VERDICT M3 : 0 ligne ajoutee (controle negatif satisfait).
+```
+- **Contrôle négatif ACQUIS** : un autre document (`Sans titre-2`), ouvert au
+  même moment, **sans import MD** ⇒ **0 ligne ajoutée** au lieu d'une ligne
+  inventée. C'est exactement la règle héritée de la Mission 2 : *le panneau ne
+  devine pas, il affiche rien quand il n'y a rien*. Le tableau conservait ses
+  2 lignes précédentes.
+
+**Clics réels — run du 30/09 17:54, ÉTAPE 4** (journal brut ; FJD a fermé tous
+les documents à ma demande) :
+```
+--- M3  actualisation de la liste ---
+clic « Actualiser » recu a 5:54:53 PM
+mode : actualisation SANS effacement (2 ligne(s) deja affichee(s))
+      lecture seule : rien n'est ecrit dans le document.
+documents ouverts : 0
+CAS « AUCUN DOCUMENT OUVERT » -> 0 ligne ajoutee.
+      => 2 ligne(s) precedente(s) CONSERVEE(S) (historique non efface).
+```
+- **Étape 4 : ACQUISE.** Plus aucun document ouvert ⇒ 0 ligne ajoutée, et
+  l'historique reste : la note annonce explicitement la conservation.
+
+**DÉFAUT TROUVÉ : le résultat de la mesure était EFFACÉ de l'écran 400 ms après
+le clic** (signalé par FJD : « pas dans le panneau en tout cas, pas visible »).
+- *Cause* : `ecrireJournalFichier()` — appelée **automatiquement** par
+  `programmerEcritureJournal()` 400 ms après chaque `dire()` — remettait le
+  bandeau à « journal enregistre : /Users/... » **même en écriture silencieuse**.
+  Le bandeau est le seul signal impossible à rater du panneau : il annonçait
+  donc systématiquement un **chemin de fichier** à la place de la réponse.
+- *Correctif 1* : le bandeau n'est plus mis à jour que sur **action explicite**
+  (bouton « Enregistrer le journal », ou écriture de démarrage). Une écriture
+  automatique ne touche plus au bandeau. L'**échec** d'écriture reste visible,
+  lui, même en automatique (un journal qui ne s'écrit plus est une panne).
+- *Correctif 2* : le bandeau dit désormais la **réponse en clair**, plus un code
+  interne — nouvelle fonction `phraseEtat()` : « la source n'a pas bouge depuis
+  l'import » / « la source A BOUGE depuis l'import » / « la source n'est PLUS LA
+  (renommee, deplacee ou supprimee) » / « ce document n'a jamais recu d'import
+  MD ». C'était la demande de FJD : **comprendre ce qui se passe sans connaître
+  le vocabulaire du moteur**.
+
+**Étapes encore ouvertes : 3 (restauration → retour à `identique`) et 4 (aucun
+document ouvert).** Restaurer `fixtures/mission_03_nonregression_all.md` : le nom
+est actuellement modifié, la source est donc **absente** sur le disque.
+
+**Ce qui reste ouvert** : **rien.** Les 4 étapes du protocole sont passées en réel
+et constatées à l'écran par FJD ; le contrôle négatif supplémentaire passe aussi.
+Le seul point non couvert par le protocole initial (le bandeau écrasé par
+l'écriture automatique) a été trouvé **pendant** ces clics et corrigé dans la
+foulée. Le journal dit la vérité, **et** FJD l'a lue dans le panneau.
+
 ---
 
 ## Chapitre Panneau — Mission 4 — Bouton « Importer »
 
-**Statut** : 🔴 À FAIRE — **volontairement en DERNIER** : c'est la **seule** mission du chapitre qui **ÉCRIT dans le document**.
+**Statut** : ✅ TERMINÉE — **seule** mission du chapitre qui **ÉCRIT dans le document**, **volontairement en DERNIER**. Au 30/09/2026 : **signature GELÉE**, **canal MESURÉ**, **répartiteur ÉCRIT dans le moteur**, **bouton CÂBLÉ au moteur**, et le cas muet « Importer sans bloc » **REFUSÉ, ANNONCÉ et PROUVÉ en réel** (journal du moteur : refus sans bloc à 20:52:54, import avec bloc à 20:53:04). **Les deux moitiés du critère de fin sont atteintes** : (1) **`Ctrl+Z` en UN SEUL pas** — le corps de l'import est enveloppé dans `app.doScript(mainInterne, …, UndoModes.ENTIRE_SCRIPT)`, validé par FJD ; (2) **mapping intact** après import — prouvé en réel le 30/09 à **21:54** sur **document neuf** (`blocs=283 · attendus=294 · reels=294 · ecarts=0 · base=0 · styles=283 · neutre=0`, **aucune erreur**). Clôture validée par FJD le 30/09/2026.
 
-### Signature du tube panneau → moteur (DRAFT — à geler après mesure du canal)
+**Cas wiki consultés** : Cas 33 (`$.global` ne transporte pas d'état au-delà de la frontière de script — **même famille** que le canal panneau → moteur, ajouté le 30/09), Cas 36 (module qui **définit** / appelants qui **décident** — le répartiteur), Cas 46 (`/tmp` refusé, `Folder.temp` seule cible d'écriture temporaire), Cas 39 (`exportFile` n'écrase pas, `/tmp` est un **lien symbolique**), Cas 44 (labels persistants, `extractLabel` rend `''`), Cas 45 (`File.modified` menteur ; `File.read()` normalise les fins de ligne), Cas 40 (sonde sans interaction).
+**Cas wiki produits/enrichis** : **Cas 47 et Cas 48 créés le 30/09** — Cas 47 « Le canal d'arguments de `app.doScript` : l'objet `arguments` racine, jamais `app.scriptArgs` » ; Cas 48 « Le numéro de paragraphe absolu se compte en retours paragraphe avant l'offset caractère, jamais par soustraction » (tous deux `mesuré` le 30/09, cause racine du défaut d'ancrage). Compteur du wiki 45 → **47 cas**, catalogue + index par thème (nouveau bloc « Canal d'appel ») + index par symptôme mis à jour. Comblent les deux trous confirmés par grep (canal d'arguments ; comptage du paragraphe absolu).
 
-**Pourquoi un draft et pas une signature figée** : le « tube » qui portera les arguments du panneau vers le moteur **n'existe pas encore**. Sa forme **dépend du canal** : un canal intégré (`app.scriptArgs`, *piste à vérifier — non mesurée*) préfère des chaînes courtes ; un **fichier temporaire** accepte sans douleur une structure riche. **La forme suit le canal ⇒ on mesure le canal d'abord, on gèle la signature ensuite.**
+### Signature du tube panneau → moteur (GELÉE — 30/09/2026, décision FJD)
+
+**Historique du gel** : le tube dépendait du canal — un canal riche autorise des champs nommés, un canal étroit oblige à des chaînes courtes. Le canal est mesuré (30/09) : `arguments` racine via `app.doScript`, qui transporte **une liste**. Deux formes restaient possibles dans cette liste : cases nues (positions) ou cases **nommées**. **Décision FJD (30/09) : cases NOMMÉES** (`Appelant=panneau`) — « A clairement » —, pour qu'un champ ajouté au milieu ne décale jamais les suivants. **Décision FJD (30/09) sur l'empreinte : elle ne voyage PAS** — « B » — le moteur la **recalcule** depuis le `Chemin` (il a déjà `m05BuildFingerprint`). Tube **minimal**, et l'empreinte reste **vérifiée par le moteur**, jamais crue sur parole. **Signature gelée ci-dessous.**
 
 **À quoi servent les arguments — trois métiers, pas un** :
 
@@ -333,8 +738,7 @@ VERDICT M1 : jamais importe -> la liste du panneau aura 0 ligne.
 |---|---|---|
 | **Appelant** (panneau / menu) | commande | **Fondateur** : c'est lui qui autorise le répartiteur à **ne pas** réenregistrer le menu quand c'est le panneau qui appelle |
 | **Action** (importer / actualiser) | commande | Deux boutons, deux comportements |
-| **Chemin** | source | Le seul changement de fond du moteur : il le reçoit au lieu de le demander |
-| **Empreinte** (taille + checksum) | source | Le moteur peut la recalculer ; utile si le panneau l'a déjà |
+| **Chemin** | source | Le seul changement de fond du moteur : il le reçoit au lieu de le demander. **Porte aussi la reconnaissance** : le moteur en dérive l'empreinte (décision B) |
 
 **Indices optionnels** :
 
@@ -389,9 +793,37 @@ Raison : le panneau (Missions 1→4) passe d'abord ; ces raffinements dépendent
 La position mémorisée (story + offset caractère) ne vaut que **tant que le texte au-dessus n'a pas bougé**. La parade réelle est l'**identifiant stable de bloc** (route A) — **on ne règle pas ce problème maintenant, on le nomme**. ⚠️ **Ne pas inventer un second système de position** : « story + offset » **est la même famille** que l'identifiant de bloc ; une seule mécanique, réutilisée.
 
 #### Points à mesurer avant de geler la signature
-1. **Le canal** : `app.scriptArgs` transport-t-il un argument du panneau vers ExtendScript, sans perte ? (piste documentée, **non mesurée**)
-2. **Le répartiteur** : comment le moteur distingue « appelé par le menu » de « appelé par le panneau » — et ce que le panneau doit fournir.
-3. **Le contournement du sélecteur** : le précédent existe (**relance M05** : chemin mémorisé ⇒ `File.openDialog` sauté). C'est le **crochet à généraliser**.
+1. **Le canal** — ✅ **MESURÉ (30/09/2026)** : `app.doScript(src, lang, ARGS)` transporte bien les arguments, mais **pas** par `app.scriptArgs` — par l'**objet `arguments` de niveau racine du script exécuté**. Verdict : canal **existant**, idiome InDesign. Détail et extrait brut ci-dessous, cas wiki **Cas 47**.
+2. **Le répartiteur** — 🔨 **ÉCRIT (30/09/2026)**, pas encore **prouvé en réel** : le moteur porte désormais un répartiteur `M04_TUBE` / `lireTube()` (détail et preuves ci-dessous). **Indice retenu de la mesure** : sans 3ᵉ paramètre, `arguments` vaut **`undefined`** ⇒ test direct `typeof arguments === "undefined"`.
+3. **Le contournement du sélecteur** — ✅ **GÉNÉRALISÉ (30/09/2026)** dans le code : `cheminImposé = relanceSourcePath || M04_TUBE.chemin` court-circuite `File.openDialog`. Reste à **prouver** par un appel réel du panneau (détail ci-dessous).
+4. **Le branchement du bouton** — ✅ **ÉCRIT (30/09/2026)** : `btn_import` visible et câblé ; il appelle le moteur par `$.evalFile` d'une enveloppe qui dépose le tube (détail au CR « bouton câblé » ci-dessous). Reste à **prouver** par un clic réel.
+
+#### Compte rendu — mesure du canal (30/09/2026) — CR inline
+
+**Ce qui a été fait** : sonde **Q7** (« Le tuyau : quel canal porte un argument ? », bouton 7 du panneau, zone repliée « Mesures techniques ») **réécrite** pour transporter **4 arguments réels** (`Appelant=panneau`, `Action=importer`, `Chemin=/tmp/source.md` + le témoin horodaté) au lieu d'un témoin seul, et pour **lire deux canaux dans le même appel** : `app.scriptArgs` (B1) **et** l'objet `arguments` racine (B2). `import_md.jsx` **non modifié**. Moteur chargé **sans** `main()` (copie tronquée). Panneau rechargé (UDT) avant mesure.
+
+**Extrait brut du journal** (fichier `…/com.fjd.importmd.sonde/PluginData/sonde_import_md_journal.txt`, 3139 octets, 30/09 19:55:00) :
+
+```
+A  tube « texte de source »              : OK — temoin recu identique : OUI
+B1 tube « app.scriptArgs » relecture    : sans argument ET avec argument, identiques :
+     type=object | longueur=ERREUR:Object does not support the property or method 'length'
+     | [0]=ERREUR:Object does not support the property or method '0' | getArguments=ABSENT
+     => le temoin n'apparait PAS dans app.scriptArgs
+B2 tube « objet arguments racine »      :
+     sans argument : ERREUR:arguments is undefined
+     avec argument : n=4 | [0]=TEMOIN-20260930-1790790883963 | [1]=Appelant=panneau
+                     | [2]=Action=importer | [3]=Chemin=/tmp/source.md
+     => les 4 arguments sont ARRIVES, dans l'ordre : OUI
+C  tube « fichier temoin »              : OK — OUI
+VERDICT sonde : un canal d'arguments EXISTE
+```
+
+**Verdict** : **le canal existe et il est l'idiome InDesign** — `app.doScript(src, lang, [a0, a1, …])` → `arguments` **racine** du script exécuté. `app.scriptArgs` est une **fausse piste** dans ce runtime (objet opaque, non indexable, **identique avec et sans argument** : il ne transporte rien et ne signale pas l'échec). Correction à retenir : le **premier verdict négatif** sur B venait de la **sonde** (elle lisait au mauvais endroit), **pas** d'une limite du runtime — refus d'abandon de FJD fondé.
+
+**Ce qui reste ouvert** : la **signature** du tube n'est pas gelée (décision FJD) ; le **répartiteur** reste à écrire ; le **contournement du sélecteur** (M05) reste à généraliser ; l'**annulation** (`UndoModes.ENTIRE_SCRIPT`, 4ᵉ paramètre de `doScript`) est **reportée** — mécanisme plus subtil que prévu (décision FJD, 30/09).
+
+**Statut inchangé** : 🔴 À FAIRE — le point 1 (canal) est **mesuré**, mais le **critère de fin** (un seul `Ctrl+Z` annule tout l'import) n'est **pas** atteint.
 
 ---
 
@@ -404,6 +836,180 @@ La position mémorisée (story + offset caractère) ne vaut que **tant que le te
 - **`import_md.jsx` se termine par un appel `main();` au niveau racine** ⇒ l'évaluer déclenche **aussi** le bloc d'enregistrement du menu (l. 3077-3086, hors `main()`). Il faut un **répartiteur** qui distingue « appelé par le menu » de « appelé par le panneau », donc l'argument **Appelant** du tube.
 
 **Critère de fin** : un **seul** `Ctrl+Z` annule **tout** l'import (preuve : nombre de pas d'annulation constaté, pas estimé), et le mapping `md-style-map` est **intact** après import (contrôle avant/après).
+
+---
+
+#### Compte rendu — le répartiteur écrit dans le moteur (30/09/2026) — CR inline
+
+**Ce qui a été fait** : `import_md.jsx` (moteur, **3181 lignes**) reçoit le **répartiteur**. Quatre ajouts, tous **additifs** — aucune ligne de l'ancien chemin n'a été réécrite :
+
+1. `var M04_TUBE = null;` — l'état du tube, `null` par défaut.
+2. `function lireTube(args)` — découpe les **cases nommées** sur le **premier** `=` (`Appelant` / `Action` / `Chemin` dans le noyau ; **tout champ inconnu** va dans `indices`, jamais jeté). ES3 strict, aucun JSON.
+3. **Détection à la racine**, juste avant `main();` : `arguments` est lu **au niveau racine du script** (et non dans une fonction — dans une fonction, `arguments` désigne les paramètres *de cette fonction*). Accès protégé par `try/catch`, absence = cas **normal** du menu.
+4. **Deux exceptions chirurgicales dans `main()`**, conditionnées par `appelPanneau = !!M04_TUBE` :
+   - le **déclencheur M05 est sauté** (le panneau a déjà envoyé `Action` : reposer la question serait une **seconde décision sur la même chose**) ;
+   - le **sélecteur de fichier est sauté** : `cheminImposé = relanceSourcePath || M04_TUBE.chemin` — **généralisation directe du précédent M05**, pas une seconde mécanique.
+
+**Preuves de non-régression** (le vrai risque de ce changement) :
+
+```
+$ cp import_md.jsx /tmp/imd_check.js && node --check /tmp/imd_check.js
+SYNTAXE OK
+$ grep -c $'\xef\xbf\xbd' import_md.jsx
+0
+$ tail -c 120 import_md.jsx
+    : "M04-repartiteur: appel MENU (aucun argument) -> main() inchange");
+
+// Exécuter le script
+main();
+```
+
+- **La dernière ligne reste EXACTEMENT `main();`** : c'est le repère utilisé par la sonde du panneau pour charger le moteur **sans l'exécuter** (parade de troncature). Il a été **préservé volontairement** — un `if/else` final l'aurait cassé.
+- **Appel par le menu = `arguments` absent ⇒ `M04_TUBE` reste `null`** ⇒ `appelPanneau` est faux ⇒ **les deux exceptions ne s'appliquent pas** : le chemin d'avant, à l'identique.
+- **0 U+FFFD** dans le moteur (une corruption `mesuré` → `U+FFFD` a été trouvée **et corrigée** pendant ce travail).
+
+**Ce qui reste ouvert** : le **branchement du bouton** côté panneau (`app.doScript` du **vrai moteur** avec le tube) et la **preuve en réel** dans le journal du moteur. **Non acquis** : le critère de fin (un seul `Ctrl+Z`) est **reporté** par décision FJD.
+
+---
+
+#### Compte rendu — le bouton « Importer » câblé au moteur (30/09/2026) — CR inline
+
+**Ce qui a été fait** — le **dernier** maillon du chapitre : le panneau **appelle** désormais le moteur.
+
+1. **Bouton** `btn_import` ajouté à la zone **visible** (pas dans « Mesures techniques » : c'est l'action utile, FJD doit la voir), **câblé** dans `cabler()` et **exposé** (`window.sondeImportMd.importer`). Garde-fou respecté : **12 boutons déclarés = 12 câblés**.
+2. **Gestionnaire** `importerDepuisPanneau()` : (a) résout le `Chemin` (champ prérempli), (b) **vérifie la source lisible AVANT** d'occuper le moteur (une erreur de chemin doit se lire dans le panneau, pas se perdre dans l'import), (c) construit le tube **gelé** (`Appelant=panneau`, `Action=importer`, `Chemin=<md>`), (d) appelle le moteur, (e) **relit le journal DU MOTEUR**.
+3. **Le moteur s'exécute COMME UN FICHIER, pas comme un texte.** Mesuré **dans le code** : `LOG_FILE_PATH` est calculé **ligne 15** depuis `$.fileName` (`new File($.fileName).parent.fsName + "/import_md_errors.log"`), et le module de menu est chargé de même (l. 3145) puis enregistré par `register($.fileName)` (l. 3150). Une chaîne de source ne donnerait **aucun `$.fileName` valable** — le journal partirait ailleurs. Le panneau envoie donc une **enveloppe minuscule** qui, *dans le moteur* : (1) dépose le tube dans un global à usage unique, (2) `$.evalFile(new File("<moteur>"))`.
+4. **Repli ajouté au répartiteur** (moteur **3181 → 3198 lignes**, +17, toutes **additives**) : `$.evalFile` **ne transmet pas d'arguments**, donc le moteur relit le **même** tube (mêmes cas nommés) dans `$.global.__M04_TUBE_IMPOSE` — **en dernier recours** (condition `!M04_TUBE`), puis **l'efface aussitôt** (usage unique : un appel ultérieur par le MENU reste « appel MENU »). Le canal `arguments` de `app.doScript` reste **prioritaire** et **inchangé** (wiki Cas 47 hors de cause).
+
+**Comment la preuve est faite (côté panneau)** : le gestionnaire lit le journal moteur **AVANT et APRÈS** et ne juge **que sur les lignes AJOUTÉES** (sinon une réussite antérieure passerait pour celle d'aujourd'hui — même leçon que `testerMoteur`), en cherchant **`M04-repartiteur: appel PANNEAU`** et **`M04: source IMPOSEE par le PANNEAU`**. Le bandeau affiche ces deux vérités.
+
+**Preuves de non-régression** :
+
+```
+$ node --check (moteur, copie .js)   -> SYNTAXE MOTEUR OK
+$ node --check (panneau main.js)     -> SYNTAXE PANNEAU  OK
+$ grep -c $'\xef\xbf\xbd' import_md.jsx / main.js / index.html   -> 0 / 0 / 0
+$ boutons déclarés (index.html) == boutons câblés (main.js)       -> 12 == 12
+$ tail import_md.jsx   ->  ..."main() inchange");
+                          // Exécuter le script
+                          main();
+```
+
+- **La dernière ligne reste EXACTEMENT `main();`** (repère de la troncature de la sonde) : préservée volontairement.
+- **Appel par le menu** : `arguments` absent **et** global absent ⇒ `M04_TUBE` reste `null` ⇒ chemin d'avant, à l'identique.
+
+**Ce qui reste ouvert** : la **preuve en réel** — cliquer « Importer » sur un document et lire les deux lignes ci-dessus dans le journal du moteur. Tant qu'elle n'est pas faite, la mission **n'est pas** terminée. Le `Ctrl+Z` reste **reporté** (décision FJD).
+
+**Statut inchangé** : 🟡 PARTIELLE — le **code est en place des deux côtés** ; il manque la **démonstration** en réel.
+
+---
+
+#### Compte rendu — « Importer » sans bloc choisi : le refus est désormais ANNONCÉ (30/09/2026) — CR inline
+
+**Déclencheur (retour FJD, verbatim)** : « 1ere fois erreur silencieuse : importer sans choisir un bloc. il faut un laerte. 2e bon. »
+
+**Diagnostic** — lu dans le code, pas supposé : quand **aucune sélection** n'est active, le moteur bascule en **mode « gun »** (`selLen === 0`, l. 2834). Dans ce mode le moteur **ne se plaint pas** : il affiche un `confirm` d'avertissement, charge le **place gun**, puis **retourne** — rien n'est écrit dans le document tant que l'utilisateur n'a pas cliqué dans une page. Appelé depuis le panneau, ce chemin est **contradictoire** : le panneau promet « importer la source dans le document », le moteur prépare un placement à la main. Résultat perçu par FJD : **un silence** (« erreur silencieuse ») — et, côté panneau, un bandeau **SUCCES** alors que **rien** n'a été importé (les deux lignes de journal cherchées sont écrites **avant** la branche gun).
+
+**Choix retenu, et pourquoi** (point d'architecture, signalé comme tel) : le MENU **garde** le mode gun (décision FJD du 26/09 : « aucune sélection = gun ») — on n'y touche pas. Seul le **chemin PANNEAU** refuse (condition `appelPanneau && mode === "gun"`). Le refus est prononcé **dans le moteur**, immédiatement après la détection du mode et **AVANT tout nettoyage** : ni le document, ni le place gun ne sont touchés. **Une seule autorité sur la sélection** reste le moteur — le panneau ne peut pas juger à sa place (constat mesuré du 26/09 : un curseur actif peut rapporter une sélection **vide** quand le focus est passé au panneau).
+
+- **Moteur** (`import_md.jsx`) : ligne de journal dédiée `M04: REFUS — aucun bloc de texte actif | appel PANNEAU refuse (mode gun interdit au panneau) | selection.length=0`, puis `alertUser(...)` explicite.
+- **Panneau** (`main.js`) : lit cette ligne dans les lignes **AJOUTÉES** au journal ; si présente → bandeau **ECHEC** (« import REFUSE : aucun bloc de texte n'est actif… ») et `return` **avant** tout affichage de succès.
+
+**Preuves de non-régression** :
+
+```
+$ node --check (moteur, copie .js)   -> jsx: syntaxe OK
+$ node --check (panneau main.js)     -> main.js: syntaxe OK
+$ grep -c $'\xef\xbf\xbd' import_md.jsx / main.js   -> 0 / 0
+$ tail -c 20 import_md.jsx           -> ...main();
+$ grep -c 'M04: REFUS' import_md.jsx -> 1
+$ grep 'M04: REFUS' import_md.jsx | grep -c '[^ -~]' -> 0 (ligne de journal en ASCII pur)
+```
+
+**Preuve en réel — OBTENUE (journal du moteur, `import_md_errors.log`, non-UTF8 ⇒ lecture `LC_ALL=C grep -a`)** : deux clics de FJD, deux issues.
+
+```
+[Wed Sep 30 2026 20:52:54] M04-repartiteur: appel PANNEAU | appelant=panneau | action=importer | n=3
+[Wed Sep 30 2026 20:52:54] M04: appel PANNEAU -> declencheur M05 SAUTE | action=importer
+[Wed Sep 30 2026 20:52:54] M04: REFUS - aucun bloc de texte actif | appel PANNEAU refuse (mode gun interdit au panneau) | selection.length=0
+---
+[Wed Sep 30 2026 20:53:04] M04-repartiteur: appel PANNEAU | appelant=panneau | action=importer | n=3
+[Wed Sep 30 2026 20:53:04] M04: appel PANNEAU -> declencheur M05 SAUTE | action=importer
+[Wed Sep 30 2026 20:53:05] M04: source IMPOSEE par le PANNEAU = /Users/francois-jeandazin/INDD/IMPORT_MD/atelier_importateur_md.md | existe=true
+```
+
+→ **Clic sans bloc** (20:52:54) : le moteur **refuse** et l'écrit (`M04: REFUS … selection.length=0`) ; le panneau lit cette ligne et affiche **ECHEC** — plus de silence, plus de faux SUCCES. → **Clic avec bloc** (20:53:04-05) : le moteur **importe** la source imposée — **aucune régression** de la marche normale.
+
+**Nettoyage d'encodage** : la ligne de journal contenait un tiret long (U+2014, non-ASCII) — remplacé par un tiret ASCII, ligne désormais **ASCII pur** (vérifié).
+
+**Ce qui reste ouvert** : le `Ctrl+Z` (**reporté**, décision FJD).
+
+**Statut** : ✅ TERMINÉE — le **refus est ANNONCÉ**, **PROUVÉ en réel** (les deux clics ci-dessus) et **la clôture est validée par FJD** le 30/09/2026.
+
+---
+
+#### Compte rendu — annulation en un seul pas + ancrage corrigé + oracle Node (30/09/2026) — CR inline
+
+**Déclencheur (règle FJD, verbatim)** : « toute écriture dans le document doit tenir dans **UN SEUL** pas d'annulation — *sans cela, l'utilisateur devra faire Ctrl+Z 60 fois* ».
+
+**Ce qui a été fait** — trois apports, tous dans le périmètre de la mission :
+
+1. **Annulation en un seul pas** (`import_md.jsx`, l. 3131-3160). Mesure préalable : **0 occurrence** de `doScript` / `UndoModes` dans le moteur. Le corps de `main()` est **renommé `mainInterne`** et enveloppé :
+
+```
+function main() {
+    var fait = false;
+    try {
+        if (typeof UndoModes !== "undefined" && typeof app.doScript === "function") {
+            app.doScript(mainInterne, ScriptLanguage.JAVASCRIPT, [], UndoModes.ENTIRE_SCRIPT);
+            fait = true;
+        }
+    } catch (eUndo) {
+        logToFile("M04-undo: app.doScript(EntireScript) indisponible -> execution directe | message=" + eUndo.message);
+    }
+    if (!fait) { mainInterne(); }
+}
+```
+
+   - `main()` reste le **point d'entrée commun** (menu **et** panneau) ; le **dernier repère `main();`** du fichier est **conservé tel quel** (parade de troncature du panneau) ;
+   - si le runtime n'expose pas `UndoModes`, **repli sur l'appel direct** — jamais de régression, seulement l'absence du regroupement.
+
+2. **Correctif d'ancrage en mode curseur** (`insertMarkdownWithStyles`, l. 1743-1779). **Cause trouvée** : `baseParaIndex = story_total − insertedParaCount` est **faux dès que l'insertion n'est pas à la toute fin de la story**. Mesure réelle du 30/09 : **527** paragraphes avant + **44** blocs ⇒ total **570** (et non 571) car le **dernier bloc inséré fusionne** avec l'ancien premier paragraphe ⇒ la soustraction (**526**) désignait le **mauvais** paragraphe, et l'**étape 4 relisait des plages hors du paragraphe visé**. **Correctif** : l'ancrage ne se **devine plus** — `baseParOffset` = **nombre de retours paragraphe (`\r`) situés avant `baseCharOffset`**, l'offset **caractère** réel du point d'insertion. Déterministe, sans comparaison de contenu (donc **aucune collision** avec un import antérieur du même fichier déjà présent). Si l'ancrage est indisponible **et** la soustraction incohérente ⇒ **abandon explicite** (`baseIndexKnown=false`), aucun style appliqué au hasard sur le texte voisin.
+
+3. **Oracle Node** (`tools/sim_parse_oracle.js`) — **réexécution du VRAI `parseMarkdown` hors InDesign** (directive FJD : « teste-le en Node avant de me faire relancer »). L'outil extrait par **clôture transitive** les fonctions appelées par `parseMarkdown`, les évalue via `new Function()` avec un `app`/`$` neutralisé, recalcule les compteurs d'oracle depuis les blocs produits, et les compare aux `fixtures/*.expected.json`.
+
+**Preuves de non-régression** :
+
+```
+$ cp import_md.jsx /tmp/_chk.js && node --check /tmp/_chk.js     -> syntaxe OK
+$ node tools/sim_parse_oracle.js | grep RESULTAT                 -> RESULTAT : 23/23 controles OK
+$ node tools/sim_parse_oracle.js | grep "profil"                 -> 289 blocs | h1=24 h2=23 h3=24 ... (conforme au .expected)
+$ grep -c $'\xef\xbf\xbd' import_md.jsx COMMUNICATION/ROADMAP.md -> 0 / 0
+$ tail -c 12 import_md.jsx                                       -> main();
+```
+
+**Preuve en réel — OBTENUE (journal du moteur `import_md_errors.log`, non-UTF8 ⇒ lecture `LC_ALL=C grep -a`)**, tir du **30/09 à 21:54** sur **document neuf** :
+
+```
+[... 21:54:20] M03-etape1: blocs texte attendus=283 / total blocs parses=289 | fullText.length=17863
+              | crCount=293 | paragraphes attendus=294 | insertAtCursor=true
+[... 21:54:21] M03-etape2: frontiere curseur — story_total=294 paragraphes_inseres=294
+              => baseParSoustraction=0
+[... 21:54:21] M03-etape2: ancrage offset — baseCharOffset=0 => baseParOffset=0 | baseSoustraction=0
+[... 21:54:41] M03-etape2: bloc #282 type=p paraIndex=293 demande='P' relu='P'
+[... 21:54:43] M03-etape2: blocs=283 paragraphes attendus=294 reels=294 ecarts=0
+              | mode=curseur base=0 story_total=294 styles=283 neutre=0
+```
+
+- **Les 283 blocs sont parcourus** (du `#0` au `#282`), **`ecarts=0`**, **`neutre=0`** ;
+- **`base=0`** ⇒ document **neuf** (plus de story accumulée) ;
+- **aucune erreur** après 21:54 : les derniers `ERREUR | contexte=etape4 relecture characters` et `Longueur de story inattendue` datent des tirs **sales** antérieurs (21:21 → 21:31), **pas** de ce tir.
+
+**Ce qui restait ouvert, et pourquoi c'est fermé** : le symptôme « **s'arrête avant le 2ᵉ H2** » **n'est ni dans le parseur** (l'oracle Node le prouve : 289 blocs, **23 H2** produits) **ni dans l'étape 2** (le journal montre les 283 blocs stylés). Il venait d'un **document réutilisé/accumulé** (`Longueur de story inattendue : 120779 au lieu de 25906`) qui rendait la mesure illisible. Sur **document neuf**, la mesure est propre.
+
+**Leçon consignée (wiki Cas 48)** : sur document **non vide**, `base = story_total − N` est **faux** — le **dernier bloc inséré fusionne** avec le paragraphe suivant, donc **N paragraphes insérés ≠ N paragraphes décomptés**. Il faut **ancrer par l'offset caractère** (nombre de `\r` avant le point d'insertion), jamais soustraire.
+
+**Statut** : ✅ TERMINÉE — les **deux moitiés du critère de fin** sont atteintes et **prouvées** : `Ctrl+Z` en un seul pas (validé FJD) **et** mapping intact après import (journal réel du 30/09 à 21:54, document neuf, `ecarts=0`). Clôture validée par FJD le 30/09/2026.
 
 ---
 
@@ -420,7 +1026,7 @@ La position mémorisée (story + offset caractère) ne vaut que **tant que le te
 
 ## Références du projet
 
-- **Wiki technique** : [../doc/wiki_extendscript_indesign.md](../doc/wiki_extendscript_indesign.md) — base de connaissance des pièges ExtendScript/InDesign (42 cas au 29/09, table des matières par thème en tête de fichier), méthode de travail validée (simulation Node avant test réel, contrôle négatif obligatoire, vérification doc officielle avant hypothèse, arbitre indépendant devant reproduire la *même* transformation que le code, carte en plages pour révéler une distribution de styles)
+- **Wiki technique** : [../doc/wiki_extendscript_indesign.md](../doc/wiki_extendscript_indesign.md) — base de connaissance des pièges ExtendScript/InDesign (**47 cas au 30/09**, table des matières par thème en tête de fichier), méthode de travail validée (simulation Node avant test réel, contrôle négatif obligatoire, vérification doc officielle avant hypothèse, arbitre indépendant devant reproduire la *même* transformation que le code, carte en plages pour révéler une distribution de styles)
 - **Patron d'organisation du wiki** : [../doc/architecture/PATRON_wiki_recursif.md](../doc/architecture/PATRON_wiki_recursif.md) (analyse complète FJD+DS, 28/09) et [../doc/METHODE_wiki_recursif.md](../doc/METHODE_wiki_recursif.md) (socle projet-indépendant) — boucle consulter/documenter, gabarit à champs balisés, numérotation immuable, échelle à 6 horizons chiffrés. Missions 03bis (sources) et 03ter (gabarit+sommaire) en découlent.
 - **Fixtures de test** : [../fixtures/](../fixtures/) — fichiers `.md` classés par modèle générateur (Claude, DeepSeek ×2, Gemini, ChatGPT) + JSON attendus
 - **Script principal** : [../import_md.jsx](../import_md.jsx) — copié systématiquement vers `~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/import_md.jsx` après chaque modification (InDesign exécute cette seconde copie, jamais le fichier de travail directement)
