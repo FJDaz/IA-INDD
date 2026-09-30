@@ -12,8 +12,12 @@
 //
 // Sortie : /private/tmp/probe_05ter.log
 
+// Dossier du projet : a adapter a votre installation (placeholder, jamais un
+// chemin personnel en dur).
+var PROJET_DIR = "/chemin/vers/INDD/IMPORT_MD";
+
 var LOG = "/private/tmp/probe_05ter.log";
-var SRC_SCRIPT = "~/INDD/IMPORT_MD/import_md.jsx";
+var SRC_SCRIPT = PROJET_DIR + "/import_md.jsx";
 var CUT = "/private/tmp/m05_import_cut.jsx";
 var SRC_MD = "/private/tmp/m05_src.md";
 var TMP_FP = "/private/tmp/m05_fp_label.txt";

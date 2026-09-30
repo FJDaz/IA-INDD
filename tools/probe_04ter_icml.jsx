@@ -45,7 +45,8 @@ var ICML_A = OUT_DIR + "/probe_04ter_A.icml";
 var ICML_B = OUT_DIR + "/probe_04ter_B.icml";
 
 // Memoire de mapping reellement utilisee par import_md.jsx
-var MEM_PATH_PANEL = "~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/import_md_mapping_memory.txt";
+// Chemin derive du script lui-meme ($.fileName) : aucune donnee personnelle.
+var MEM_PATH_PANEL = new File($.fileName).parent.fsName + "/import_md_mapping_memory.txt";
 
 var LINES = [];
 var DOC_A = null;   // document de PRODUCTION de l'ICML A

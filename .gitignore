@@ -1,1 +1,9 @@
 .DS_Store
+
+# Fichier de test InDesign binaire (1,3 Mo) : exclu du depot public
+# (non essentiel a la demonstration, cf. mission 07).
+IMPORT_MD_MODEL.indt
+
+# Artefacts d'execution produits par le plugin (jamais versionnes).
+import_md_mapping_memory.txt
+import_md_errors.log

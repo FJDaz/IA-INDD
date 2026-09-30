@@ -141,7 +141,7 @@ Signaux **macOS-only** — et c'est ce qui interdit de conclure « Windows est l
 
 **B.3. La famille de frictions la plus concentrée : les chemins et les fichiers.**
 
-Trois des cinq signaux Windows-only de B.2 touchent les chemins (`getFileForOpening`, lecteur réseau, bordure WebView), et le correctif UXP 9.4 est *« Fixed UNC path handling […] on Windows »*. Un quatrième signal, non daté dans ma collecte et donc **non cité comme preuve**, évoque en outre l'échec d'installation de plugins UXP pour les utilisateurs Windows dont le **nom de compte contient un caractère accentué** (`C:\Program Files\Common Files\Adobe\UXP\Plugins\Møhü\`). **Point d'attention direct pour notre projet** : nos chemins contiennent des accents (dossiers `Tchiou Vélu`, `I-AMiens`) et notre code ExtendScript actuel travaille en `fr_FR` — sur une chaîne de build Windows, ce n'est pas une hypothèse théorique.
+Trois des cinq signaux Windows-only de B.2 touchent les chemins (`getFileForOpening`, lecteur réseau, bordure WebView), et le correctif UXP 9.4 est *« Fixed UNC path handling […] on Windows »*. Un quatrième signal, non daté dans ma collecte et donc **non cité comme preuve**, évoque en outre l'échec d'installation de plugins UXP pour les utilisateurs Windows dont le **nom de compte contient un caractère accentué** (`C:\Program Files\Common Files\Adobe\UXP\Plugins\Møhü\`). **Point d'attention direct pour notre projet** : nos chemins contiennent des accents (noms de dossier comportant `é` ou `ü`) et notre code ExtendScript actuel travaille en `fr_FR` — sur une chaîne de build Windows, ce n'est pas une hypothèse théorique.
 
 #### C. Verdict tranché sur la question centrale
 

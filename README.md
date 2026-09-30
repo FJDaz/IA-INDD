@@ -1,175 +1,133 @@
-# Plugin InDesign : Import Markdown avec mapping dynamique des styles
+# Import Markdown → InDesign
 
-## Description
+Un plugin **ExtendScript** pour Adobe InDesign qui importe un fichier Markdown et applique automatiquement la **charte de styles réelle du document ouvert** — sans qu'aucun nom de style ne soit codé en dur.
 
-Ce plugin permet d'importer du contenu Markdown dans InDesign avec un mapping automatique sur la charte de styles **réelle** du document ouvert. Aucun nom de style n'est codé en dur : le plugin lit dynamiquement les styles disponibles dans le document et propose à l'utilisateur de les associer aux éléments Markdown.
+Ce dépôt documente autant le **résultat** que la **méthode** employée pour l'obtenir. C'est ce second aspect qui le distingue : chaque affirmation sur le comportement d'InDesign y est rattachée à une mesure réelle, à une source officielle, ou explicitement signalée comme non vérifiée.
 
-## Scope (v1)
+---
 
-### Inclus
-- Titres `#`, `##`, `###` → styles de paragraphe
-- Paragraphe standard → style de paragraphe
-- Listes à puces (`- `) → style de paragraphe
-- Citations (`> `) → style de paragraphe
-- Gras (`**texte**`) et italique (`*texte*`) → styles de caractère
+## Le projet en une phrase
 
-### Exclu (hors scope v1)
-- Tableaux Markdown
-- Notes de bas de page
-- Styles de cellule / styles d'objet
-- Gestion multi-documents
-- Liens, images, code inline/bloc
+Écrire un script InDesign qui tienne dans le temps se heurte à un problème peu visible : **le moteur ExtendScript et le modèle d'objet d'InDesign ne se comportent presque jamais comme la documentation le laisse supposer**. Un plugin naïf « marche une fois », puis casse silencieusement dans un autre contexte.
 
-## Installation
+Ce projet prend le problème par l'autre bout : construire un **corpus de cas vérifiés** sur le comportement réel du moteur, et ne coder qu'appuyé sur ce corpus.
 
-### 1. Copier le fichier
-Le script suivant doit être placé dans le dossier des scripts InDesign :
+---
+
+## Ce que ce dépôt démontre
+
+### 1. Un wiki de 45 cas vérifiés (`doc/wiki_extendscript_indesign.md`)
+
+Chaque cas suit le même gabarit et porte un **statut de source** explicite :
+
+| Statut | Signification |
+|---|---|
+| `sourcé` | comportement confirmé par la documentation officielle Adobe ou une spécification (citation verbatim) |
+| `mesuré` | comportement constaté en exécution réelle dans InDesign, journal à l'appui |
+| `mixte` | une partie sourcée, une partie mesurée (les deux sont distinguées) |
+
+Exemples de cas, tous issus de blocages réels :
+
+- **Cas 07 / 08** — ni `JSON` ni `Array.prototype.indexOf` n'existent en ExtendScript (ES3) : tout code venu du web doit être réécrit.
+- **Cas 26** — `Paragraph.index` n'est **pas** un index de paragraphe, mais un offset de caractère. Le nom de la propriété induit en erreur.
+- **Cas 42** — un GREP ne peut poser qu'**un seul** style de paragraphe par requête (`appliedParagraphStyle` est scalaire, aucune variante plurielle n'existe dans le DOM) ⇒ *N* niveaux exigent *N* passes. Établi par contre-épreuve réelle, pas par lecture du nom des propriétés.
+- **Cas 40** — dans une sonde non interactive, `alert` **et** `confirm` sont tous deux en lecture seule ; la croyance inverse (« `confirm` est écrasable ») a été **corrigée le 29/09/2026** après 8 tentatives dans 4 contextes.
+- **Cas 45** — `File.modified` ne bouge pas quand le contenu change dans la même seconde, et `File.read()` normalise les fins de ligne : **ni la date ni la taille ne sont un signal de contenu**.
+
+Le wiki comprend aussi un **index par thème** et un **index par symptôme**, pour partir du problème observé et remonter au cas.
+
+### 2. Un protocole de test qui distingue le réel de la simulation
+
+Le projet applique une règle stricte : **une affirmation n'est valide que si elle est produite par le vrai logiciel, dans les conditions de production**.
+
+- Les vérifications passent par de **vraies exécutions dans InDesign**, via des sondes qui journalisent dans un fichier (le canal clipboard y est peu fiable).
+- Ce qui est *simulé* est étiqueté comme tel et ne peut jamais servir de preuve.
+- Les conclusions négatives sont conservées : plusieurs cas documentent ce **qui ne marche pas** (voir Cas 37 sur les liens dynamiques), parce qu'une impasse mesurée vaut mieux qu'une hypothèse rassurante.
+
+### 3. Des sondes instrumentées plutôt que des suppositions
+
+Quand une API se comporte de façon inattendue, le projet n'ajoute pas un correctif au hasard : il écrit une **sonde** qui mesure le comportement, journalise son résultat, et alimente le wiki. Les scripts du dossier `tools/` sont ces sondes — elles sont conservées comme trace de la démarche.
+
+---
+
+## État du projet
+
+| Chantier | État |
+|---|---|
+| Import Markdown + mapping dynamique des styles | **opérationnel** (v1) |
+| Lecture de l'identité du document (empreinte du fichier importé) | **opérationnel** |
+| Carte du système (menus, liens, storytelling InDesign) | **exploré**, conclusions documentées |
+| Panneau UXP | **en exploration** |
+| Lien dynamique natif vers une source Markdown | **conclusion négative documentée** (Cas 37) |
+
+Le projet suit une liste de missions numérotées avec un statut explicite : voir [`COMMUNICATION/ROADMAP.md`](COMMUNICATION/ROADMAP.md). Chaque mission comporte son compte rendu *inline*, avec les preuves d'exécution dans le bloc de la mission.
+
+---
+
+## Stack
+
+- **ExtendScript (ES3)** — le moteur de script historique d'InDesign. Contraintes structurantes : pas de `JSON`, pas d'`Array.indexOf`, pas de `let`/`const`, sources en ASCII pur.
+- **Adobe InDesign** — version 21.x testée (macOS, `fr_FR`).
+- **UXP** — runtime de plugins moderne, en exploration (voir Cas 38 sur le versionnage `minVersion`/`maxVersion`).
+
+---
+
+## Structure du dépôt
 
 ```
-~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/
+import_md.jsx                  Script principal : parsing Markdown, mapping, application des styles
+atelier_importateur_md.md      Document Markdown de travail
+tools/                         Sondes instrumentées (mesures de comportement InDesign)
+uxp/                           Panneau UXP en exploration
+doc/
+  wiki_extendscript_indesign.md  Base de connaissance : 45 cas + index par thème et par symptôme
+  GUIDE_UTILISATION.md           Guide d'installation et d'utilisation du plugin
+  architecture/                  Notes d'architecture (dont le patron de wiki récursif)
+COMMUNICATION/
+  ROADMAP.md                     Registre des missions et de leurs statuts
+  mission_*.md                   Spécification et compte rendu de chaque mission
+fixtures/                      Jeux de test
 ```
 
-- **`import_md.jsx`** - Script ExtendScript principal
+---
 
-Ce fichier est déjà copié dans ce dossier.
+## Documentation
 
-### 2. Assigner un raccourci clavier
+- **[`doc/wiki_extendscript_indesign.md`](doc/wiki_extendscript_indesign.md)** — la base de connaissance : 45 cas, index par thème, index par symptôme, et en tête la *méthode générale* de développement fiable d'un script ExtendScript.
+- **[`COMMUNICATION/ROADMAP.md`](COMMUNICATION/ROADMAP.md)** — les missions, leur statut et leurs comptes rendus.
+- **[`doc/GUIDE_UTILISATION.md`](doc/GUIDE_UTILISATION.md)** — installer le script, le lancer, configurer le mapping, dépanner.
 
-1. Dans InDesign, aller dans **Édition > Raccourcis clavier...**
-2. Sélectionner la catégorie **Scripts**
-3. Trouver le script **Import MD** dans la liste
-4. Assigner un raccourci clavier (par défaut : **Cmd+Shift+D** suggéré, à valider)
-5. Cliquer sur **OK** pour enregistrer
+---
 
-## Utilisation
+## Installation rapide
 
-### Première utilisation (configuration requise)
+1. Placer `import_md.jsx` dans le dossier Scripts Panel d'InDesign :
 
-1. Ouvrir un document InDesign avec une charte de styles définie
-2. Sélectionner un bloc de texte (TextFrame)
-3. Exécuter le script via le raccourci clavier ou le panneau Scripts
-4. Une boîte de dialogue s'ouvre pour sélectionner un fichier Markdown (`.md`)
-5. Une fenêtre de configuration s'ouvre :
-   - Pour chaque élément Markdown (Titre 1, Titre 2, Paragraphe, etc.), sélectionner le style correspondant dans le document
-   - Les styles de paragraphe sont proposés pour les éléments de bloc
-   - Les styles de caractère sont proposés pour Gras et Italique
-6. Cliquer sur **OK** pour sauvegarder le mapping
-7. Le contenu Markdown est inséré dans le bloc sélectionné avec les styles appliqués (sans les marqueurs Markdown : `#`, `*`, `-`, `>`)
+   ```
+   ~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/
+   ```
 
-### Utilisations suivantes
+2. Redémarrer InDesign : le script apparaît dans **Fenêtre > Utilitaires > Scripts**.
+3. Ouvrir un document disposant d'une charte de styles, sélectionner un bloc de texte, lancer **Import MD**.
+4. Associer chaque élément Markdown à un style du document lors de la première utilisation (le mapping est ensuite mémorisé dans le document).
 
-- Le mapping est sauvegardé **dans le document InDesign lui-même** (via un label)
-- Lors des exécutions suivantes sur le même document, le script utilise automatiquement le mapping enregistré
-- Si un style référencé a été supprimé du document, la configuration est relancée automatiquement
+> Les sondes du dossier `tools/` et le panneau `uxp/` contiennent des chemins de projet marqués par un **placeholder** (`/chemin/vers/INDD/IMPORT_MD`) : à adapter à votre installation. Les scripts exécutés depuis le panneau Scripts déduisent eux-mêmes leur dossier de destination.
 
-## Architecture technique
+---
 
-### Fichiers
+## Limites connues
 
-| Fichier | Rôle | Langage |
-|--------|------|---------|
-| `import_md.jsx` | Script principal : parsing, mapping, application des styles | ExtendScript (ES3) |
+- **Pas de prévisualisation** : le mapping se configure avant de voir le résultat.
+- **Un seul niveau de liste** : les listes imbriquées ne sont pas gérées en v1.
+- **ExtendScript est figé** : le moteur reste en ES3, sans perspective d'évolution.
+- **Le lien dynamique natif vers un `.md` ne fonctionne pas** — mesuré et documenté (Cas 37), le contrôle de fraîcheur du fichier source reste la seule voie fiable à ce jour.
 
-### Flux de traitement
+---
 
-```
-1. Raccourci clavier déclenché
-   ↓
-2. Vérification de la sélection (doit être un TextFrame)
-   ↓
-3. Dialogue natif pour sélectionner un fichier Markdown
-   ↓
-4. Parsing du Markdown
-   ↓
-5. Chargement du mapping depuis le document (si existe)
-   ↓
-6. [Si mapping invalide/absent] Affichage de l'UI de configuration
-   ↓
-7. Sauvegarde du mapping dans le document (label)
-   ↓
-8. Insertion du contenu avec application des styles
-   ↓
-9. Confirmation à l'utilisateur
-```
-
-### Stockage du mapping
-
-Le mapping Markdown → Styles est stocké dans un **label** du document InDesign :
-- Nom du label : `md-style-map`
-- Format : JSON
-- Exemple : `{"h1":"Titre 1","h2":"Sous-titre","p":"Corps de texte","bold":"Gras","italic":"Italique"}`
-
-### Gestion des erreurs
-
-Le plugin vérifie explicitement et alerte l'utilisateur pour :
-- Sélection active non valide (pas un TextFrame)
-- Aucun fichier sélectionné (annulation) → arrêt silencieux
-- Fichier vide ou sans contenu texte
-- Style référencé dans le mapping mais supprimé du document
-- Aucune correspondance pour certains tags Markdown
-
-## Personnalisation
-
-### Modifier les tags Markdown supportés
-
-Éditer la variable `MARKDOWN_TAGS` dans `import_md.jsx` :
-
-```javascript
-var MARKDOWN_TAGS = {
-    "h1": { type: "paragraph", display: "Titre 1 (#)" },
-    "h2": { type: "paragraph", display: "Titre 2 (##)" },
-    // ... ajouter d'autres tags ici
-};
-```
-
-- `type` : soit `"paragraph"` (style de paragraphe) soit `"character"` (style de caractère)
-- `display` : texte affiché dans l'UI de configuration
-
-### Changer le nom du label
-
-Modifier la variable `LABEL_NAME` dans `import_md.jsx` :
-
-```javascript
-var LABEL_NAME = "mon-nom-de-label";
-```
-
-## Compatibilité
-
-- **InDesign** : Version 21.0 (2025) et ultérieures
-- **Système** : macOS et Windows (dialogue natif ExtendScript)
-- **Langage** : ExtendScript (compatible ES3, pas d'ES6+)
-
-## Limitations connues
-
-1. **ExtendScript ancien** : Le moteur JavaScript d'InDesign est limité à ES3, donc pas de syntaxe moderne
-2. **Pas de prévisualisation** : Le mapping doit être configuré avant de voir le résultat
-3. **Un seul niveau de liste** : Les listes imbriquées ne sont pas supportées
-
-## Dépannage
-
-### Le script ne s'affiche pas dans le panneau Scripts
-- Vérifier que le fichier est bien dans le dossier `Scripts Panel`
-- Redémarrer InDesign
-- Vérifier que le dossier correspond à la version d'InDesign utilisée
-
-### La fenêtre de dialogue de fichier ne s'ouvre pas
-- Vérifier que JavaScript est activé dans InDesign
-- Essayer avec un document plus simple
-
-### La fenêtre de configuration ne s'affiche pas
-- Vérifier que JavaScript est activé dans InDesign
-- Essayer avec un document plus simple
-
-### Les styles ne sont pas appliqués
-- Vérifier que le mapping a bien été sauvegardé (label `md-style-map` existe dans le document)
-- Vérifier que les noms de styles n'ont pas été modifiés dans le document
-
-## License
+## Licence
 
 Ce code est fourni tel quel, sans garantie. Libre d'utilisation et de modification.
 
 ---
 
-**Statut** : ✅ Implémenté
-**Version** : 1.0
-**Date** : 2026-09-23
+**Version** : 1.0 — **Dernière mise à jour** : 2026-09-29

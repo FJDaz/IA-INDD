@@ -63,11 +63,60 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ## Mission 07 — Nettoyage et publication du repo en public
 
-**Statut** : 🔴 À FAIRE — rédigée le 29/09/2026.
+**Statut** : ✅ TERMINÉE — exécutée le 29/09/2026, 4 livrables sur 4 ; contrôles de sortie au vert (0 chemin perso, 0 clé API, 0 référence à un autre projet personnel).
 
 **Fichier détaillé** : [mission_07_publication_repo_public.md](mission_07_publication_repo_public.md)
 
-**Résumé** : FJD candidate à des formations et veut ce repo comme preuve de travail public (historique de commits datés). Vérifié le 29/09 : **0 clé API**, mais **7 fichiers** (`tools/*.jsx`, `uxp/.../main.js`) contiennent le chemin absolu `~/...` en dur — à nettoyer. `IMPORT_MD_MODEL.indt` (1,3 Mo) à trancher (exclure probable). Livrables : chemins nettoyés, README public rédigé (présentation, lien ROADMAP/wiki, stack), revérification finale (0 chemin perso, 0 référence aux autres projets FJD). Le passage effectif en public reste une décision/action humaine, hors périmètre de la mission.
+**Résumé** : FJD candidate à des formations et veut ce repo comme preuve de travail public (historique de commits datés). L'audit réel du 29/09 a infirmé le chiffrage de la rédaction : ce n'était pas **7** fichiers mais **14** (7 de code + 7 de documentation) qui portaient le chemin absolu du dossier utilisateur — la mission détaillée a été corrigée en conséquence. `IMPORT_MD_MODEL.indt` (1,3 Mo) : **exclu** (binaire de test, non essentiel à la démonstration). Livrables : chemins nettoyés, README public rédigé, revérification finale par grep. Le passage effectif en public reste une décision/action humaine, hors périmètre de la mission.
+
+---
+
+### CR — Mission 07 (29/09/2026)
+
+**Diagnostic à l'ouverture** — l'inventaire par `grep -rIn` du nom de dossier utilisateur a rendu **14 fichiers**, et non 7 :
+
+- **7 fichiers de code** : `tools/probe_menu3.jsx`, `tools/probe_menu3_file_handler.jsx`, `tools/probe_04bis_lien.jsx`, `tools/probe_04ter_icml.jsx`, `tools/probe_05ter_integration.jsx`, `tools/probe_startup.jsx`, `uxp/com.fjd.importmd.sonde/main.js` ;
+- **7 fichiers de documentation** : `doc/wiki_extendscript_indesign.md`, `COMMUNICATION/mission_01_plugin_indesign_import_md.md`, `COMMUNICATION/mission_02_indentation_listes.md`, `COMMUNICATION/mission_04_audit_lien_dynamique.md`, `COMMUNICATION/mission_04ter_sonde_icml.md`, `COMMUNICATION/m03_etape8_handoff.md`, `COMMUNICATION/ROADMAP.md`.
+
+**Décision de remplacement, prise par nature de fichier** (et non par simple masquage) :
+
+- **Code exécuté depuis le panneau Scripts** ⇒ chemin **dérivé du script**, jamais écrit en dur : `new File($.fileName).parent.fsName`. Le point décisif est que **`$.fileName` est un global du MOTEUR**, pas une variable du script : les gestionnaires d'événement de `probe_menu3.jsx` (dont le but est justement de tester la survie de l'état après la fin du script) continuent donc de journaliser **sans dépendre d'une variable du script** — la sémantique de la sonde est préservée, pas contournée.
+- **Code hors panneau Scripts** (`probe_05ter_integration.jsx`, `probe_startup.jsx`, `uxp/.../main.js`) ⇒ **placeholder explicite** `var PROJET_DIR = "/chemin/vers/INDD/IMPORT_MD";`, avec commentaire d'adaptation.
+- **Documentation** ⇒ **`~`** (chemin relatif au dossier utilisateur), forme lisible et non nominative.
+
+**Contrôle de non-régression sémantique** — les quatre variables nettoyées (`HARD_LOG_PATH`, `MEM_PATH_PANEL`, `S3H_HARD_LOG`, chemins des gestionnaires) étaient des **chaînes** avant la modification et le sont restées : leurs usages aval les enveloppent dans `new File(...)`. Un premier essai sur `probe_menu3.jsx` avait produit une parenthèse orpheline (`new File($.fileName).parent.fsName + "...")`, qui affectait une **chaîne** à une variable attendue comme objet `File` : détecté par `grep -n "probe_menu3.log"` (lignes 135/149/165) puis corrigé en `new File(new File($.fileName).parent.fsName + "/probe_menu3.log")`.
+
+**Validation syntaxique** — `node` refusant l'extension `.jsx`, chaque sonde a été parsée comme corps de fonction :
+
+```
+tools/probe_menu3.jsx                OK
+tools/probe_menu3_file_handler.jsx   OK
+tools/probe_04bis_lien.jsx           OK
+tools/probe_04ter_icml.jsx           OK
+tools/probe_05ter_integration.jsx    OK
+tools/probe_startup.jsx              OK
+uxp/com.fjd.importmd.sonde/main.js   OK   (node --check)
+```
+
+**Captures supprimées** (décision FJD : « capture on supprime, ça n'apporte rien ») — `doc/captures/` retiré du suivi et du disque : 5 PNG (**1 608 458 · 116 133 · 1 622 065 · 1 672 945 · 116 953 octets**, ≈ 4,9 Mo) + un `.DS_Store`. `ls doc/captures` → `(dossier absent)`.
+
+**`IMPORT_MD_MODEL.indt` (1,3 Mo)** — **exclu** via `.gitignore`, avec les artefacts d'exécution du plugin (`import_md_mapping_memory.txt`, `import_md_errors.log`) qui n'ont jamais à être versionnés.
+
+**README public** — le README technique existant (installation, utilisation, architecture, dépannage) a été déplacé en `doc/GUIDE_UTILISATION.md` (`git mv`, donc l'historique du fichier est conservé), pour libérer la racine à un README de présentation destiné à un lecteur qui découvre le projet : ce que fait l'outil, **ce que le dépôt démontre** (wiki de 45 cas à statut de source explicite `sourcé`/`mesuré`/`mixte`, protocole de test qui distingue le réel de la simulation, sondes instrumentées), état réel des chantiers, stack, structure du dépôt, liens vers le wiki et le ROADMAP, limites connues, licence.
+
+**Références à d'autres projets personnels** — le premier `grep` a trouvé 3 occurrences (`doc/architecture/PATRON_wiki_recursif.md` ×2, `COMMUNICATION/mission_04_audit_lien_dynamique.md` ×1) ; elles ont été reformulées de façon générique (« d'autres projets documentaires », « noms de dossier comportant `é` ou `ü` »).
+
+**Contrôles de sortie — sorties brutes** :
+
+```
+=== 1. chemin perso ===            (VIDE)
+=== 2. autres projets FJD ===      (VIDE)
+=== 3. cle API ===                 (VIDE)
+=== 4. U+FFFD ===                  (VIDE)
+=== 5. captures ===                (dossier absent)
+```
+
+La condition de sortie de la mission — « 0 chemin personnel en dur, README rédigé et lisible pour un tiers » — est satisfaite. **Reste hors périmètre, par décision explicite de la mission** : l'action GitHub elle-même (déclaration du remote, `git push`, bascule en public), qui est une décision humaine.
 
 ---
 
@@ -152,7 +201,7 @@ Autres acquis de la même recherche, tous sourcés : **(1) pas de socket brut** 
 
 ## Chapitre Panneau — Mission 1 — Lire l'identité de la source depuis le document
 
-**Statut** : 🔴 À FAIRE — premier morceau neuf ; **lecture seule**, aucun risque d'écriture.
+**Statut** : ✅ TERMINÉE — 30/09/2026 : lecture réelle prouvée sur un document importé (chemin, nom, taille, empreinte, date) **et** cas « jamais importé » correctement distingué de « lecture ratée » ; preuve brute ci-dessous.
 
 **Pourquoi elle vient en premier** : c'est le **socle**. Sans elle, le panneau n'a rien à afficher — et c'est aussi la **mesure de départ** : on verra dans le journal **ce que contient réellement l'étiquette** sur un document réel, au lieu de le supposer.
 
@@ -163,6 +212,42 @@ Autres acquis de la même recherche, tous sourcés : **(1) pas de socket brut** 
 **Critère de fin** : log brut montrant la lecture réelle sur un document où un import MD a **déjà** été fait (chemin, taille, date, empreinte), **et** le cas « document sans étiquette » (jamais importé) correctement distingué du cas « lecture ratée ».
 
 **Cas limite à ne pas confondre** : *jamais importé* ≠ *lecture échouée*. Une lecture ratée ne doit **jamais** ressembler à un état normal (règle déjà appliquée par `m05BuildFingerprint` qui rend `null` explicitement).
+
+### CR — 30/09/2026 — lecture de l'identité prouvée (cas positif + cas négatif)
+
+**Livré (lecture seule — aucune écriture dans le document)** :
+- Bouton **6** ajouté à la sonde : « Identité de la source (étiquette du doc) ».
+- Lecture par la route **DOM UXP `doc.extractLabel()`** (repli ExtendScript via `app.doScript` si la route 1 échoue) ; les **4 cas** sont séparés : aucun document / étiquette absente / étiquette présente mais illisible / identité lue.
+- Bandeau de **statut visible** (vert = succès, rouge = échec) en tête de panneau, et journal recopié dans un fichier `.txt` — le presse-papier UXP est **absent** de ce runtime (mesuré : `uxp.clipboard.copyText indisponible`) et un panneau UXP ne laisse pas sélectionner le texte.
+
+**Cas POSITIF** — log brut, `sonde_import_md_journal.txt`, 30/09 15:55 :
+```
+nom du document actif  -> Sans titre-4
+route utilisee : DOM UXP doc.extractLabel()
+longueur de l'etiquette brute : 206 caractere(s)
+identite de la source :
+  version (v)     : 1
+  nom             : mission_03_nonregression_all.md
+  chemin          : ~/INDD/IMPORT_MD/fixtures/mission_03_nonregression_all.md
+  taille          : 19874 caractere(s) au moment de l'import
+  empreinte       : 187411491
+  modifie (stamp) : 1790557963000  -> 9/28/2026, 3:12:43 AM
+mapping md-style-map : present
+VERDICT M1 : identite lue depuis le DOCUMENT (pas depuis le disque).
+```
+
+**Cas NÉGATIF** — « jamais importé », distinct de la lecture ratée : document `Sans titre-3`, 30/09 15:01 :
+```
+longueur de l'etiquette brute : 0 caractere(s)
+CAS « ETIQUETTE ABSENTE » : ce document n'a jamais recu d'import MD.
+(etat NORMAL, ce n'est pas une erreur)
+VERDICT M1 : jamais importe -> la liste du panneau aura 0 ligne.
+```
+⇒ Les deux états sont **distingués** : étiquette vide ⇒ « jamais importé » (normal) ; exception des deux routes ⇒ « LECTURE RATEE » (erreur réelle). **Critère de fin satisfait sur les deux moitiés.**
+
+**Défaut trouvé et corrigé au passage** : deux copies de `import_md.jsx` coexistaient. La copie exécutée par le **menu InDesign** (`~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/import_md.jsx`, 28/09) était **antérieure** à la Mission 05 : elle écrivait le **mapping** mais **pas** l'empreinte — d'où un mapping « present » avec une étiquette vide, donc un « jamais importé » affiché à tort. La copie du menu a été **remplacée** par celle du workshop (`cmp` ⇒ identiques **octet par octet**, 162442 o) ; l'ancienne est conservée en `import_md.ancien-20260928.jsx.bak`. **Leçon** : le moteur doit être lancé depuis une copie à jour — un décalage workshop/menu fausse toute mesure.
+
+**Reste ouvert (hors Mission 1)** : la question 2 (document actif vs tous les documents) ; la dette `UndoModes.ENTIRE_SCRIPT` (mesurée à 0 occurrence, à traiter en Mission 4).
 
 ---
 

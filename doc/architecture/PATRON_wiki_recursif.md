@@ -3,8 +3,7 @@
 **Statut** : proposition d'architecture (rédigée le 28/09/2026). Document de pilotage, à
 valider par FJD / à organiser par Claude.
 **Portée** : le projet INDD/IMPORT_MD d'abord, mais le patron est conçu **projet-indépendant**
-— il vise explicitement la réutilisation sur les autres projets FJD (I-AMIENS, Tchiou Vélu,
-AETHERFLOW) et sur les projets à venir.
+— il vise explicitement la réutilisation sur d'autres projets documentaires, présents ou à venir.
 **Nature du document** : ce n'est pas un cas du wiki et ce n'est pas de la documentation
 technique ExtendScript. C'est la **règle d'organisation** du wiki lui-même et de sa croissance.
 
@@ -201,8 +200,8 @@ migration sans la payer.
 > Un wiki **structuré** est déjà une base de données dont le Markdown est l'interface humaine.
 > Le RAG n'est qu'**une des façons** de la lire.
 
-C'est pourquoi les deux sillons — wiki INDD (prose) et contrat I-AMIENS
-`docs/architecture/contrat/3_branchement.yaml` (donnée nativement structurée, LinkML) —
+C'est pourquoi les deux sillons — wiki INDD (prose) et contrat de données externe
+(`docs/architecture/contrat/3_branchement.yaml`, donnée nativement structurée, LinkML) —
 **convergent sur É1, pas sur un moteur**. L'un est né structuré, l'autre doit le devenir.
 
 ---

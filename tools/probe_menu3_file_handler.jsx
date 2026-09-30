@@ -20,7 +20,8 @@
 //
 // Pur ASCII (lecon encodage).
 
-var S3H_HARD_LOG = "~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/probe_menu3.log";
+// Chemin derive du script lui-meme ($.fileName) : aucune donnee personnelle.
+var S3H_HARD_LOG = new File($.fileName).parent.fsName + "/probe_menu3.log";
 
 function s3hStamp() {
     try { return String(new Date()); } catch (e) { return "(date indisponible)"; }

@@ -23,7 +23,10 @@
 
 var PROBE_NAME     = "[SONDE DEMARRAGE] Entree de test";
 var LOG_PATH       = "/tmp/probe_startup.log";
-var COMPANION_FIXE = "~/INDD/IMPORT_MD/tools/probe_startup_handler.jsx";
+// Dossier du projet : a adapter a votre installation (placeholder, jamais un
+// chemin personnel en dur).
+var PROJET_DIR     = "/chemin/vers/INDD/IMPORT_MD";
+var COMPANION_FIXE = PROJET_DIR + "/tools/probe_startup_handler.jsx";
 
 // ---------------------------------------------------------------------------
 // Journal -- technique reprise a l'identique de import_md.jsx (open("a"))

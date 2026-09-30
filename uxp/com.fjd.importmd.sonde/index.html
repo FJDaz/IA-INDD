@@ -11,6 +11,9 @@
       padding: 8px;
       color: #e8e8e8;
       background: #2b2b2b;
+      -webkit-user-select: text;
+      user-select: text;
+      cursor: default;
     }
     h1 { font-size: 12px; margin: 0 0 2px 0; }
     .note { opacity: 0.65; margin: 0 0 8px 0; line-height: 1.35; }
@@ -53,15 +56,48 @@
       border-radius: 4px;
       max-height: 260px;
       overflow: auto;
+      -webkit-user-select: text;
+      user-select: text;
+      cursor: text;
     }
     #journal .ko { color: #ffb4b4; }
+    #btn_copier { margin-top: 6px; }
+    /* Bandeau de statut : la seule chose que l'on ne peut PAS rater.
+       Vert = succes, Rouge = echec. Affiche le chemin du fichier journal. */
+    #statut {
+      display: none;
+      margin: 0 0 8px 0;
+      padding: 7px 9px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-word;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+    #statut.ok {
+      display: block;
+      background: #1f6f2f;
+      border: 1px solid #3fbf5f;
+      color: #eaffea;
+    }
+    #statut.ko {
+      display: block;
+      background: #7a1f1f;
+      border: 1px solid #dd6666;
+      color: #ffecec;
+    }
   </style>
 </head>
 <body>
   <h1>Sonde Import MD</h1>
+  <div id="statut"></div>
   <p class="note">
     Panneau de mesure, sans &lt;webview&gt;. Chaque test dit OK ou ECHEC.
-    Aucun resultat n'est masque.
+    Aucun resultat n'est masque. Le journal est aussi ecrit dans un fichier
+    .txt (le bouton 7 affiche son chemin).
   </p>
 
   <button id="btn_dom">1. Le DOM InDesign repond-il ?</button>
@@ -69,8 +105,11 @@
   <button id="btn_moteur">3. Notre moteur import_md.jsx est-il joignable ?</button>
   <button id="btn_fichier">4. Lire un .md sur le disque</button>
   <button id="btn_negatif">5. Controle negatif (doit ECHOUER)</button>
+  <button id="btn_identite">6. Identite de la source (etiquette du doc)</button>
 
   <input id="chemin" type="text" />
+
+  <button id="btn_copier">7. Enregistrer le journal dans un fichier .txt</button>
 
   <pre id="journal"></pre>
 

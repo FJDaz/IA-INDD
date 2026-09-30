@@ -853,7 +853,7 @@ $.fileName = ~/Library/Preferences/Adobe%20InDesign/Version%2021.0/fr_FR/Scripts
 
 ```
 journal = ~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/probe_menu3.log
-journal (chemin en dur) = ~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/probe_menu3.log
+journal (chemin derive du script) = ~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/probe_menu3.log
 les deux chemins coincident = true
 ```
 

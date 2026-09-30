@@ -56,7 +56,8 @@ var SRC_B = "# Titre B MODIFIE\n\n## Sous-titre B MODIFIE\n\nParagraphe B MODIFI
 
 // Memoire de mapping REELLE du plugin (celle qu'utilise import_md.jsx dans le
 // panneau Scripts). On l'utilise comme TEMOIN pour Q3 -- on ne la retravaille pas.
-var MEM_PATH_PANEL = "~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/import_md_mapping_memory.txt";
+// Chemin derive du script lui-meme ($.fileName) : aucune donnee personnelle.
+var MEM_PATH_PANEL = new File($.fileName).parent.fsName + "/import_md_mapping_memory.txt";
 
 // ---------------------------------------------------------------------------
 // ETAT PARTAGE ENTRE QUESTIONS

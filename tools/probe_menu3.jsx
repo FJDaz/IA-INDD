@@ -31,12 +31,12 @@
 var PROBE_LOG_PATH = new File($.fileName).parent.fsName + "/probe_menu3.log";
 var COMPANION_PATH = new File($.fileName).parent.fsName + "/probe_menu3_file_handler.jsx";
 
-// Chemin ECRIT EN DUR (identique a PROBE_LOG_PATH sur ce poste). Il est injecte
-// dans les gestionnaires A, B et C pour qu'ils puissent journaliser meme si les
-// variables globales du script ont disparu au moment du clic (c'est justement
-// l'hypothese a tester). La sonde verifie ci-dessous que les deux chemins
-// coincident, et le journalise.
-var HARD_LOG_PATH = "~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/probe_menu3.log";
+// Chemin du journal utilise par les gestionnaires A, B et C. Il doit rester
+// disponible meme si les variables globales du script ont disparu au moment du
+// clic (c'est justement l'hypothese a tester) : on l'obtient donc a partir de
+// $.fileName, un global du MOTEUR et non une variable du script. Cela evite tout
+// chemin personnel en dur, le script s'executant depuis le panneau Scripts.
+var HARD_LOG_PATH = new File($.fileName).parent.fsName + "/probe_menu3.log";
 
 var PREFIX = "[S3-";
 var MENU_NAME = "Fichier";
@@ -124,12 +124,13 @@ function findSubmenuByTitle(parent, wanted) {
 
 // ---------------------------------------------------------------------------
 // GESTIONNAIRE A - fonction DU SCRIPT, evenement ON_INVOKE
-// Ecrit d'abord avec un chemin EN DUR (aucune dependance a une variable du
-// script), puis rapporte ce qu'il voit des variables globales du script.
+// Ecrit d'abord avec un chemin obtenu SANS aucune variable du script
+// ($.fileName, global du moteur), puis rapporte ce qu'il voit des variables
+// globales du script.
 // ---------------------------------------------------------------------------
 function s3HandlerA(event) {
     try {
-        var f = new File("~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/probe_menu3.log");
+        var f = new File(new File($.fileName).parent.fsName + "/probe_menu3.log");
         f.encoding = "UTF-8";
         if (f.open("a")) {
             f.write(String(new Date()) + " [S3-A] FONCTION DU SCRIPT + ON_INVOKE : DECLENCHE" +
@@ -143,7 +144,7 @@ function s3HandlerA(event) {
         }
     } catch (eA) {
         try {
-            var fe = new File("~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/probe_menu3.log");
+            var fe = new File(new File($.fileName).parent.fsName + "/probe_menu3.log");
             fe.encoding = "UTF-8";
             if (fe.open("a")) {
                 fe.write(String(new Date()) + " [S3-A] ECHEC D'ECRITURE: " + eA.message + "\n");
@@ -159,7 +160,7 @@ function s3HandlerA(event) {
 // ---------------------------------------------------------------------------
 function s3HandlerB(event) {
     try {
-        var f = new File("~/Library/Preferences/Adobe InDesign/Version 21.0/fr_FR/Scripts/Scripts Panel/probe_menu3.log");
+        var f = new File(new File($.fileName).parent.fsName + "/probe_menu3.log");
         f.encoding = "UTF-8";
         if (f.open("a")) {
             f.write(String(new Date()) + " [S3-B] FONCTION DU SCRIPT + BEFORE_INVOKE : DECLENCHE" +
@@ -198,7 +199,7 @@ function makeAutonomousHandler(tag) {
 
 // ---------------------------------------------------------------------------
 // GESTIONNAIRE CLEAN - retire toutes les entrees de test [S3- du menu Fichier.
-// Volontairement AUTONOME (chemin en dur, aucune variable du script) pour deux
+// Volontairement AUTONOME (chemin obtenu sans variable du script) pour deux
 // raisons :
 //   1) le journal doit etre ecrit AVANT tout retrait, car ce gestionnaire se
 //      retire lui-meme : s'il ecrivait apres, la trace pourrait etre perdue ;
@@ -338,7 +339,7 @@ function main() {
     p("app.version = " + s(app.version));
     p("$.fileName = " + s($.fileName));
     p("journal = " + PROBE_LOG_PATH);
-    p("journal (chemin en dur) = " + HARD_LOG_PATH);
+    p("journal (chemin derive du script) = " + HARD_LOG_PATH);
     p("les deux chemins coincident = " + (PROBE_LOG_PATH === HARD_LOG_PATH));
     p("compagnon = " + COMPANION_PATH + " | existe = " + COMPANION_PATH.exists);
     if (!COMPANION_PATH.exists) {
