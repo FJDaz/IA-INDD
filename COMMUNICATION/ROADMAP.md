@@ -1013,7 +1013,133 @@ $ tail -c 12 import_md.jsx                                       -> main();
 
 ---
 
-## Chapitre Panneau — Règles de clôture (communes aux 4 missions)
+## Chapitre Panneau — Mission 5 — Habillage Spectrum (l'UI native)
+
+**Statut** : 🔴 À FAIRE — jamais exécutée. **Décidée avant la Mission 6** (ordre FJD du 30/09/2026 : « M UI Spectrum avant la boucle ») : l'habillage ne dépend **d'aucune** décision de stockage, la boucle, si.
+
+**Pourquoi elle vient avant la boucle** : la Mission 6 (liste N sources) **change le stockage** (l'étiquette passe à N empreintes — décision FJD du 30/09) et donc la **logique** : elle est plus lourde et plus risquée. L'habillage, lui, est **purement d'apparence** : il ne touche ni à l'étiquette, ni au moteur, ni à la signature du tube. On gagne une UI lisible **avant** de complexifier la logique — et la Mission 6 se fera alors dans un panneau **déjà habillé** (une seule fois le travail d'UI à refaire, pas deux).
+
+**Le diagnostic FJD (30/09/2026)** : « les fonctionnalités sont actives, mais l'UI pas du tout ». Exact : le panneau fonctionne (4 missions ✅), mais son apparence est **brute** — faux boutons HTML, tableau HTML nu, tout en CSS maison. Ce n'est **pas** un défaut de goût : c'est que le panneau n'utilise **pas** le design system d'Adobe.
+
+**La charte existe : c'est Spectrum.** Le DOM de scripting (notre moteur ExtendScript) n'a **pas** de design ; ce qui a une charte, c'est **l'UI** — donc le panneau UXP. Ressources, dans l'ordre d'utilité :
+1. **Spectrum (la charte)** — [spectrum.adobe.com](https://spectrum.adobe.com/) : couleurs (tokens), typographie, espacements, rayons, icônes, états des composants.
+2. **Règle d'or UXP : ne pas restyler, utiliser les widgets natifs** — les balises `sp-*` (`<sp-button>`, `<sp-textfield>`, `<sp-slider>`…) sont **fournies par le runtime** et prennent **automatiquement** l'apparence de l'application hôte, **thème sombre/clair compris**. Aucun design à refaire ([Create UI](https://developer.adobe.com/indesign/uxp/resources/fundamentals/create-ui/), [référence Spectrum UXP](https://developer.adobe.com/indesign/uxp/reference/uxp-api/reference-spectrum/)).
+3. **Sous-ensemble CSS** — UXP ne comprend qu'une **partie** du CSS (pas de préprocesseur direct ; SASS à transpiler d'abord) : [CSS styling](https://developer.adobe.com/indesign/uxp/resources/recipes/css-styling/).
+4. **Spectrum CSS** — la version feuille de styles des composants, en dernier recours ([github.com/adobe/spectrum-css](https://github.com/adobe/spectrum-css)).
+
+**Trois routes UI en UXP — à ne pas confondre (piège mesuré dans la doc, pas supposé)** :
+
+| Route | Look natif auto | Table ? | Coût |
+|---|---|---|---|
+| **HTML brut** (ce qu'on a aujourd'hui) | non | oui, mais **nu** | 0 — mais tout à styler |
+| **Widgets Spectrum UXP** (`sp-*` intégrés) | **oui** | **non** | 0 (fourni par le runtime) |
+| **SWC** (`@spectrum-web-components/…`) | **oui** | **oui** (`sp-table`, `sp-banner`, `sp-card`, `sp-toast`) | `npm i` + `import`, **beta** (UXP v7+) |
+
+- **Ce que dit la doc** : « les balises HTML non supportées sont traitées **comme un simple `<div>`** » (→ notre `<table>` s'affiche, mais **sans charte**) ; Adobe recommande aujourd'hui **SWC d'abord**, **widgets natifs en repli**, **HTML en dernier**.
+- ⇒ Le seul point qui **force** un choix, c'est le **tableau** : les widgets natifs n'en ont pas. Soit **SWC** (`sp-table`), soit **HTML + tokens Spectrum** — à trancher dans cette mission (voir Ouvert).
+
+**Tranché par FJD (30/09/2026)** : **widgets natifs `sp-*` + tableau HTML tokenisé** — **pas de SWC**. Motif : **0 dépendance**, gain immédiat, pas de `npm i` ni de `manifest.json` à retoucher, pas de **beta**. Le tableau reste du **HTML**, mais habillé par les **tokens Spectrum** (couleurs, bordures, espacements) : il doit **se fondre** dans le panneau natif, pas jurer à côté. La question « SWC ou natif » est donc **close**.
+
+**Référence DA (obligatoire)** : `doc/DA/Capture d'écran 2026-09-30 à 23.00.58.png`, spécifiée dans `doc/DA/Panneau lien INDD DESC.md`. C'est **l'appui visuel** de cette mission : **le patron à suivre**, pas une invention de l'agent. Toute décision d'agencement, de hiérarchie ou d'état visuel se **vérifie contre cette référence**, jamais contre un goût supposé. (`doc/DA/` est le lieu des références de design.)
+
+**Ce que la référence est, exactement — et ce qu'elle n'est pas** : la capture décrit le **panneau « Liens » natif d'InDesign** (534×1186 px, thème sombre, fond `#535353`). C'est un panneau **de l'application**, pas un panneau UXP. Nous **ne pouvons pas** en faire un vrai panneau ancré natif. Ce que nous en **prenons**, c'est le **patron d'organisation et d'aspect** — ni plus, ni moins. Le dire clairement évite une attente impossible.
+
+**Le patron à reprendre (les 4 zones, dans cet ordre)** — c'est la valeur de la référence :
+
+```text
+┌──────────────────────────────────────────┐
+│ zone 1 — EN-TÊTE   (titre, contrôle)     │  léger, une ligne
+├──────────────────────────────────────────┤
+│ zone 2 — LISTE     (en-têtes + lignes)   │  prend toute la hauteur restante
+├──────────────────────────────────────────┤
+│ zone 3 — ACTIONS   (compteur + boutons)  │  barre fixe, sous la liste
+├──────────────────────────────────────────┤
+│ zone 4 — INFORMATIONS (fiche de la       │  zone basse, lisible
+│          source sélectionnée)            │
+└──────────────────────────────────────────┘
+```
+
+⇒ **La hiérarchie est le cœur de la référence** : *titre → liste → actions → informations*. Notre panneau actuel est **à plat** (titre, note, 4 boutons, tableau, journal empilés sans hiérarchie) : c'est **là** que l'écart se voit.
+
+**Traduction de nos objets dans ce patron** :
+
+| Zone de la référence | Chez nous aujourd'hui | Après |
+|---|---|---|
+| En-tête « Liens » | `h1` + `#statut` | **titre compact + bandeau d'état en tête** |
+| En-têtes de colonnes + lignes | `table#liste` (HTML nu) | **tableau HTML tokenisé** (mêmes colonnes, habillage Spectrum) |
+| Barre d'actions (icônes) | 4 `button` pleine largeur + `#btn_mesures` | **barre d'actions** : boutons `sp-*` **alignés**, plus le libellé d'état |
+| Fiche d'informations | `pre#journal` (bloc brut, en bas) | **zone basse** = le journal (lisible, **pas** de troncature silencieuse) |
+
+**Ce que nous N'imitons PAS** (et pourquoi) — honnêteté, pour ne pas produire un faux :
+- **pas** les **miniatures** : nos sources sont des fichiers `.md`, pas des images ;
+- **pas** l'**arborescence à occurrences** (chevron dépliable, niveaux enfants, compteurs orange) : nous n'avons **pas** d'occurrences (avec N sources, une ligne = une source) ;
+- **pas** les **5 icônes** de la barre d'actions : nous gardons nos **4 actions**, nommées en clair (l'icône seule est moins lisible pour un journal de preuve) ;
+- **pas** les **coordonnées absolues** de la capture (534 px n'est **pas** une propriété du composant, c'est la **taille de la capture** — cf. §5/§28 de la DESC).
+
+**Les tokens, pas les couleurs** — exigence issue directement de la référence (§4/§5/§27 de la DESC) : la référence donne des **relations de couleur**, pas des RGB absolus. ⇒ le CSS doit exposer des **variables** (`--panel-bg`, `--panel-border`, `--panel-text`, `--panel-text-secondary`, `--panel-selection`, `--panel-warning`) et **jamais** de valeur en dur. Le thème clair/sombre vient de **l'hôte**. Séparation à tenir : **tokens système** (fournis par l'hôte) vs **tokens composant** (`--row-height`, `--indent`, `--space-*`) vs **tokens de référence** (taille de capture — **à ne pas** recopier dans le layout).
+
+**Les états** (§6/§7 de la DESC) : la référence montre `selected` et `expanded`. Chez nous, l'état utile est **celui de la source** — `identique` / `modifiée` / `source absente` — rendu par le **moteur** (jamais recalculé). Ces états doivent être **visuellement distincts** (couleur **et** mot, pas la couleur seule : lisibilité). La **colonne d'état** de notre tableau joue le rôle de la **colonne d'avertissement** de la référence.
+
+**Contraintes négatives** (§14 de la DESC — « ce qui est interdit ») : ne pas **étirer** une miniature (N/A), ne pas **replier** un nom sur 2 lignes, ne pas **écraser** le compteur, ne pas **étendre la sélection** à toute la largeur du panneau.
+
+**À faire** :
+- remplacer les contrôles bruts par des composants Spectrum, dans cet ordre de priorité : les 4 boutons (`#btn_liste`, `#btn_actualiser`, `#btn_import`, `#btn_copier`), le champ `#chemin`, le bandeau `#statut`, puis le tableau `#liste` ;
+- **supprimer** les couleurs en dur du CSS (`#2b2b2b`, `#3a3a3a`, `#1f6f2f`…) : le thème clair/sombre est **fourni par l'hôte** ;
+- **introduire les 4 zones** du patron (en-tête / liste / actions / informations) — c'est **le** changement structurant, plus que le remplacement des balises ;
+- remplacer les valeurs CSS en dur par des **tokens** (variables) ;
+- ne garder le CSS maison que pour l'**agencement** (marges, alignements, largeurs) ;
+- **ne rien changer à la logique** (états, moteur, tube gelé) : cette mission est **d'apparence**.
+
+**Ce qui est neuf, et donc risqué (à mesurer, pas à supposer)** : `cabler()` et les accès DOM de `main.js` sont écrits pour du **HTML brut** (`getElementById(…).value`, `.textContent`, `addEventListener("click")`). Un widget Spectrum expose des **propriétés et des événements** différents (ex. `<sp-textfield>` : `.value` existe, mais `sp-button` émet `click` par défaut — **à vérifier en réel**). ⇒ **Passer aux widgets touche la logique de câblage**, pas seulement le style. C'est **le vrai travail** de la mission, pas le remplacement des balises.
+
+**Critère de fin** (double, comme les autres missions du chapitre) :
+1. **Preuve visuelle** : capture du panneau **mise côte à côte avec la référence DA** — l'écart doit être **comblé** (charte respectée, hiérarchie lisible), et non « jugée jolie » ;
+2. **Preuve fonctionnelle** : les 4 boutons **font toujours la même chose** qu'avant (journal brut : liste, actualisation, import, enregistrement du journal), **aucune** régression.
+
+**Cas limites à ne pas perdre** :
+- la section **repliée** « Mesures techniques » doit **encore s'ouvrir** (elle est pilotée par `style.display`, certifié ici — un widget n'existe pas pour ça, on garde le mécanisme) ;
+- le **journal** (`<pre>#journal`) doit **rester lisible et sélectionnable** (c'est la preuve du panneau) ; un composant Spectrum ne doit pas casser le `white-space: pre-wrap` ni le défilement ;
+- **1 rechargement UDT par essai** (toute édition du panneau l'exige) : regrouper les changements pour **ne pas** multiplier les clics de FJD.
+
+**Ce que cette mission ne fait pas** : elle ne touche **pas** au moteur `import_md.jsx`, **pas** à la signature du tube (gelée), **pas** au nombre de sources (Mission 6).
+
+---
+
+## Chapitre Panneau — Mission 6 — La boucle : tous les imports du document courant
+
+**Statut** : 🔴 À FAIRE — jamais exécutée. **Décidée APRÈS la Mission 5** (ordre FJD du 30/09/2026 : l'UI d'abord). **Débloquée** : FJD a **confirmé le 30/09/2026** que l'étiquette passe de **1** à **N** sources par document (le gel du 30/09 est levé **pour cette évolution précise, et pour elle seule**).
+
+**Le périmètre, tranché par FJD (30/09/2026)** : la liste porte sur **tous les imports du document courant** — ni « tous les documents ouverts », ni un registre sur disque. **Plus simple et plus juste** que la proposition antérieure. (La « Question 2 » du chapitre — actif vs tous les docs — est donc **close** : c'est **le document courant**, et ses imports.)
+
+**Décision tranchée (FJD, 30/09/2026)** : l'étiquette passe d'**une** empreinte à une **liste** d'empreintes (`[{path,name,size,checksum,modified,v}, …]`) ⇒ **N sources par document**. Le gel du 30/09 (« une source par document, l'étiquette n'évolue pas vers N ») est **levé pour cette évolution précise, et pour elle seule**.
+- Rappel du blocage qui avait motivé la question : `insertLabel` **écrase** son homonyme, donc l'ancienne étiquette ne pouvait porter que **1** source, **par construction**. C'est ce que la liste d'empreintes corrige.
+- Conséquence : la Mission 6 **existe** (il y a bien une boucle à écrire) et **n'est plus bloquée**.
+- **Ordre maintenu** : Mission 5 (UI) **d'abord**, Mission 6 **ensuite**.
+
+**Pourquoi « la boucle »** : c'est la **même** fonction (`construireListe`) avec **une boucle** au lieu du seul `app.activeDocument`. Le tableau (Mission 2), l'actualisation (Mission 3) et le bouton Importer (Mission 4) **ne changent pas** : seul le **nombre de lignes** change.
+
+**À faire** :
+- lire l'**étiquette-liste** du document courant (nouveau format, si N confirmé) ;
+- **boucler** sur les N sources ⇒ N lignes, chacune avec son état (moteur) et ses compteurs (lecture disque) ;
+- **conserver** les 4 cas séparés (aucun document / lecture ratée / étiquette absente / sources à lister) — un document **vierge** rend **0 ligne** (contrôle négatif **obligatoire**, inchangé) ;
+- **ne pas** inventer de ligne, **ne pas** réutiliser un chiffre pour une autre ligne.
+
+**Signature du tube : INCHANGÉE.** Le gel du 30/09 vaut toujours (le tube ne transporte **pas** le mapping, **pas** l'empreinte ; champs **nommés**). Si une ligne doit devenir **agissante** (importer SA source), c'est le champ **Chemin** — déjà au tube — qui porte la source ; rien de neuf à geler.
+
+**Critère de fin** (double) :
+1. document portant **N imports** ⇒ **N lignes** distinctes, chaque état rendu par le **moteur** ;
+2. document **vierge** ⇒ **0 ligne** et la note dit « 0 source » (contrôle négatif **obligatoire**).
+
+**Cas limites** :
+- **une seule** des N sources a disparu du disque ⇒ **sa** ligne passe à `source absente`, les **autres** restent `identique` ;
+- **N = 1** ⇒ le comportement doit être **rigoureusement identique** à la Mission 2 (non-régression du mono-source) ;
+- **N = 0** ⇒ 0 ligne (jamais une ligne vide).
+
+**Ce que cette mission ne fait pas** : elle ne touche **pas** à l'habillage (Mission 5, faite avant), **pas** au moteur `import_md.jsx` au-delà du **nouveau format d'étiquette** à lire, **pas** à la décision de mapping.
+
+---
+
+## Chapitre Panneau — Règles de clôture (communes aux 6 missions)
 
 - **CR inline** : le compte rendu se met **dans le bloc de sa mission**, après `**Statut**` (preuve inline : log brut, sortie réelle) — **jamais** dans un fichier `cr_mXXX_*.md` séparé. *(Principe CR-inline dans la RM, universel — décision FJD du 14/09/2026.)*
 - **Statut** : signalétique stricte, un seul format — `**Statut** : <marqueur> — <preuve en une phrase>`, avec exactement un de ✅ TERMINÉE / 🔴 À FAIRE / 🟡 PARTIELLE / 🔴 ABANDONNÉE. Mise à jour **dans le même tour** que le CR.
