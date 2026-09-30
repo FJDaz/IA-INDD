@@ -1,20 +1,57 @@
 # Import Markdown → InDesign
 
-Un plugin **ExtendScript** pour Adobe InDesign qui importe un fichier Markdown et applique automatiquement la **charte de styles réelle du document ouvert** — sans qu'aucun nom de style ne soit codé en dur.
+**Le fil rouge d'un programme de formation.** Un plugin **ExtendScript** pour Adobe InDesign qui importe un fichier Markdown et applique automatiquement la **charte de styles réelle du document ouvert** — sans qu'aucun nom de style ne soit codé en dur.
 
-Ce dépôt documente autant le **résultat** que la **méthode** employée pour l'obtenir. C'est ce second aspect qui le distingue : chaque affirmation sur le comportement d'InDesign y est rattachée à une mesure réelle, à une source officielle, ou explicitement signalée comme non vérifiée.
-
----
-
-## Le projet en une phrase
-
-Écrire un script InDesign qui tienne dans le temps se heurte à un problème peu visible : **le moteur ExtendScript et le modèle d'objet d'InDesign ne se comportent presque jamais comme la documentation le laisse supposer**. Un plugin naïf « marche une fois », puis casse silencieusement dans un autre contexte.
-
-Ce projet prend le problème par l'autre bout : construire un **corpus de cas vérifiés** sur le comportement réel du moteur, et ne coder qu'appuyé sur ce corpus.
+Ce dépôt **est un produit support** de déroulement pour un **module de formation**. C'est le *fil rouge guidé* du programme **« Personnaliser son UI InDesign avec l'IA »**, dont l'énoncé détaillé figure dans [`programme_de_formation_indesign_ia_extendscript.md`](programme_de_formation_indesign_ia_extendscript.md). Le plugin qui s'y construit met en œuvre les étapes de construction d'une fonctionnalité nouvelle **destinée à faire partie intégrante de l'interface d'InDesign**.
 
 ---
 
-## Ce que ce dépôt démontre
+## Le besoin réel derrière l'exercice
+
+L'interfaçage avec les modèles de langage (LLM) devient **une part de plus en plus prégnante** des métiers de la mise en page : générer, réécrire, structurer, importer du contenu produit ou assisté par IA. Or InDesign est un outil **fermé** : rien n'y relie nativement un document à une source Markdown, à un LLM, à un flux de production textuelle.
+
+Ce module part d'un besoin concret — **importer un Markdown et le conformer au document** — pour apprendre à **construire soi-même la brique manquante**, avec l'IA comme atelier. L'importateur Markdown est le prétexte ; **la compétence transmise est la démarche complète** : cadrer, spécifier, implémenter, mesurer, capitaliser — sur un environnement réel, avec un livrable réel.
+
+---
+
+## La place de ce module dans la formation
+
+Le programme suit une progression volontaire : des briques InDesign à automatiser, vers l'outil métier personnel.
+
+| Module | Contenu | Rôle |
+|---|---|---|
+| **1 — Remise à niveau** | Styles avancés, styles imbriqués/GREP, Rechercher-Remplacer GREP, tableaux, objets ancrés, variables de texte, gabarits et héritage | Maîtriser les briques InDesign qu'un script doit piloter |
+| **2 — Fondations et environnement** | Écosystème LLM, clés API/*providers*, posture **Architecte vs Ouvrier**, installation de VS Code et de l'environnement ExtendScript | Comprendre l'IA et installer l'atelier de travail |
+| **3 — Fil rouge guidé** | **Ce dépôt** : cahier des charges de l'importateur Markdown, gestion des erreurs, wiki récursif, sandbox Node.js, mapping de styles, tableaux | Construire un script complet en appliquant la méthode |
+| **4 — Atelier personnel** | Cadrage du besoin propre au stagiaire, architecture, implémentation, recette | Transposer la méthode à son propre outil métier |
+
+Autrement dit : le **Module 3 est ce dépôt**. Le stagiaire ne le découvre pas comme une démonstration terminée, mais comme **le journal d'une construction** qu'il est invité à refaire, en comprenant chaque décision.
+
+---
+
+## La progression de la construction
+
+Ce dépôt est organisé comme **le chemin réel d'une construction**, dans l'ordre où les problèmes se sont posés — pas comme un tutoriel idéalisé. Les grandes étapes, telles que les raconte [`atelier_importateur_md.md`](atelier_importateur_md.md) :
+
+1. **Cadrer** — définir ce qu'on veut avant d'écrire une ligne de code.
+2. **Poser un principe directeur** — ne jamais coder un nom de style en dur : toujours lire la charte réelle du document.
+3. **Essuyer les premiers plantages** — les erreurs de syntaxe sont les plus faciles à corriger : le logiciel les signale lui-même.
+4. **Instrumenter** — remplacer les captures d'écran par un journal d'erreurs exploitable.
+5. **Corriger un bug de structure** — les styles rangés en dossiers (groupes) exigeaient une traversée récursive.
+6. **Soigner le confort de test** — présélection automatique, bouton Réinitialiser.
+7. **Franchir le mur** — le texte arrive, mais dans le désordre dès qu'apparaît du gras.
+8. **Changer de méthode** — isoler une seule variable (retirer le gras) plutôt qu'un quatrième correctif au hasard.
+9. **Vérifier hors InDesign** — reproduire la logique de découpage dans un script autonome (embryon de la **sandbox Node.js**).
+10. **Réintroduire une fonctionnalité à la fois** — espaces, séparateurs, puis vrais tableaux InDesign natifs.
+11. **Capitaliser** — écrire ce qu'on a appris, pas seulement ce qu'on a fait (naissance du **wiki**).
+
+Ce fil narratif est le cœur pédagogique du dépôt : **la compétence visée n'est pas de connaître le résultat final, mais de savoir traverser ce chemin** — et de reconnaître qu'une bonne partie du temps perdu vient de comportements d'InDesign qui contredisent la documentation communément citée.
+
+---
+
+## Ce que la construction a produit
+
+Au-delà du plugin lui-même, le parcours laisse trois traces réutilisables — c'est la matière que ce dépôt donne à voir, et que le Module 4 invite à reproduire.
 
 ### 1. Un wiki de 45 cas vérifiés (`doc/wiki_extendscript_indesign.md`)
 
@@ -60,6 +97,8 @@ Quand une API se comporte de façon inattendue, le projet n'ajoute pas un correc
 | Panneau UXP | **en exploration** |
 | Lien dynamique natif vers une source Markdown | **conclusion négative documentée** (Cas 37) |
 
+**Cap à terme** : l'importateur n'est qu'un premier jalon. La fonctionnalité visée — relier InDesign au contenu produit par ou avec l'IA — est destinée à devenir une **partie intégrante de l'interface d'InDesign**, et non un script qu'on lance à la main. Les chantiers « panneau UXP » et « lien dynamique » de la table ci-dessus sont les premières explorations de cette intégration.
+
 Le projet suit une liste de missions numérotées avec un statut explicite : voir [`COMMUNICATION/ROADMAP.md`](COMMUNICATION/ROADMAP.md). Chaque mission comporte son compte rendu *inline*, avec les preuves d'exécution dans le bloc de la mission.
 
 ---
@@ -76,7 +115,8 @@ Le projet suit une liste de missions numérotées avec un statut explicite : voi
 
 ```
 import_md.jsx                  Script principal : parsing Markdown, mapping, application des styles
-atelier_importateur_md.md      Document Markdown de travail
+programme_de_formation_...md   Énoncé du programme de formation (Modules 1 à 4)
+atelier_importateur_md.md      Récit de l'atelier : la progression de la construction, étape par étape
 tools/                         Sondes instrumentées (mesures de comportement InDesign)
 uxp/                           Panneau UXP en exploration
 doc/
@@ -93,6 +133,8 @@ fixtures/                      Jeux de test
 
 ## Documentation
 
+- **[`programme_de_formation_indesign_ia_extendscript.md`](programme_de_formation_indesign_ia_extendscript.md)** — l'énoncé du programme dont ce dépôt est le Module 3 (fil rouge guidé).
+- **[`atelier_importateur_md.md`](atelier_importateur_md.md)** — la progression de la construction, racontée dans l'ordre où les problèmes se sont posés.
 - **[`doc/wiki_extendscript_indesign.md`](doc/wiki_extendscript_indesign.md)** — la base de connaissance : 45 cas, index par thème, index par symptôme, et en tête la *méthode générale* de développement fiable d'un script ExtendScript.
 - **[`COMMUNICATION/ROADMAP.md`](COMMUNICATION/ROADMAP.md)** — les missions, leur statut et leurs comptes rendus.
 - **[`doc/GUIDE_UTILISATION.md`](doc/GUIDE_UTILISATION.md)** — installer le script, le lancer, configurer le mapping, dépanner.
@@ -130,4 +172,4 @@ Ce code est fourni tel quel, sans garantie. Libre d'utilisation et de modificati
 
 ---
 
-**Version** : 1.0 — **Dernière mise à jour** : 2026-09-29
+**Version** : 1.1 — **Dernière mise à jour** : 2026-09-30
