@@ -8,6 +8,31 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 ---
 
+## Chapitre Commutativité INDD↔MD — Cadrage (30/09/2026, en attente de mission numérotée)
+
+**Statut** : 🔴 À FAIRE — cadrage architecture acté par FJD, pas encore découpé en missions exécutables. **Priorité après la clôture du Chapitre Panneau** (Missions 5-6 en cours), **avant** le chantier GREP et le wiki récursif du bot (évoqués mais explicitement reportés par FJD : « on voit le GREP et le wiki après »).
+
+**Principe non négociable (FJD, 30/09/2026)** : **aucun texte n'entre ni ne sort du `.md` sans passer par un bot LLM + MCP**. Outil **exclusivement LLM-inclusif** — zéro édition manuelle brute du fichier source, y compris par un client externe. Le client dialogue avec un bot ; c'est le bot qui écrit/amende le `.md` distant, jamais l'inverse.
+
+**Architecture envisagée** :
+1. **Connecteur MCP** sur un dossier/texte distant — le bot y crée/amende le `.md` suite au dialogue avec l'utilisateur (ou un client externe à qui on donne accès au bot, jamais au fichier).
+2. **Une app locale moissonne** ce distant via HTTP (pas InDesign directement — confirmé cohérent avec les limites UXP déjà documentées : `fetch`/WebSocket existent mais fragiles, notamment Windows, cf. Mission 04 archivée).
+3. **Le panneau Import MD importe depuis ce clone local**, comme aujourd'hui (voie B, empreinte en métadonnées) — aucune rupture avec l'architecture déjà construite.
+
+**Deux modes requis** :
+- **Mode live** : polling court, import quasi immédiat dès modification côté distant.
+- **Mode différé** : le dialogue bot↔utilisateur se poursuit côté distant sans toucher à la mise en page en cours ; la moisson/import n'est déclenchée qu'à la validation explicite — utile notamment si un **client** externe est dans la boucle (il amende via le bot, jamais le fichier lui-même, puis valide avant que ça remonte dans InDesign).
+
+**Risque nouveau identifié (FJD)** : un client externe dans la boucle introduit un tiers non technique — nécessite probablement un **diff visuel avant validation** (pas juste "ça a changé"), et un contrat d'usage clair (cf. horizon É7 du wiki, déjà posé pour le partage à des tiers — même logique de contrat de contribution, à relier).
+
+**Explicitement reporté par FJD, à ne pas anticiper ici** :
+- Chantier **GREP** (bot produit l'expression GREP, renseigne le champ, itération confiée aux contrôles natifs InDesign `Suivant`/`Précédent`/`Remplacer`/`Tout remplacer` — pas de boucle réinventée côté UXP).
+- **Wiki récursif du bot** (capitaliser les expressions GREP produites + retour utilisateur, même patron que `doc/wiki_extendscript_indesign.md` : gabarit, cas, numérotation immuable) — pour améliorer la précision du bot dans le temps.
+
+**Prochaine étape** : découper ce cadrage en missions numérotées une fois le Chapitre Panneau clos — ne pas commencer l'implémentation avant.
+
+---
+
 ## Mission 00 — Base documentaire structurée : ontologie du DOM ExtendScript/InDesign
 
 **Statut** : 🔴 ABANDONNÉE — décision FJD du **29/09/2026**, **confirmée définitivement par FJD le 29/09/2026** : le wiki `doc/wiki_extendscript_indesign.md` (**42 cas** au 29/09) **est le dernier niveau** de documentation du projet. Une ontologie séparée ne se justifierait que pour un corpus éclaté en **plusieurs dizaines de fichiers distincts centralisés** — ce qui n'est pas le cas : le wiki est **un seul fichier**, alimenté par les mesures réelles des missions 03/04, à son juste niveau de granularité.
@@ -1015,7 +1040,387 @@ $ tail -c 12 import_md.jsx                                       -> main();
 
 ## Chapitre Panneau — Mission 5 — Habillage Spectrum (l'UI native)
 
-**Statut** : 🔴 À FAIRE — jamais exécutée. **Décidée avant la Mission 6** (ordre FJD du 30/09/2026 : « M UI Spectrum avant la boucle ») : l'habillage ne dépend **d'aucune** décision de stockage, la boucle, si.
+**Statut** : 🟡 PARTIELLE — tir 1 (les 4 zones), tir 2 (widgets `sp-*` + `sp-icon` + `sp-textfield` + tokens), **tir 3 (panneau « Liens MD » autonome + repli SVG Illustrator, 01/10)**, **tir 3-suite (recalage du panneau sur le SVG de référence de FJD, au pixel, 01/10)** et **tir 3-suite bis (les 16 pictogrammes portent leur `fill` — `#eaeaea` pour les actions — et le chevron déplié est le chevron d'origine tourné 90° horaire, 01/10)**, ainsi que **tir 3-suite ter (bold « Calibrage », interlettrage global `.035em`, et icône de panneau MD livrée en PNG 23/46 + 24/48 avec ajout de l'array racine `icons`, 01/10)** sont faits et contrôlés automatiquement ; il reste la **validation visuelle FJD** (1 rechargement UDT) avant clôture. **Décidée avant la Mission 6** (ordre FJD du 30/09/2026 : « M UI Spectrum avant la boucle ») : l'habillage ne dépend **d'aucune** décision de stockage, la boucle, si.
+
+### CR — tir 1 : les 4 zones (30/09/2026)
+
+**Périmètre tranché par FJD** : « Tu produis le code front end, tu es à la fois archi et ouvrier » ; premier tir = **les 4 zones** (en-tête / liste / actions / informations), pas encore les widgets.
+
+**Fichier touché** : `uxp/com.fjd.importmd.sonde/index.html` **seul** (`main.js` **non touché** — la structure change, la logique non).
+
+**Ce qui a été fait** :
+- corps réorganisé en **4 zones** nommées (`#zone_entete`, `#zone_liste`, `#zone_actions`, `#zone_infos`) suivant le patron de la référence DA (`doc/DA/Panneau lien INDD DESC.md`) : *titre/état → liste → actions → informations* ;
+- `body` en **flex colonne** + `html,body{height:100%}` ; la **zone liste** prend la hauteur restante (`flex:1 1 auto`, `overflow:auto`, `min-height:120px`) → la **zone actions** reste collée sous elle ;
+- **tokens d'espacement** introduits (`--space-1..4`, `--rayon`) ;
+- **couleurs laissées en dur** : délibéré, elles partiront avec les `sp-*` au tir 2 (c'est alors que le thème viendra de l'hôte).
+
+**Preuve (contrôles automatiques, à froid)** :
+```
+ids presents (une fois chacun) : 23/23   (les 4 zones + les 19 ids existants)
+balises equilibrees : <div> 7 / </div> 7 · <button> 12 / </button> 12
+U+FFFD (index.html) : 0
+git diff --name-only : uxp/com.fjd.importmd.sonde/index.html  (seul fichier)
+index.html : +116 / -58
+```
+
+**Preuve visuelle** : capture FJD du 30/09 à 23:31 (panneau rechargé). Retour FJD sur les 3 points de contrôle (liste extensible / journal lisible / 4 boutons actifs) : « **Oui, je crois** » — **validation molle, à reconfirmer au tir 2** (honnêteté : non certifiée par test instrumenté).
+
+**Ce qui reste ouvert (donc 🟡, pas ✅)** : remplacer les contrôles par les widgets `sp-*` (boutons, `#chemin`, `#statut`, tableau), **ajouter les icônes `sp-icon`** aux 4 actions, **supprimer les couleurs en dur**. Le câblage `cabler()` (`addEventListener("click")`) devra être revérifié en réel à ce moment-là.
+
+**Décision FJD** : la Mission 5 est **habilitée à l'exécution du code front-end par l'agent** (exception explicite au rôle « architecte seul »).
+
+### CR — tir 2 : widgets natifs + tokens (30/09/2026)
+
+**Périmètre tranché par FJD** : « **Tir 2** », dans le cadre déjà posé (« Tu produis le code front end, tu es à la fois archi et ouvrier »). Objet du tir : passer les contrôles bruts aux **widgets natifs `sp-*`**, **ajouter les `sp-icon`** aux 4 actions, et **retirer toute couleur en dur** au profit de **tokens**.
+
+**Fichier touché** : `uxp/com.fjd.importmd.sonde/index.html` **seul** (`main.js` **non touché** — vérifié par `git diff --name-only`). Sauvegarde de l'état tir 1 prise avant édition (`/tmp/index.html.tir1.bak`, 233 lignes).
+
+**Faits UXP vérifiés dans la doc AVANT d'écrire** (protocole : ne pas supposer) :
+- `sp-button` (depuis UXP v4.1) **émet `click`** — donc `cabler()` (`addEventListener("click")`) **reste valide** tel quel ;
+- l'icône dans un bouton **exige `slot="icon"`** : `<sp-button><sp-icon name="ui:X" size="s" slot="icon"></sp-icon>Libellé</sp-button>` ;
+- `sp-textfield` (depuis UXP v4.1) **expose `.value`** — donc les 4 accès `getElementById("chemin").value` de `main.js` **restent valides** ;
+- **la doc `sp-button` ne documente PAS d'attribut `size`** ⇒ les `size="s"` d'abord posés sur les boutons ont été **retirés** (on n'écrit que ce qui est vérifié). `size` est **conservé** sur `sp-icon` (là, il **est** documenté : `xxs`→`xxl`) ;
+- **jeu d'icônes intégré = liste FERMÉE (~35 noms)**, **aucune** ne dit « rafraîchir ».
+
+**Ce qui a été fait** :
+- **bloc `:root` de tokens** : espacements (`--space-1..4`), rayon (`--rayon`), et **toutes les couleurs** (`--panel-bg`, `--panel-surface`, `--panel-journal-bg`, `--panel-border`, `--panel-border-strong`, `--panel-separator`, `--panel-th-bg`, `--panel-text`, `--panel-text-dim`, `--panel-journal-text`, `--panel-warning-text`, `--panel-success-*`, `--panel-error-*`) ;
+- **les 4 actions** = `<sp-button>` avec `variant` (3 lectures en `secondary`, l'**écriture** `btn_import` seule en **`cta`**), chacune portant **une `<sp-icon slot="icon">` ET son libellé** (règle FJD « icône + mot, jamais l'icône seule »). Correspondance retenue — **noms intégrés les plus proches, à confirmer en réel** : `btn_liste`=`ui:Magnifier`, `btn_actualiser`=`ui:ArrowDownSmall`, `btn_import`=`ui:CheckmarkMedium`, `btn_copier`=`ui:ArrowUpSmall` ;
+- **`#chemin`** = `<sp-textfield>` (propriété `.value` conservée : `main.js` intact) ;
+- **boutons de l'annexe technique** (`btn_mesures` + les 7) = `<sp-button variant="secondary" quiet>` (le `variant` est **maintenu** car « cta est la variante par défaut » et « quiet ne supporte pas cta » — omettre `variant` créerait précisément le conflit interdit) ;
+- **aucune couleur en dur hors du bloc `:root`** ; le CSS maison ne sert plus qu'à l'**agencement** (`display:block;width:100%;margin` sur les `sp-button` des zones actions/infos/annexe ; `#chemin` pleine largeur) ;
+- **tableau `#liste`, journal `#journal`, bandeau `#statut`** : restent du **HTML brut** (pas de widget natif « tableau » ni « banner »), mais **entièrement tokenisés** ; le contrat `main.js` est **préservé** (`#statut` reste un `<div>` avec `className = ok|ko`) ;
+- **Règle d'or UXP respectée** : on **ne restyle pas** les `sp-*` — ils prennent l'apparence et le thème (sombre/clair) de l'hôte.
+
+**Preuve (contrôles automatiques, à froid)** :
+```
+contrat d'ids demandés par main.js : 18/18   (7 via getElementById + 11 via cabler())
+  (chemin journal liste_corps liste_note statut mesures btn_mesures
+   btn_dom btn_doscript btn_moteur btn_fichier btn_negatif btn_identite
+   btn_canal btn_liste btn_copier btn_actualiser btn_import)
+balises nat. equilibrees : <sp-button> 12 / </sp-button> 12   <sp-icon> 4/4   <sp-textfield> 1/1
+attribut size= : 0 sur sp-button   ·   4 sur sp-icon   (conforme a la doc)
+controles bruts restants : <button> 0   ·   <input> 0
+couleurs en dur HORS :root : 0   (le bloc :root est le seul endroit ou une couleur est ecrite)
+U+FFFD : 0 (index.html)   ·   0 (ROADMAP.md)
+git diff --name-only : uxp/com.fjd.importmd.sonde/index.html  (main.js NON touche)
+tir 2 seul (index.html vs sauvegarde tir 1) : +110 / -70   (233 -> 273 lignes)
+cumul index.html vs dernier commit (tir 1 + tir 2, tir 1 non commite) : +288 / -96
+```
+NB méthode : deux compteurs (`sp-icon` 5, `sp-textfield` 2) provenaient de **commentaires CSS** (lignes 11 et 13) : `grep -n` l'a prouvé — le **markup** est bien **4** et **1**, sans doublon.
+
+**Ce qui reste ouvert (donc 🟡, pas ✅)** :
+1. **Validation visuelle FJD** — 1 rechargement UDT, puis capture : les 4 zones, les 4 icônes, le champ chemin et le journal. **La validation molle du tir 1 (« oui, je crois ») doit être confirmée ici**, et l'écart avec la référence DA doit être comblé (critère de fin n°1).
+2. **Rendu des icônes à l'écran** — les **NOMS sont désormais vérifiés** : les 4 (`Magnifier`, `ArrowDownSmall`, `CheckmarkMedium`, `ArrowUpSmall`) figurent **tous** dans la **liste officielle fermée** des 37 icônes `ui:` de la doc UXP (`sp-icon`, natif depuis v4.1). Cette liste **ne contient aucune icône « rafraîchir »** : `btn_actualiser` = `ArrowDownSmall` est donc une **approximation assumée**, à juger visuellement. Le rendu reste **à voir à l'écran**, pas supposé.
+   *NB — **CORRIGÉ le 01/10**. La piste « workflow icons » n'est **pas** écartée pour indisponibilité : c'était une **erreur de ma part**. Vérification réelle (registre npm + dépôt `adobe/swc-uxp-wrappers`) : les **37 paquets** `@swc-uxp-wrappers/*` existent — dont **`table`**, `banner`, `toast`, `card`, `tooltip`, `sidenav`, `search`, `action-button` — et `Icon`, **`Icons Workflow`**, `Iconset`, `theme`, `base` sont embarqués dans **`@swc-uxp-wrappers/utils`** (prérequis obligatoire). Le coût est réel et mesuré : couche **figée à SWC 0.37.0** (publiée le 2024-06-06, dernier commit du dépôt **il y a 2 ans**) quand la SWC navigateur est en **1.12.4**, et **known issues** déclarés sur `table`, `textfield`, `search`, `sidenav`, `menu`, `switch`, `card`… D'où la **remise en cause par FJD le 01/10** (« entrer de plein pied dans UXP ») : le rendu natif est jugé daté, et le tableau + les icônes riches manquent. **Décision à prendre sur test réel**, pas sur argumentaire. Faits consignés : `/memories/repo/indd-uxp-spectrum-faits.md`.*
+   *À titre d'option (non retenue à ce jour) : `sp-action-button` **existe** en UXP natif — widget adapté à des boutons **icône seule**, si la règle « icône + mot » évoluait.*
+3. **Thème clair/sombre du HTML brut** (tableau, journal, statut) : leurs tokens **existent**, mais le **basculement** depuis l'hôte n'est **pas câblé** — noté comme mesure ultérieure, **pas** supposé.
+4. **Preuve fonctionnelle** (critère de fin n°2) : les 4 boutons font toujours la même chose — à rejouer après validation visuelle.
+
+**Rappel protocole** : `main.js` **non modifié**, donc le câblage `cabler()` et les accès DOM sont **inchangés** — leur compatibilité avec les `sp-*` repose sur les **faits vérifiés ci-dessus** (`click`, `.value`), **à confirmer en réel** au rechargement.
+
+### CR — tir 3 : panneau « Liens MD » autonome + repli SVG Illustrator (01/10/2026)
+
+**Déclencheur FJD** : « BON, on repart du panneau liens » suivi d'une **spécification textuelle complète L1→L5** : le panneau est **rebaptisé « Liens MD »** et calqué sur le panneau natif InDesign « Liens ». FJD ayant épuisé ses crédits Figma, le design passe par le **code UXP** au lieu d'une maquette.
+
+**Trois questions tranchées par FJD (verbatim)** :
+- **Livrable** : « UXP + SVG Illustrator comme ça si tu ne fonctionnes pas, j'ai tout ce qu'il faut pour reprendre » ⇒ **deux artefacts** (panneau UXP exécutable **et** SVG réimportables dans Illustrator) ;
+- **Emplacement** : « Dans le dépôt INDD/IMPORT_MD/uxp/ (j'autorise explicitement le toucher) » ⇒ touché **dans le dépôt**, autorisation explicite ;
+- **Périmètre** : « Les 4 zones complètes (en-tête + liste + actions + informations) ».
+
+**Fichiers produits — dossier NOUVEAU, purement additif** :
+```
+uxp/com.fjd.importmd.panneau/
+  index.html          14994 -> 14940 o   le panneau (4 zones)
+  main.js              6089 ->  6067 o   cablage DOM, donnees de demonstration
+  manifest.json         907 o           manifestVersion 5, host ID >= 21.6.0
+  illustrator/
+    generer_svg.py    12921 o           generateur (geometrie alignee sur le HTML)
+    panneau_liens_md.svg                     9324 o   Calibrage replie (defaut)
+    panneau_liens_md_calibrage_deplie.svg    9624 o   Calibrage deplie
+```
+**Le panneau de la sonde n'est PAS touché** — vérifié par `git diff --name-only` (voir Preuve). La livraison est **strictement additive**.
+
+**Correspondance spec FJD → implémentation** :
+
+| Spec FJD | Implémentation |
+|---|---|
+| L1 « label liens MD » | `<sp-heading size="S">Liens MD</sp-heading>` + état à droite (`#statut`, classe `ko`) |
+| L2 « nom \| icône danger \| icône page (tri) » | `#entetes` : colonne `Nom` + `sp-icon ui:AlertMedium` + bouton tri icône seule (`#btn_page`) |
+| L3 « tableau, lignes NON expandables : badge md dans carré bordé radius orange, nom, align-right état, n° de page » | `table#liste` : `.badge-format` (carré 18×18 bordé `--panel-warning`, radius 4, texte `MD`) + nom + `.etat` aligné à droite + `.cellule-page` |
+| L4 « chevron expander, nb de liens sélectionnés, chaîne, flèche import, circulaire actualiser, crayon — icônes seules sans label » | `#zone_actions` : `#btn_expand` + `<sp-detail id="nb_selection">` + 4 `sp-action-button` icône seule (`#btn_relier`, `#btn_import`, `#btn_actualiser`, `#btn_editer`), chacun avec son `title` |
+| L5 « informations sur les liens » : titre, nom, État, Taille, **Calibrage** (repliable → mots, signes), date de modification, chemin, modèle | `#zone_infos` : `#titre_infos` + `#fiche` + `#ligne_calibrage` (chevron) + `#calibrage` (masqué par défaut) + 3 dernières lignes |
+
+**Choix techniques explicités** :
+- **Pas de widget accordéon/tree en UXP InDesign** (vérifié : la doc ne liste ni accordion, ni disclosure, ni tree, ni table) ⇒ la ligne « Calibrage » est un **déclencheur + bloc masqué** par `style.display` — **le mécanisme déjà certifié** sur `#mesures` de la sonde, pas une invention ;
+- **`sp-icon` seulement quand le nom existe** dans la liste fermée `ui:` : utilisés = `ui:AlertMedium` (danger) et `ui:ChevronRightSmall`/`ui:ChevronDownSmall` (expander) ;
+- **icônes absentes du jeu natif** (chaîne, import, actualiser, crayon, page) ⇒ **SVG inline** dans `<div slot="icon">`, ce que la **doc `sp-action-button` documente explicitement**, avec les **géométries réelles** du jeu Spectrum déjà extrait (`Link.svg`, `Import.svg`, `DocumentRefresh.svg`, `Edit.svg`, `Document.svg`) — **aucun tracé inventé à la main** ;
+- **« icônes seules, sans label »** est la **demande explicite de FJD** pour la zone L4 : elle est donc appliquée **ici et ici seulement** (elle déroge à la règle « icône + mot » du tir 2, qui reste en vigueur dans la sonde) — chaque icône seule porte un `title=` pour l'accessibilité ;
+- **`sp-*` non restylés** (règle d'or) ; le CSS maison ne fait que l'**agencement** ; **toute couleur est dans le bloc `:root`** (tokens provisoires, à remplacer par ceux de l'hôte) ;
+- **convention ASCII respectée** : le panneau de la sonde ne contient **aucun accent** — les nouveaux fichiers suivent la même convention (voir Preuve) ;
+- **SVG Illustrator** : aucune **classe CSS** (Illustrator aplatit les styles), uniquement des **attributs de présentation** ; chaque zone est un `<g id="...">` ⇒ arrive en **calque nommé** ; dimensions **1:1** avec `preferredDockedSize` du manifest (320×640).
+
+**Preuve (contrôles automatiques, à froid)** :
+```
+contrat d'ids main.js -> index.html ......... 19/19  (aucun manquant)
+balises principales equilibrees ............. OK (table/tbody/tr/td/div/style/script/body/html)
+manifest.json valide ........................ OK (json.load)
+SVG bien formes (XML) ....................... OK (minidom) x2
+non-ASCII (index.html / main.js / manifest / .py / 2 SVG) ... 0 partout
+U+FFFD (les 6 fichiers livres) .............. 0 partout
+git status --porcelain (depot IMPORT_MD) .... M COMMUNICATION/ROADMAP.md        (CR tirs 1-2, non commite)
+                                              M uxp/com.fjd.importmd.sonde/index.html  (tir 2, non commite)
+                                              ?? uxp/com.fjd.importmd.panneau/  <-- SEUL apport du tir 3
+git diff --name-only ........................ ROADMAP.md + sonde/index.html  (le panneau n'apparait PAS : non suivi)
+```
+**Aperçu visuel des 2 SVG** : rendus dans Chromium (viewport 340×660) et contrôlés — les 4 zones, le badge `MD`, la ligne sélectionnée en bleu, la barre d'icônes, la fiche et le chevron **Calibrage** s'affichent conformément à la spec ; la variante dépliée ajoute bien `mots` / `signes` et retourne le chevron. *(`qlmanage` a été écarté : il rend l'icône générique de document, pas le SVG — mesure faite, pas supposé.)*
+
+**Ce qui reste ouvert (donc 🟡, pas ✅)** :
+1. **Validation visuelle FJD** — 1 rechargement UDT sur `com.fjd.importmd.panneau` ; le panneau est un **nouveau dossier**, il n'écrase **pas** la sonde : les deux peuvent coexister le temps de la comparaison ;
+2. **Points d'interprétation à confirmer** : (a) le libellé des états (`modifiee` / `identique` / `source absente`) ; (b) le badge `MD` rendu en **texte dans un carré bordé** (et non un glyphe) ; (c) l'ordre des champs de la fiche ; (d) les **tokens sombres provisoires** du `:root` (à remplacer par ceux de l'hôte) ; (e) le **chevron par échange d'attribut `name`** sur `sp-icon` (réactivité **supposée**, à voir à l'écran) ;
+3. **Décision FJD** : ce panneau **remplace-t-il** l'UI de la sonde, ou reste-t-il un **modèle de design** à côté d'elle ? Non tranché.
+4. Aucune **preuve fonctionnelle** n'est revendiquée : `main.js` du nouveau panneau câble des **données de démonstration**, il n'appelle **pas** le moteur `import_md.jsx`.
+
+### CR — tir 3 (suite) : recalage au pixel sur le SVG de référence de FJD (01/10/2026)
+
+**Déclencheur FJD** : « Je t'ai remis le svg en place. C'est le SVG de reference. Suis-la a la lettre, au px. » — plus une consigne d'alignement précise : « attention notamment à aligner les param de la liste en bas (nom:..., taille:...) sur le signe ":" et pas par le centre. »
+
+**Étape 0 — le SVG de référence est INTACT (une alerte que j'avais moi-même levée est close)**. J'avais consigné au tir 3 un doute (« le fichier aurait été écrasé : 34005 octets / 41 tspan à 12:20 contre 11065 / 15 tspan à 14:27 »). **Vérification faite : c'était une ERREUR DE MA PART** — 34005 octets était un relevé fautif de ma propre main, pas une trace de fichier. Le fichier sur disque est **le bon et n'a jamais été écrasé** :
+```
+fichier   illustrator/panneau_liens_md.svg
+taille    11065 octets        mtime  01/10 14:27
+md5       ba000b0648718bbc3435919ee6e5c350
+viewBox   0 0 371.5 592
+groupes   zone_entete, zone_liste, zone_actions, zone_infos
+compte    text 15 · rect 7 · line 9 · path 15 · tspan 41 · g 10 · classes .cls-1..34
+```
+Aucune action de réparation n'était donc nécessaire. **Le doute est levé, pas reporté.**
+
+**Faits tirés du SVG de référence (mesurés, pas supposés)** — le panneau est la tranche **x 51.5 → 371.5** (320 de large), y 0 → 592 :
+- textes : `Liens MD` (63.5,22) · entête `Nom` (67.5,49) · les 3 noms d'état `MD` (70.28) · les 3 fichiers + leurs numéros de page (12 / 4 / 31) · `2 liens selectionnes` (95.5,420) · `Informations sur les liens` (71.07,447) · `Calibrage` (92.5,571.43) · **la fiche entière est UN seul `<text>`** (59.37,482.48) avec les 6 lignes séparées par des tabulations ;
+- rectangles : fond panneau (51.5,0,320,592) · fond liste (59.5,32,304,368) · bandeau d'entête (60.5,35,302,22) · **sélection** (60.5,80,302,24) · **3 badges** (67.5 ; 59/83/107, 18×18, rayon 4) ;
+- traits : `#5a5a5a` y=57 · `#474747` y=80 · `#6d6d6d` y=104 · **deux traits verticaux** x=310.9 et x=273.9 (y 39→53) · `#6d6d6d` y=429, 456.66, 557, 579 ;
+- palette relevée au pixel : `#535353` 87.76 % · `#323232` 2.84 % · `#595959` 1.16 % · `#eaeaea` 0.76 % · `#e68619` 0.34 % · `#a8a8a8`, `#fcb910`, `#d7373f`, `#d50f2b`, `#6d6d6d`, `#474747`, `#b0b0b0`.
+
+**Fait UXP vérifié AVANT d'écrire (et qui a commandé toute la réécriture)** : la surface CSS d'UXP est **plus étroite** que celle du navigateur. Relevé exhaustif de la doc (`reference-css/styles/`) : `display` ne documente que **`none | inline | block | inline-block | flex | inline-flex`** ⇒ **CSS Grid est INDISPONIBLE**, et `line-height`, `box-sizing`, `text-decoration`, `cursor`, `z-index`, `transform`, `box-shadow` **ne sont pas documentés**. Conséquence directe : la fiche alignée sur le `:` **ne peut pas** être une grille ; elle est faite en **flex / inline-block**, et les filets sont des `border-*`/`background` (pas de `outline`). `:hover`, `::before`, `::after` et les sélecteurs standard **sont** disponibles. *(Faits consignés dans `/memories/repo/indd-uxp-spectrum-faits.md`.)*
+
+**La consigne d'alignement sur le `:` — tenue, et prouvée** : la fiche est bâtie sur `.cle` (**largeur fixe 129.45 px, `text-align: right`, gras**) + `.val` (`padding-left: 3.05 px`) ⇒ le `:` tombe à **132.5 px** dans la fiche, soit **140.37 px** dans le panneau. Mesure d'encre sur les 2 images rendues, **ligne par ligne** :
+
+```
+ligne            REF (x du « : »)   PANNEAU (x du « : »)
+Nom                   142                  142
+Etat                  142                  142   (rouge #d7373f dans les deux)
+Taille                142                  142
+Date de modification  142                  142
+Chemin                142                  142
+Modele                142                  142
+=> les 6 lignes : bord droit du libelle 136/137 (identique) · debut de valeur 146/147 (identique)
+```
+La consigne est donc **satisfaite et chiffrée** : l'alignement se fait **sur le signe `:`**, jamais par le centre, et il est identique dans les deux images sur **les 6 lignes**.
+
+**Le seul écart résiduel trouvé, sa cause, et sa correction** : la ligne `Chemin` s'arrêtait à **x=302** dans le panneau contre **x=309** dans la référence (7 px). Cause identifiée, pas devinée : le `…` de la référence est du **contenu écrit** (un `<text>` SVG ne découpe jamais), dont l'**avance vaut ≈170 px** alors que la boîte de `.val` n'en offrait que **169.94** (302.44 − 129.45 − 3.05) ⇒ Chromium **tronquait la chaîne et reposait son propre `…`**, dont l'encre tombe à 302. Correction : `max-width: 171px` (la chaîne de la référence **tient** alors telle quelle, sans troncature ; le bord droit reste à 311.37 < 312, fin des filets). **Après correction : encre à 308 contre 309 en référence — soit 1 px d'anti-aliasing**, et les groupes de points se recouvrent (`285-301`, `304-305` de part et d'autre).
+
+**Méthode de rendu (Playwright absent — mesuré, pas supposé)** : `view_image` ne lit pas le SVG et le module Playwright n'est **pas installé** sur ce poste. Rendu par **Chrome en mode headless**, `--window-size=320,592`, `--force-device-scale-factor=1`, `--hide-scrollbars` ; la référence est cadrée par un wrapper qui décale le SVG de `-51.5 px` pour ramener la tranche du panneau à l'origine. Les deux PNG font **320×592**.
+
+**Preuve du recalage — écart global au pixel** :
+```
+identiques : 90.37 % des pixels (18689 / 189440)
+  entete  (y 0-32)       95.94 %      liste   (y 32-400)     94.26 %
+  actions (y 399-431)    82.99 %      infos   (y 429-592)    81.52 %
+```
+Le reliquat est **de la rastérisation de police** (les deux images ne sont pas composées par le même moteur de texte) et **un artefact de trait à 0.5 px** — explicité ci-dessous, **volontairement non compensé**.
+
+**Les 5 filets pleine largeur (y 104, 429, 457, 557, 579) — 1 px de rastérisation assumé** : dans la référence, ce sont des **traits de 0.5 px** (`.cls-22`, `#6d6d6d`) ; rendus par le moteur SVG de Chrome, un trait de 0.5 px centré sur une coordonnée entière couvre **25 % de chacune des deux lignes voisines** (relevé : 89 / 89 sur fond 83). Le CSS de Chromium, lui, **cale une boîte de 0.5 px sur une seule ligne, à 100 %** (relevé : 109). **Je n'ai donc pas compensé la couleur** : à l'écart d'échelle réel (écran Retina, facteur 2), les deux redeviennent **un trait d'un pixel physique**, et assombrir la couleur rendrait le panneau **faux** sur l'écran cible. C'est un **artefact de la comparaison à 1×**, pas un défaut du panneau. *(Il pèse ~1565 px du total, soit 8,6 % du reliquat.)*
+
+**Garde-fou ajouté : le générateur ne peut plus écraser la référence.** `illustrator/generer_svg.py` écrivait **exactement** `panneau_liens_md.svg` — le fichier de FJD. Corrigé : ses sorties sont désormais `panneau_liens_md_genere.svg` et `panneau_liens_md_genere_calibrage_deplie.svg`, avec un **refus explicite** (`SystemExit`) si l'on tente d'écrire le nom de la référence. Preuve que la référence est hors de portée :
+```
+md5 avant execution du generateur : ba000b0648718bbc3435919ee6e5c350
+md5 apres execution du generateur : ba000b0648718bbc3435919ee6e5c350   (inchange)
+ecrit : panneau_liens_md_genere.svg (9324 octets)
+ecrit : panneau_liens_md_genere_calibrage_deplie.svg (9624 octets)
+la reference panneau_liens_md.svg n'a pas ete touchee
+```
+
+**Preuve (contrôles automatiques, à froid)** :
+```
+U+FFFD : 0 sur index.html, main.js, manifest.json ET sur le SVG de référence
+balises index.html : div 39/39 · span 54/54 · svg 10/10 · script 1/1 · pre 1/1  (equilibrees)
+                     (<path .../> : 15, auto-fermantes — pas un desequilibre)
+manifest.json : JSON valide (json.load) — id com.fjd.importmd.panneau
+git status --porcelain : ?? uxp/com.fjd.importmd.panneau/        <-- NON SUIVI (purement additif)
+                         M  COMMUNICATION/ROADMAP.md              (CR tirs 1-2-3, non commite)
+                         M  uxp/com.fjd.importmd.sonde/index.html (tir 1-2, non commite)
+```
+**Le panneau de la sonde n'est PAS touché par ce tir** — vérifié par les dates : `sonde/index.html` a pour **mtime 01/10 00:04** (tirs 1-2), alors que les fichiers ouverts dans ce tir sont datés **01/10 15:03**. Aucune écriture de ma part après 00:04 sur la sonde.
+
+**Ce qui reste ouvert (donc 🟡, pas ✅)** :
+1. **Validation visuelle FJD** — 1 rechargement UDT : c'est la seule mesure qui manque, et elle ne peut venir que de FJD. **Le rendu ci-dessus est celui de Chromium, PAS celui d'InDesign** : memes fichiers, autre moteur.
+2. **`manifest.json` : tailles à trancher** — il déclare `preferredDockedSize` **320×640** alors que la référence est dessinée sur **320×592** (28 px d'écart, soit la hauteur d'une ligne). À recaler ou à assumer, décision FJD.
+3. **Points que je reproduis littéralement du SVG et que je signale plutôt que de « corriger » seul** : (a) la **sélection** porte sur la **ligne 2** alors que la **fiche décrit le fichier de la ligne 1** ; (b) l'en-tête annonce **« 2 liens selectionnes »** alors qu'**une seule** ligne est surlignée ; (c) l'état de la ligne 2 est un **`!` blanc sans triangle** et la ligne 3 n'a **rien** ; (d) les libellés `Etat` et `Modele` sont **sans accent** ; (e) le `Chemin` porte un **`…` dans son contenu**. **Ce sont des incohérences du dessin de référence** : je les ai suivies à la lettre (« au px »), mais elles méritent une décision de FJD.
+4. **Accents** : la convention ASCII du projet est **transgressée par la référence elle-même** (`modifiée`, `…`) — j'ai suivi la référence, pas la convention. À confirmer.
+5. **`sp-action-button` non utilisé** : les 5 icônes d'action (chaîne, import, actualiser, crayon) sont des `<div>` avec `:hover`, car leurs tracés **ne figurent pas** dans la liste fermée `ui:`. Passer au widget natif est possible sur demande (FJD avait déjà tranché « icône seule » pour cette zone).
+6. **`illustrator/panneau_liens_md_calibrage_deplie.svg` (9624 o, 12:06)** est désormais **en doublon** avec `panneau_liens_md_genere_calibrage_deplie.svg`. Je ne supprime pas un fichier du dépôt sans accord.
+7. **Valider l'état déplié du Calibrage** : la référence ne montre **que l'état replié** ; l'état ouvert (chevron retourné + bloc `mots`/`signes`) est **déduit**, pas copié — il n'a donc **aucune référence** à laquelle se comparer.
+
+---
+
+### CR — tir 3 (suite bis) : les pictogrammes en `#eaeaea` et le chevron déplié (01/10/2026)
+
+**Déclencheur FJD** — après « Pas mal ! », deux corrections précises :
+1. « les pictogrammes (chevrons, chaîne, dossier, crayon) sont pour le moment en `#000`, ils doivent être en `#eaeaea` cf le SVG » ;
+2. « le chevron de ligne expandue est décoloré dans la dimension par défaut du kit ; dans ma ref, il faut utiliser le chevron d'origine simplement tourné 90° horaire. »
+
+**Correction 1 — la cause, trouvée et non devinée.** Le `fill` était posé **sur le `<svg>` racine** : en UXP cet attribut **n'est pas hérité** par les tracés enfants — la surface CSS d'UXP ne documente **ni `fill`, ni `transform`, ni `svg`** (relevé exhaustif de la doc, fait consigné en mémoire). Les tracés retombaient donc au **noir par défaut**, exactement ce que FJD voyait. Correction : `fill="…"` explicite **sur chacun des 16 `<path>`**, en reprenant **les couleurs de classe du SVG de référence** :
+
+```
+zone       pictogramme                     fill      classe ref
+entete     triangle avertissement           #b0b0b0   .cls-32
+entete     icone page (corps)               #b0b0b0   .cls-32
+entete     icone page (coin)                #b0b0b0   .cls-32
+ligne 1    triangle ambre                   #fcb910   .cls-31
+ligne 2    point d'exclamation              #ffffff   .cls-9
+actions    chevron expander                 #eaeaea   .cls-24
+actions    chaine (2 maillons)              #eaeaea   .cls-24
+actions    dossier/import (2 traces)        #eaeaea   .cls-24
+actions    actualiser (3 traces)            #eaeaea   .cls-24
+actions    crayon                           #eaeaea   .cls-24
+calibrage  chevron FERME                    #eaeaea   .cls-24
+calibrage  chevron OUVERT                   #eaeaea   .cls-24
+=> 16 <path> / 16 avec fill / 0 sans fill (controle automatique)
+```
+Les 11 `#eaeaea` couvrent bien **tout** ce que FJD citait : chevrons, chaîne, dossier, crayon.
+
+**Correction 2 — le chevron déplié.** Le kit offrait `sp-icon name="ui:ChevronDownSmall"` : **autre tracé, autre dimension, et il sort décoloré** ⇒ il ne peut pas servir, comme FJD le dit. Solution retenue : **rejouer LE MÊME tracé que le chevron fermé**, tourné de **90° horaire**. Comme **`transform` n'existe pas** dans la surface CSS d'UXP, la rotation est **gravée dans le tracé lui-même** (attribut `d`) par `illustrator/rot_chevron.py` : rotation de 90° autour du centre du tracé (`CX=83.42, CY=567.285`), chaque point `(x,y)` devenant `(CX-(y-CY), CY+(x-CX))`, les courbes de Bézier tournées par leurs **points de contrôle**.
+
+Preuve de la gravure (rendu natif `<g transform="rotate(90 …)">` contre tracé gravé, ×60) :
+```
+a.png (rotation native) vs b.png (trace grave) : 145 / 175131 px d'ecart  (0,08 %)
+delta max par canal : 5 / 255     => anti-aliasing pur, pas une deformation
+rendu de b.png : le chevron pointe bien vers le BAS
+```
+Preuve sur le panneau (rendu `replie.png` contre `deplie.png`, encre **#eaeaea** dans les deux états) :
+```
+etat      encre   x       y         colonnes          centre x
+replie    8 px    29..33  565..572  29 30 31 32 33    31,0   (forme '>' verticale)
+deplie    8 px    28..35  566..570  28..35            31,5   (forme 'v' horizontale)
+=> meme axe horizontal : le trace ouvert EST le trace ferme tourne
+   (5,32 px de large -> 9,15 px, soit exactement 5,32 x 9,15 inverse)
+```
+Et la preuve que **le texte ne bouge pas d'un pixel** : `Calibrage` mesure **105 px** et occupe **x 42..86 · y 563..572** dans **les deux** états — identité stricte. Le chevron ouvert, plus large de 3,83 px que sa boîte, **déborde de 1,915 px de chaque côté** (centrage flex) : c'est exactement le geste d'une rotation autour du centre, et cela **laisse le mot à sa place**.
+
+**Non-régression** : identité au pixel avec la référence **90,36 %** contre **90,37 %** avant correction ⇒ écart nul à l'arrondi, donc **aucune régression** (le reliquat est de la rastérisation de police, déjà explicité plus haut).
+
+**Contrôles à froid** :
+```
+U+FFFD                 : 0 sur index.html, main.js, manifest.json
+node --check main.js   : OK
+balises index.html     : div 39/39 · span 54/54 · svg 11/11 · script 1/1 · pre 1/1 · style 1/1
+                         (svg passe de 10 a 11 : le chevron deplies est un SVG inline)
+<p .../> auto-fermants : 16 / 16
+sp-icon subsistants    : 0        (le dernier a ete retire)
+manifest.json          : JSON valide
+```
+Le commentaire devenu faux dans `main.js` (il citait encore `sp-icon ChevronDownSmall`) a été corrigé dans le même geste.
+
+**Fait à consigner** : **le `fill` posé sur le `<svg>` racine n'est PAS hérité par les `<path>` en UXP** ⇒ la couleur d'un pictogramme doit **toujours** être portée par le tracé lui-même, jamais par la racine.
+
+**Reste à faire** : rapatrier `rot_chevron.py` de `/tmp/liens_md_icones/` vers `illustrator/`, puisque le commentaire de `index.html` cite ce chemin comme l'origine du tracé gravé. *(Fait : le script est bien dans `illustrator/`.)*
+
+
+### CR — tir 3 (suite ter) : le bold « Calibrage », l'interlettrage global et l'icône de panneau (01/10/2026)
+
+**Déclencheur FJD** — trois retours successifs :
+1. « Calibrage en bold » (puis, corrigeant sa propre coquille : « label calibrage en vold, pardon ») ;
+2. « Au glkobal : letter-spacing: .035em; » ;
+3. « Tu fais l'icine stp ? » — puis le constat qui a recadré le sujet : « L'cone de barre d'accroche n'a pas changé. JE pe se que tu n'as pas identifié le bon objet. C'est l'icone de repli du panneau, une fois qu'on ne voit plus le label. Là c'est encore l'icone générique des pklugins ».
+
+Les deux premiers points sont faits **et vérifiés** ; le troisième est **livré mais pas encore constaté à l'écran** — d'où un statut qui reste partiel.
+
+**1. Le bold du label « Calibrage » — écart assumé, pas une erreur.** Le SVG de référence porte « Calibrage » en **Helvetica NORMAL** (classe `.cls-5`), tout le reste du bloc en gras. FJD demandant le gras, on **dévie volontairement** de la référence : `#ligne_calibrage .cal-texte { font-weight: 700; }`. La référence typographique a été relue pour **tracer l'écart** (et non pour l'ignorer).
+
+Preuve mesurée sur les deux rendus (état replié), bande de la ligne « Calibrage » :
+```
+              avant        apres
+boite x       41..87       41..90
+boite y       562..574     562..574     (hauteur inchangee : 12 px)
+encre         245 px       305 px       (+24,5 %)
+dernier x     87           90           (le gras pousse a droite, pas a gauche)
+premier x     41           41           (l'alignement a gauche est preserve)
+```
+`font-weight` est **documenté dans la surface CSS d'UXP** (v3.0+) : ce n'est pas une extrapolation.
+
+**2. L'interlettrage global `.035em` — posé sur `#panneau`, donc hérité.** Documenté (UXP v2.0+ ; les valeurs négatives sont invalides, `.035em` est positif). Contrôle : **12 bandes** de pixels modifiées, **toutes du texte pur** (aucune bordure, aucun fond), et **aucun décalage de disposition**. Le seul risque réel était le **débordement à droite** de la fiche ; mesuré :
+```
+bord droit de la fiche : 285 -> 295   et   308 -> 307
+largeur utile          : 312 px
+=> 295 et 307 restent < 312 : aucune troncature
+```
+
+**3. L'icône de barre d'accroche — le bon objet, enfin identifié.**
+
+**Ce que FJD voit** : dans le bandeau d'accroche du panneau **replié** (quand le libellé « Liens MD » n'est plus affiché), c'est **le lego « module externe » générique** qui s'affiche — pas le badge MD (capture : `Capture d'écran 2026-10-01 à 19.06.36.png`).
+
+**Pourquoi l'essai précédent ne pouvait pas marcher.** L'essai précédent déclarait, dans l'entrypoint, un `icon` en **SVG** avec `species: ["toolbar"]` et `scale: [1]`. Trois défauts, tous **documentés** :
+
+(a) **Le moteur SVG d'UXP n'est pas fiable.** La doc InDesign (`known-issues`) est explicite : « Plugin icons do support SVG files, but UXP doesn't support all SVG features… test your SVG icon before shipping » et « Not all SVG files are supported by UXP. UXP's SVG renderer is targeted for simple icons and the like; complex SVGs may fail to render completely, or may render in unexpected ways. » Notre SVG contenait un `<g transform="translate(...)">` — et **`transform` ne figure pas** dans la surface CSS supportée par UXP. Le fichier a donc été **aplati**.
+
+(b) **`species: ["toolbar"]` est restrictif.** Doc du manifest InDesign (`plugins/concepts/manifest`, L167) : « generic: suitable for display anywhere » est **le défaut** ; « toolbar: suitable for display in a toolbar ». N'autoriser que `toolbar` **exclut** l'icône de tout emplacement que l'hôte ne classe pas « toolbar ». Le nouveau manifest **omet `species`** ⇒ défaut `["generic"]` = affichable **partout** : le choix le plus permissif.
+
+(c) **L'array racine `icons` était absent.** Doc (même fichier, L101) : « An array of icons representing the overall plugin **or panel** icon… If the icons array is missing, **a default icon will be used**. » C'est exactement notre cas, et le monde réel le confirme : le plugin **sonde** installé (`~/Library/Application Support/Adobe/UXP/Plugins/External/com.fjd.importmd.sonde/manifest.json`, lecture seule) **n'a aucune icône** — ni racine ni entrypoint — donc il retombe sur l'icône générique, celle que FJD voit.
+
+**Résolution retenue — les causes possibles traitées en une seule fois** (une seule session UDT par essai : on ne joue pas au devineur) :
+
+| cause possible | traitement |
+|---|---|
+| `<g transform>` non rendu par UXP | SVG **aplati** : translation gravée dans le `d` (1 `path`, 0 `g`, 0 `transform`) |
+| moteur SVG d'UXP peu fiable | icônes livrées en **PNG**, plus en SVG |
+| `species: ["toolbar"]` trop restrictif | `species` **omis** ⇒ `["generic"]` (affichable partout) |
+| `scale: [1]` sans variante 2x | `scale: [1, 2]` avec les deux PNG (23 + 46) |
+| array racine `icons` absent | **ajouté** (24 x 24 + 48 x 48) |
+| cache d'icône de l'hôte | **instruction FJD** : décharger/recharger entièrement le plugin, ou redémarrer InDesign |
+
+**Tailles — lues dans la doc, pas inventées** (IconDefinition, L167) : `toolbar` ⇒ 23 x 23 @100 %, 46 x 46 @200 % ; `pluginList` ⇒ 24 x 24 @100 %, 48 x 48 @200 %. D'où quatre fichiers.
+
+**Le SVG aplati** (`icones/md.svg`, 1 143 o) — `illustrator/generer_icone_md.py` a été réécrit en **deux passes** : passe 1 sans décalage pour mesurer la bbox d'encre brute, calcul du centrage, passe 2 avec le décalage appliqué **à la fois au tracé et à sa bbox**. Le `<g transform>` a disparu : seul le recentrage centralise l'encre.
+```
+carre            : 20 x 20, rx 4,44   (marge 1,5 dans une boite de 23)
+corps lettres    : 8,89
+avance totale    : 14,45
+bbox encre abs   : (4,97 ; 8,32) -> (18,03 ; 14,68)
+centre d'encre   : (11,5 ; 11,5)      => centre geometrique exact de la boite 23 x 23
+balises          : path 1 / g 0 / transform 0
+XML              : valide       U+FFFD : 0
+```
+Couleurs reprises de la référence : carré `#535353`, liseré et lettres `#b0b0b0` (énoncé FJD : « simplement en fill #535353 et Stroke + type #b0b0b0 »).
+
+**Les PNG** — `illustrator/generer_png_icone.py` (aucun outil SVG natif sur ce poste : ni cairosvg, ni rsvg-convert, ni inkscape). Méthode : Chrome headless rend un maître **480 x 480 sur fond transparent** (`--default-background-color=00000000`), puis PIL réduit en **LANCZOS avec prémultiplication de l'alpha** (sans cela, LANCZOS moyenne la couleur des pixels transparents — noire — avec celle du liseré et produit un halo gris sombre).
+```
+fichier         taille     octets   encre (xmin,ymin,xmax,ymax)
+md.png          23 x 23       947    (0, 0, 22, 22)
+md@2x.png       46 x 46     2 072    (1, 1, 44, 44)
+panneau.png     24 x 24     1 034    (0, 0, 23, 23)
+panneau@2x.png  48 x 48     2 117    (2, 2, 45, 45)
+fond du maitre  : transparent (alpha min = 0)
+```
+(La bbox « pleine » à 23 px vient du halo d'anti-aliasing du liseré, à ~1 px du bord : l'icône occupe bien sa boîte, sans déborder.)
+
+**Manifest — ce qui change** (`manifest.json`, JSON valide, U+FFFD 0) :
+```json
+"icon": [ { "width": 23, "height": 23, "path": "icones/md.png",
+            "scale": [1, 2], "theme": ["all"] } ]
+...
+"icons": [ { "width": 24, "height": 24, "path": "icones/panneau.png",
+             "scale": [1, 2], "theme": ["all"] } ]
+```
+L'entrypoint `icon` est l'icône **du panneau** (« overrides the plugin icon in places where the entrypoint is specifically displayed », L198) ; l'array racine `icons` est l'icône **globale du plugin ou du panneau**. Les deux sont désormais renseignés, avec les PNG aux tailles prescrites, et `manifestVersion: 5` satisfait la seule contrainte de version du schéma.
+
+**Ce qui reste à constater** : FJD doit faire **un rechargement UDT complet** (décharger le plugin puis le recharger, ou redémarrer InDesign — un changement d'icône de manifest est **mis en cache** par l'hôte). Diagnostic utile en cas de doute : la **liste de plugins d'UDT** elle-même — si le badge MD y apparaît, le manifest est bon et c'est bien la barre d'accroche d'InDesign qui garde l'ancienne icône en cache.
+
+**Deux points signalés, non tranchés** (aucune restructuration faite de ma propre initiative) :
+- **Collision en panneau comprimé** : `#zone_actions` (`bottom: 161px`) et `#zone_infos` (`bottom: 0`) sont toutes deux ancrées en bas et **se chevauchent sur la 3e ligne** quand le panneau est comprimé. Correctif proposé : passage à un **flux vertical flex**. À valider par FJD.
+- **Hauteur préférée** : `preferredDockedSize` / `preferredFloatingSize` sont à **640**, quand la référence mesure **592**.
+
+
+
 
 **Pourquoi elle vient avant la boucle** : la Mission 6 (liste N sources) **change le stockage** (l'étiquette passe à N empreintes — décision FJD du 30/09) et donc la **logique** : elle est plus lourde et plus risquée. L'habillage, lui, est **purement d'apparence** : il ne touche ni à l'étiquette, ni au moteur, ni à la signature du tube. On gagne une UI lisible **avant** de complexifier la logique — et la Mission 6 se fera alors dans un panneau **déjà habillé** (une seule fois le travail d'UI à refaire, pas deux).
 
@@ -1113,7 +1518,7 @@ $ tail -c 12 import_md.jsx                                       -> main();
 
 ## Chapitre Panneau — Mission 6 — La boucle : tous les imports du document courant
 
-**Statut** : 🔴 À FAIRE — jamais exécutée. **Décidée APRÈS la Mission 5** (ordre FJD du 30/09/2026 : l'UI d'abord). **Débloquée** : FJD a **confirmé le 30/09/2026** que l'étiquette passe de **1** à **N** sources par document (le gel du 30/09 est levé **pour cette évolution précise, et pour elle seule**).
+**Statut** : 🟡 PARTIELLE — **tir 1 (01/10/2026)** : le panneau appelle le **MOTEUR RÉEL** (`import_md.jsx`) via le **tube gelé**, à **N = 1** ; prouvé par batterie (`verifier_moteur.js`, **75/75** — 48 au tir 1, **+3** par l'arbitrage FJD du 01/10 sur le bandeau d'état, **+24 au tir 2** du 01/10 sur le repli du calibrage, cf. §6 bis et §6 quater) — le **critère 2** (« vierge ⇒ 0 ligne », contrôle négatif obligatoire) est **ATTEINT**, le **critère 1** (« N imports ⇒ N lignes ») reste **OUVERT** : il exige l'**étiquette-LISTE** (N sources), évolution de stockage **tranchée le 30/09 mais NON faite**. **Arbitrage FJD du 01/10 appliqué** (`#statut` = **triangle danger UNIQUEMENT si source modifiée, rien du tout sinon** ; `#journal` = canal de **debug**, désormais réellement alimenté ; objections « chemin » et « `btn_import` » **retirées car infondées**) ; **restent ouverts : la page** (voir §6 quater : FJD la veut = le **point d'insertion du texte**, donnée **absente du moteur**), la **signalétique texte-en-excès / page de sortie** (capacité **NEUVE**, idem) et la **provenance / `info_modele`** (capacité **NEUVE** — le moteur ne détecte RIEN —, **à spécifier par l'Architecte**, cf. §6 bis et §6 quater). **Tir 2 (01/10)** : **cercle rouge d'alerte RESTAURÉ** sur la ligne importée (chemin d'import brisé ⇒ à réimporter) et **repli du calibrage CORRIGÉ** (l'état des chevrons est désormais posé **EN LIGNE**, plus par sélecteur composé — cf. §6 quater). Validation visuelle FJD (1 rechargement UDT) à faire. **Décidée APRÈS la Mission 5** (ordre FJD du 30/09/2026 : l'UI d'abord). **Débloquée** : FJD a **confirmé le 30/09/2026** que l'étiquette passe de **1** à **N** sources par document (le gel du 30/09 est levé **pour cette évolution précise, et pour elle seule**).
 
 **Le périmètre, tranché par FJD (30/09/2026)** : la liste porte sur **tous les imports du document courant** — ni « tous les documents ouverts », ni un registre sur disque. **Plus simple et plus juste** que la proposition antérieure. (La « Question 2 » du chapitre — actif vs tous les docs — est donc **close** : c'est **le document courant**, et ses imports.)
 
@@ -1142,6 +1547,172 @@ $ tail -c 12 import_md.jsx                                       -> main();
 - **N = 0** ⇒ 0 ligne (jamais une ligne vide).
 
 **Ce que cette mission ne fait pas** : elle ne touche **pas** à l'habillage (Mission 5, faite avant), **pas** au moteur `import_md.jsx` au-delà du **nouveau format d'étiquette** à lire, **pas** à la décision de mapping.
+
+### CR — tir 1 : le panneau appelle le MOTEUR RÉEL (tube gelé, N = 1) + inventaire des orphelins (01/10/2026)
+
+**Instruction FJD** : « Maintenant, procédons au câblage. On câble ce qui est déjà implémenté et puis on regarde les composants orphelins. » Arbitrage FJD de l'alternative posée : **option B — câbler le panneau sur le moteur réel (tube gelé)**, classée ici.
+
+#### 1. Ce qui est fait
+
+`uxp/com.fjd.importmd.panneau/main.js` passe de **208 à 1057 lignes**. Le moteur de la sonde (`com.fjd.importmd.sonde`, **lue seule, non modifiée**) est **porté** dans le panneau, et la maquette du tir 3 est **inchangée** (elle reste l'état d'ouverture : la validation au pixel de la Mission 5 tient).
+
+Porté depuis la sonde :
+- **dossier projet déduit** (`getPluginFolder()` remonte 2 niveaux, refuse si `< 1` ou sans `/`), mémoïsé et **attendu** (`assurerDossierProjet()`) ;
+- **journal** double : écran (`#journal`) + fichier `panneau_liens_md_journal.txt`, écriture **débattue 400 ms** ;
+- **étiquettes** : `md-source-fingerprint` (6 champs : `v, size, checksum, modified, name, path`) et `md-style-map`, lues par **2 routes** (`doc.extractLabel()` puis repli `app.doScript`) ;
+- **état rendu par le moteur** via `etatParLeMoteur()` : parade du **dispatcher** — copie temporaire `_panneau_moteur_sans_main.jsx` (le `main();` racine de `import_md.jsx` est retiré), `$.evalFile(tmp)`, `tmp.remove()`. **Sans cette parade, un simple `$.evalFile` déclenche un import complet** (incident 29/09) ;
+- **compteurs disque** : `getEntryWithUrl` + `read()` pour mots/signes, `getMetadata().dateModified` pour la date ;
+- **tube gelé** (3 champs **nommés** — cf. « Signature du tube », inchangée) : `"Appelant=panneau"`, `"Action=importer"`, `"Chemin=" + cheminMd`, transportés par `app.doScript`, et le moteur rappelé par `$.evalFile(new File(<cheminJsx>))`.
+
+Boutons réellement câblés : `btn_expand` → `basculerCalibrage()` (dépliage, inchangé) ; `btn_actualiser` → `actualiserListe()` ; `btn_import` → `importerDepuisPanneau()`. Les autres écrivent au journal `(non câblé : orphelin)` **sans rien inventer**.
+
+État au démarrage : `dire("Panneau pret. Moteur reel cable sur Actualiser et Importer.")`, puis la déduction du dossier est **attendue**, puis le journal est écrit sur disque (600 ms).
+
+#### 2. Preuve automatique — la batterie versée au dépôt
+
+Preuve **reproductible par un clone, sans InDesign** : `uxp/com.fjd.importmd.panneau/verifier_moteur.js` (fichier **additif**, supprimable ; `node verifier_moteur.js`).
+
+```
+SYNTAXE OK
+TOUT PASSE  (48 verifications)
+```
+
+Elle charge `main.js` dans un contexte `vm` avec des stubs de DOM / `require` (« indesign », « uxp », « fs ») / `setTimeout`, puis **exerce** la logique. Couvert : décodage de l'étiquette à 6 champs, échappement ExtendScript, table d'états, formatage date/octets, **les 5 cas** (aucun document / lecture ratée / étiquette absente / étiquette présente illisible / sources à lister), compteurs disque, `#nb_selection`, et le **tube gelé** (les 3 champs + l'`$.evalFile` du moteur), plus le **refus** du moteur.
+
+Contrôle négatif obligatoire, **acquis** : document vierge ⇒ **0 ligne**. Fichier ASCII, **0 U+FFFD**.
+
+#### 3. Deux défauts RÉELS trouvés par la batterie (et corrigés)
+
+1. `formaterOctets(null)` rendait `"0 ko (0 octets)"` — parce que `Number(null) === 0`. C'était **un chiffre inventé**, contraire à la règle du projet. Corrigé par une garde explicite `null / undefined / ""` ⇒ tiret.
+2. `sourceSelectionnee()` reposait sur le sélecteur composé `.ligne.selection`, **non certifié** dans ce runtime, et pouvait s'exécuter **avant** que le dossier projet soit déduit (`void devinerDossierProjet()` était lancé sans attente). Corrigé par un balayage de `lignesListe()` + `className`, et par `assurerDossierProjet()` attendu en tête de `construireListe()` et de `importerDepuisPanneau()`.
+
+#### 4. Inventaire des composants ORPHELINS (le second point de l'instruction FJD)
+
+| Composant | Raison de l'orphelinat |
+|---|---|
+| `btn_relier`, `btn_editer` | **aucun moteur** derrière dans `import_md.jsx` ; ils écrivent au journal au lieu d'agir |
+| `btn_page` + colonne Page / `data-page` | **aucune source** : l'étiquette ne porte pas de page ; la colonne affiche `"-"` |
+| `info_modele` | **aucune source** (le modèle n'est pas dans l'étiquette) ; affiche `"-"` |
+| `nb_selection` (compteur) | la maquette annonçait **« 2 liens »** — faux ; le panneau dit **« 1 lien selectionne »** (mono-source) |
+| `compterLignesListe()` | déclarée, **non utilisée** — conservée pour la boucle N de cette mission |
+| 3 lignes de la maquette | la maquette en **dessine 3** ; le moteur n'en rend **qu'une** (mono-source). Le panneau **révèle/cache** les 3 lignes modèles au lieu de fabriquer des noeuds SVG (API non certifiée) |
+
+#### 5. Ce que ce tir ne fait PAS — et c'est le coeur de la Mission 6
+
+Le critère de fin est **double**. État honnête :
+
+1. « document portant **N imports** ⇒ **N lignes** » ⇒ **NON ATTEINT** : le tir est à **N = 1**. `md-source-fingerprint` est **MONO-SOURCE par construction** (`insertLabel` écrase son homonyme) ; il faut que l'étiquette passe à une **liste** d'empreintes — c'est **l'évolution de stockage tranchée par FJD le 30/09**, **non faite**.
+2. « document **vierge** ⇒ **0 ligne** » ⇒ **ATTEINT ET PROUVÉ** (batterie, cas « aucun document »).
+
+**NOTE DE CLASSEMENT (à trancher par Claude/FJD, pas par l'ouvrier)** : ce tir **ferme le point ouvert n° 4 de la Mission 5** (« `main.js` du nouveau panneau câble des données de démonstration, il n'appelle **pas** le moteur `import_md.jsx` »). Il est donc à la charnière M5/M6 : c'est du **câblage mono-source**. La Mission 6 (la boucle N sources, l'étiquette-liste) **reste à faire**. Le classement retenu ici suit l'arbitrage FJD ; le contenu du CR est transférable si Claude préfère le rattacher à la Mission 5.
+
+#### 6 bis. ARBITRAGE FJD (01/10/2026) — décisions, et ce qui a été appliqué
+
+FJD a tranché les 4 points d'interface du §6. **Trois des quatre objections de l'ouvrier étaient infondées** et sont **retirées** ; une seule résiste.
+
+**1. `#statut` — DÉCISION : « modifié ⇒ triangle danger, sinon rien du tout ».**
+- *Appliqué* : le bandeau n'est **plus** un bandeau succès/échec. Il est **MUET** par défaut ; il ne s'**allume** que dans **un seul** cas — **source modifiée** — et montre alors le **triangle de danger** (trace ambré `#fcb910` du dessin, `path 3`, **repris tel quel** : aucune géométrie inventée). Tous les autres cas (`identique`, `absente`, `indéterminé`, document vierge) n'affichent **rien**.
+- L'allumage se fait par `style.display` posé en JS (**jamais un sélecteur composé** : non certifié UXP).
+- Le **detail** ne disparaît pas : `afficherStatut()` **trace désormais au journal** (`[ok]` / `[echec]`) au lieu d'écrire à l'écran.
+- Conséquence de bord, **décidée par l'ouvrier et signalée ici** : le bandeau est un indicateur d'**ÉTAT**, pas d'**ACTION** ⇒ il se tait pendant « Importer » ; il se rallume sur « **Actualiser** » si la source a encore bougé.
+
+**2. `#journal` — DÉCISION : « utile pour le debug, pour le reste, pas besoin ».**
+- *Appliqué* : `#journal` reste **masqué** à l'écran (L449) — c'est le canal de **debug**. Le fichier `panneau_liens_md_journal.txt` reste la preuve récupérable.
+- **Défaut réel corrigé au passage** : `journaliser()` n'alimentait **que** le DOM — or `dire()` **réécrit** `#journal` depuis son propre index, donc toute ligne posée par `journaliser()` était **effacée** au `dire()` suivant ; et surtout ces lignes **n'atteignaient jamais le fichier** de journal. `journaliser()` alimente maintenant le journal **complet** (celui qui part dans le fichier).
+
+**3. `info_modele` / provenance — FJD propose : « on détecte la structure particulière de chaque MD au mapping, donc à ce moment on en voit la provenance, non ? ».**
+- **FAIT VÉRIFIÉ** : le moteur **ne détecte RIEN** de tel. `grep -nE 'gemini|deepseek|chatgpt|claude|provenance|modele|generateur' import_md.jsx` ne renvoie que **3 commentaires** sur la provenance du **titre** (`#`), **aucun code de détection**. Il n'y a donc **aucune provenance à lire** : ce serait une **capacité NOUVELLE à construire**.
+- **FAIT VÉRIFIÉ (utile à FJD)** : le projet classe déjà ses fixtures **par générateur** (`claude_sample.md`, `deepseek_formation.md`, `deepseek_referentiel.md`, `gemini_charte.md`, `chatgpt_convention.md`) — mais c'est un classement **humain**, pas une signature calculée.
+- **ESCALADE — l'ouvrier ne tranche pas** : où la signature se calcule-t-elle (moteur `import_md.jsx` au mapping ? panneau à la lecture ?), et **où se stocke-t-elle** (7ᵉ champ de `md-source-fingerprint` ? nouvelle étiquette ? recalcul à la volée ?). Aucune heuristique n'a été inventée. **À spécifier par Claude/FJD.**
+
+**4. Chemin et `btn_import` — OBJECTIONS RETIRÉES (FJD a raison).**
+- **Chemin** : le panneau **affiche bien** le chemin — `#info_chemin` (index.html **L614**), alimenté en `main.js` (L150). L'objection était **infondée** : il n'existe simplement **pas de champ de saisie** de chemin, et c'est un choix de maquette, pas une lacune.
+- **`btn_import`** : il **importe le `.md` de la ligne sélectionnée** (tube gelé, champ `Chemin`). C'est ce qu'il fait déjà ; l'objection était **infondée**.
+
+**5. Colonne Page / `btn_page` — SEUL POINT RÉELLEMENT OUVERT** (FJD : « à part la page peut-être, c'est vrai »). La page n'a **aucune source** dans le moteur (l'étiquette ne la porte pas) ⇒ `"-"` maintenu, **jamais un numéro inventé**.
+
+#### 6 ter. Re-vérification après arbitrage (01/10/2026)
+
+- `node --check main.js` ⇒ **SYNTAXE OK**.
+- `node verifier_moteur.js` ⇒ **TOUT PASSE (51 vérifications)** — 48 avant, **+3** pour l'arbitrage : statut **allumé** (`flex | la source A BOUGE depuis l'import`) sur source modifiée ; statut **muet** (`none | `) sur `identique` / `absente` / `indéterminé` / vierge ; **l'échec et l'incertitude sont bien tracés au journal** (le bandeau se tait, le journal parle).
+- Encodage : `grep -c $'\xef\xbf\xbd'` = **0** sur `main.js`, `index.html`, `verifier_moteur.js` et la présente ROADMAP (ligne de Statut incluse). `verifier_moteur.js` reste **100 % ASCII** (0 non-ASCII). Restent dans `main.js` les **3 non-ASCII préexistants** (`…`, `é`, `—`).
+
+#### 7. Encodage
+
+Normalisation ASCII appliquée à `main.js` (`-` pour le tiret cadratin, guillemets supprimés). Restent **2 non-ASCII préexistants** : `…` (L36, données de la maquette) et `é` (L65, `modifiee: "modifiee"` — libellé affiché). À confirmer avec FJD au regard de la convention « aucun accent » du tir 3.
+`grep -c $'\xef\xbf\xbd'` : **0** sur `main.js`, `index.html`, `verifier_moteur.js` et la présente ROADMAP (ligne de Statut incluse).
+
+#### 8. Reste à faire pour clore
+
+**1 rechargement UDT** puis validation visuelle FJD : document portant un import MD ⇒ « Actualiser » ⇒ comparer à l'écran et au journal ; **document vierge ⇒ 0 ligne**.
+
+---
+
+### CR — tir 2 : cercle rouge restauré, repli du calibrage corrigé, et les 2 capacités neuves demandées par FJD (01/10/2026)
+
+**Contexte** : après le tir 1 (§6 bis / §6 ter), FJD signale **2 défauts réels** et demande **2 évolutions**. Le présent tir traite les défauts ; les évolutions sont **escaladées** (jamais inventées).
+
+#### 1. Défaut RÉEL trouvé et corrigé — le cercle rouge d'alerte avait disparu
+
+**Ce que FJD voit** : « le cercle rouge autour de l'icône d'alerte dans la ligne de doc importé a disparu, il indique un chemin d'import brisé à réimporter ».
+
+**Diagnostic (lecture du dessin de référence, pas une supposition)** : la référence `illustrator/panneau_liens_md.svg` porte, au **rang 2** de la colonne État, **deux** traces superposés : `<circle class="cls-33" cx="292.84" cy="91.93" r="7.11"/>` — **le disque PLEIN `#d50f2b`** — **et** le point d'exclamation blanc (`cls-9`, `#ffffff`). La transposition HTML n'avait **repris que le point blanc** : un « ! » blanc flottant, sans son cercle. **La perte était réelle.**
+
+**Correction** : rétablissement du **bloc complet aux cotes de la référence** dans `index.html` — `viewBox="285.73 84.82 14.22 14.22"` (union : le cercle couvre `x 285.73→299.95`, `y 84.82→99.04`, soit **14.22 de diamètre** ; le point est centré sur `292.7 / 91.88`), avec `<circle cx="292.84" cy="91.93" r="7.11" fill="#d50f2b"/>` **puis** le tracé blanc. Un commentaire dans le fichier **grave la provenance** des deux cotes.
+
+**Preuve (navigateur réel, `page.evaluate`)** : `document.querySelectorAll("#liste_corps circle").length` = **1**, `fill` = **`#d50f2b`**. Le cercle est **présent et rouge**.
+
+#### 2. Défaut RÉEL — le repli « Calibrage » restait bloqué (et ne refermait pas tout)
+
+**Ce que FJD voit** : « encore des problèmes avec le *collapse* des informations : il ne ferme nullement l'ensemble des informations en l'état, et rouvre le calibrage une fois fermé, et *rouge-vert* une première fois, il reste bloqué sur ce comportement ensuite ».
+
+**Diagnostic** :
+- **Cause la plus probable — sélecteurs composés NON CERTIFIÉS.** Le repli reposait **entièrement** sur des sélecteurs composés : `#btn_expand.deplie .act-ferme`, `#btn_expand.deplie .act-ouvert`, `#ligne_calibrage.deplie .cal-ferme`, `#ligne_calibrage.deplie .cal-ouvert`. Le projet a **déjà payé ce défaut une fois** : `.ligne.selection` avait dû être remplacé par une inspection de `className` (cf. §6 ter et le `sourceSelectionnee()` du tir 1) parce que **ce type de sélecteur n'est pas certifié dans le runtime UXP**. Le symptôme FJD — « ça marche une fois, puis ça reste bloqué » — est **exactement** la signature d'un sélecteur composé évalué une fois puis plus rafraîchi.
+- **Ce n'est PAS un bug du cycle logique** : reproduit en **Chromium** par 4 clics programmatiques, le cycle ouverture/fermeture/ouverture/fermeture est **parfait** (`etat0 → flex → none → flex → none`). Chromium, lui, **certifie** les sélecteurs composés ⇒ **le défaut est bien côté UXP**, pas dans la logique.
+- **Second point (le « ne ferme pas tout »)** : le bloc `#calibrage` ne fait que **26 px** (2 lignes : mots, signes) et vit dans `#zone_infos` (hauteur figée **163 px**, contenu déplié **192 px** ⇒ **défilement**). Rien n'était hors de cause ; en revanche le **défilement n'était pas remis à zéro** à la fermeture, si bien qu'après un dépliage on **continuait de voir** les deux lignes mots/signes ⇒ **perception de « ça ne referme pas »**, à juste titre.
+
+**Correction (pattern CERTIFIÉ : état posé EN LIGNE par JS, pas par sélecteur composé)** :
+- **4 identifiants posés** dans `index.html` sur les 4 traces (2 chevrons de la barre d'actions, 2 chevrons de la ligne « Calibrage ») : `btn_expand_ferme`, `btn_expand_ouvert`, `icone_calibrage`, `icone_calibrage_ouvert`. **Zéro `sp-*`.**
+- **Nouvelle fonction `afficherTrace(id, visible)`** dans `main.js` : `style.display = "none"` pour masquer, **`""` pour RENDRE LA MAIN au défaut de l'élément** (donc à la référence, **au pixel**) — pas de valeur inventée quand l'élément doit être visible.
+- **`basculerCalibrage()`** pilote désormais explicitement **`#calibrage`** (inline `flex`/`none`), **les 4 traces** (inline) **et** remet **`#zone_infos.scrollTop = 0`** à la fermeture. Les classes `deplie` **restent posées** (compatibilité CSS, aucun effet de bord).
+- **Batterie enrichie** : le stub DOM reçoit un `classList` réel (il n'en avait **pas** — la batterie n'appelait donc jamais `basculerCalibrage`) et `zone_infos` entre dans les identifiants contrôlés. **+24 vérifications** couvrant **le cycle complet** (fermé → déplié → replié → ré-ouvert → re-replié) : état des 4 traces, classes posées/retirées, **remise à zéro du défilement**, traces au journal. Le verrou `✅` de la régression signalée par FJD (« re-ouvert **DE NOUVEAU — pas de blocage** ») est **explicite dans la batterie**.
+
+**Preuve — `node verifier_moteur.js` ⇒ `TOUT PASSE (75 vérifications)`** (48 au tir 1, +3 arbitrage, **+24 tir 2**). `node --check main.js` ⇒ **SYNTAXE OK**.
+**Preuve — navigateur réel** (4 clics sur `#btn_expand` via `page.evaluate`) : `calibrage` = `(défaut) → flex → none → flex → none`, `barreFerme` = `(défaut) → none → (défaut) → none → (défaut)`, `barreOuvert` = l'inverse exact. **Le cycle est stable, plus de blocage.**
+
+#### 3. ÉVOLUTION DEMANDÉE (1) — la page = le POINT D'INSERTION du texte
+
+**Demande FJD** : « la page indique le **point d'insertion du texte**, là où il démarre ».
+
+**FAIT VÉRIFIÉ** : dans l'étiquette `md-source-fingerprint`, il y a **exactement 6 champs** — `v, size, checksum, modified, name, path`. **Aucun champ `page`.** Et `import_md.jsx` **n'écrit ni ne lit aucune page** (`grep -E "pageNumber|parentPage"` sur le moteur : voir ci-dessous).
+
+**Ce que le moteur PEUT atteindre, en revanche (vérifié)** : il travaille déjà avec le **modèle objet réel** — `resolveTargetStory()` distingue `TextFrame` / `InsertionPoint` / `Story`; la branche curseur (`InsertionPoint`) connaît le **point d'insertion exact**. Techniquement, une page se lirait là : `insertionPoint.parentTextFrames[0].parentPage.name`. **Mais c'est une capacité NEUVE, non présente ; l'ouvrier ne l'invente pas.**
+
+**ESCALADE (l'ouvrier ne tranche pas)** : faut-il **ajouter la page à l'étiquette** (7ᵉ champ) **ou** la recalculer à la lecture ? La page est-elle celle du **point d'insertion au moment de l'import** (donnée figée, historique) ou celle du **point courant** (donnée vivante) ? **À spécifier par Claude/FJD.**
+
+#### 4. ÉVOLUTION DEMANDÉE (2) — signalétique « texte en excès » + « page de sortie »
+
+**Demande FJD** : un **chevron d'expansion** ouvrant sur **L1 : début de texte + n° de page** ; **L2 : sortie de texte + alerte texte-en-excès (icône identique à celle de bloc en excès) si excès + n° de page de sortie**.
+
+**FAIT VÉRIFIÉ** : **aucune** de ces données n'existe aujourd'hui. `grep -E "overset|overflows|Overflow"` sur `import_md.jsx` ⇒ **0 occurrence**. Le moteur ne teste **jamais** le débordement.
+
+**Ce que le moteur PEUT atteindre (vérifié)** : le modèle objet expose bien `TextFrame.overflows` (booléen) et la page du dernier cadre (`story.textContainers` / `parentPage`). Donc c'est **faisable** — mais c'est une **capacité NOUVELLE à construire côté moteur**, pas du câblage.
+
+**Note de cohérence visuelle** : l'icône « texte en excès **sur bloc** » est **celle qui vient d'être restaurée** — **disque plein `#d50f2b` + point d'exclamation blanc** (`cls-33` + `cls-9`, `cx 292.84 cy 91.93 r 7.11`). La signalétique demandée la **reprend**, ce qui **confirme** la lecture du §1 : le cercle rouge est **l'icône d'alerte du projet**, pas un ornement.
+
+**ESCALADE (l'ouvrier ne tranche pas)** : la donnée est **du ressort du moteur** (c'est lui qui touche la story). Où la lit-on (`story.textContainers[dernier].overflows` ?), où la stocke-t-on (étiquette ? à la volée ?), et **le chevron va-t-il par ligne de liste ou dans la fiche** ? **À spécifier par Claude/FJD.**
+
+#### 5. Ce que ce tir NE fait PAS
+
+- Il **ne touche pas** au moteur `import_md.jsx` (aucune ligne) — les points 3 et 4 **exigeront** son évolution, **à arbitrer d'abord**.
+- Il **ne crée aucune donnée** : pas de page inventée, pas d'excès inventé. Là où la donnée manque, l'interface **ne ment pas** (elle reste à `"-"`).
+- Il **ne commite pas** : le commit reste à FJD/Claude.
+
+#### 6. État de la batterie après ce tir
+
+- `node --check main.js` ⇒ **SYNTAXE OK**.
+- `node verifier_moteur.js` ⇒ **TOUT PASSE (75 vérifications)**.
+- `grep -c $'\xef\xbf\xbd'` ⇒ **0** sur `main.js`, `index.html`, `verifier_moteur.js` et la présente ROADMAP (**ligne de Statut incluse**). `verifier_moteur.js` reste **100 % ASCII**.
 
 ---
 
