@@ -25,11 +25,29 @@ Convention : toute nouvelle mission est rédigée ici (entrée + fichier détail
 
 **Risque nouveau identifié (FJD)** : un client externe dans la boucle introduit un tiers non technique — nécessite probablement un **diff visuel avant validation** (pas juste "ça a changé"), et un contrat d'usage clair (cf. horizon É7 du wiki, déjà posé pour le partage à des tiers — même logique de contrat de contribution, à relier).
 
-**Explicitement reporté par FJD, à ne pas anticiper ici** :
-- Chantier **GREP** (bot produit l'expression GREP, renseigne le champ, itération confiée aux contrôles natifs InDesign `Suivant`/`Précédent`/`Remplacer`/`Tout remplacer` — pas de boucle réinventée côté UXP). **Extension envisagée (FJD, 30/09/2026) : mode SR (Secrétariat de Rédaction)**, greffé sur ce même mécanisme CMD+F — le bot repère orphelines/veuves, fautes d'orthotypographie (surlignage), propose une sélection de portion à confirmer en justification, et peut réduire le kerning/l'approche de groupe pour résorber un débord. Même navigation itérative que le GREP classique (Suivant/Précédent), pas de nouvelle UI. **Préalable obligatoire avant toute implémentation** : chercher la documentation officielle Adobe SR/typographie (kerning, approche, `Justification` prefs) pour fonder un skill sur preuve, pas sur supposition — même discipline que le reste du projet (citation exacte + URL avant hypothèse).
-- **Wiki récursif du bot** (capitaliser les expressions GREP produites + retour utilisateur, même patron que `doc/wiki_extendscript_indesign.md` : gabarit, cas, numérotation immuable) — pour améliorer la précision du bot dans le temps.
+**Explicitement reporté par FJD, à ne pas anticiper ici** : chantier GREP et wiki récursif du bot — cf. Chapitre GREP ci-dessous, propre chapitre, même priorité (après Chapitre Panneau).
 
 **Prochaine étape** : découper ce cadrage en missions numérotées une fois le Chapitre Panneau clos — ne pas commencer l'implémentation avant.
+
+---
+
+## Chapitre GREP — Cadrage (30/09/2026, en attente de mission numérotée)
+
+**Statut** : 🔴 À FAIRE — cadrage acté par FJD, pas encore découpé en missions. **Priorité après la clôture du Chapitre Panneau**, en parallèle ou juste après le Chapitre Commutativité (ordre exact non tranché).
+
+**Principe directeur** : le bot produit l'**expression GREP**, la renseigne dans le champ natif InDesign — toute l'**itération** (Suivant/Précédent/Remplacer/Tout remplacer) est confiée aux contrôles natifs du panneau Rechercher/Remplacer. **Pas de boucle réinventée côté UXP** — c'est ce qui rend la brique simple et fiable, contrairement au chantier Commutativité (pas de pont réseau nécessaire pour cette partie).
+
+**Mode SR (Secrétariat de Rédaction)** — extension actée par FJD le 30/09/2026, greffée sur le même mécanisme CMD+F :
+- Repère les **orphelines/veuves** et les fautes d'**orthotypographie** (surlignage visuel).
+- Propose une **sélection de portion à confirmer** en justification.
+- Peut réduire le **kerning**/l'**approche de groupe** pour résorber un débord de ligne.
+- Même navigation itérative que le GREP classique — aucune nouvelle UI à construire.
+
+**Préalable obligatoire avant toute implémentation (SR)** : chercher la documentation officielle Adobe sur la typographie scriptable (kerning, approche, `Justification` preferences, détection de veuve/orpheline côté API) — fonder un skill sur preuve, pas sur supposition. Même discipline que le reste du projet (citation exacte + URL avant hypothèse, cf. wiki `doc/wiki_extendscript_indesign.md`).
+
+**Wiki récursif du bot** (prévu, pas commencé) : capitaliser les expressions GREP produites + le retour utilisateur (a marché / a raté, pourquoi), même patron que le wiki technique existant (gabarit à champs balisés, cas numérotés, numérotation immuable) — objectif : améliorer la précision du bot dans le temps, pas juste au niveau du modèle.
+
+**Prochaine étape** : découper en missions numérotées une fois le Chapitre Panneau clos.
 
 ---
 
