@@ -126,7 +126,13 @@ function deserializeFlatMapping(str) {
 // sans perte par deserializeFlatMapping. Vérifié par la sonde sur l'aller-retour.
 // ============================================================================
 
-var FINGERPRINT_VERSION = "1";
+// v2 (02/10/2026) : l'etiquette porte desormais une LISTE de sources (N imports
+// => N sources), decision FJD du 30/09 (gel leve POUR CETTE EVOLUTION, et pour
+// elle seule). Un label v1 (mono-source) reste lu comme une liste a 1 element :
+// aucune migration n'est necessaire, les documents deja importes continuent de
+// se lire. Le TUBE (3 champs nommes) n'est PAS touche par cette evolution.
+var FINGERPRINT_VERSION = "2";
+var M05_MAX_SOURCES = 12; // borne haute : l'etiquette reste courte (relue INTEGRALEMENT, mesure)
 var M05_SUM_MODULUS = 2147483647; // borne < 2^31, l'entier ExtendScript reste exact
 
 var ETAT_JAMAIS_IMPORTE = "jamais_importe";
@@ -188,10 +194,86 @@ function m05BuildFingerprint(file) {
 
 /** Relit une empreinte stockée. Retourne null si le label est absent ou méconnaissable. */
 function m05ParseFingerprint(raw) {
-    if (!raw) return null;
+    var liste = m05ParseFingerprintList(raw);
+    return liste.length ? liste[0] : null;
+}
+
+/**
+ * Serialise une LISTE d'empreintes en mapping PLAT (ExtendScript n'a pas de JSON,
+ * cf. serializeFlatMapping) : {"v":"2","n":"<N>","s0.name":"...","s0.path":"..."}.
+ * Aucun tableau, aucun nesting : des clefs plates prefixees "s<i>." — c'est le
+ * SEUL format que deserializeFlatMapping sait relire (la regex ne matche que des
+ * paires "cle":"valeur" plates).
+ */
+function m05SerializeFingerprintList(list) {
+    var obj = { v: FINGERPRINT_VERSION, n: String(list.length) };
+    for (var i = 0; i < list.length; i++) {
+        var fp = list[i] || {};
+        var p = "s" + i + ".";
+        obj[p + "v"] = fp.v || FINGERPRINT_VERSION;
+        obj[p + "name"] = fp.name || "";
+        obj[p + "path"] = fp.path || "";
+        obj[p + "size"] = fp.size || "";
+        obj[p + "checksum"] = fp.checksum || "";
+        obj[p + "modified"] = fp.modified || "";
+    }
+    return serializeFlatMapping(obj);
+}
+
+/**
+ * Relit la LISTE des sources stockees. RETROCOMPATIBLE : un label v1 (mono-source,
+ * 6 champs a la racine, pas de compteur "n") est rendu comme une liste a 1
+ * element. Un label absent ou sans version rend une liste VIDE.
+ */
+function m05ParseFingerprintList(raw) {
     var obj = deserializeFlatMapping(raw);
-    if (!obj || !obj.v) return null;
-    return obj;
+    if (!obj || !obj.v) return [];
+    // v1 : pas de compteur "n" — une seule empreinte, champs a la racine.
+    if (!obj.n) {
+        if (!obj.path) return [];
+        return [{ v: obj.v, name: obj.name || "", path: obj.path, size: obj.size || "",
+                  checksum: obj.checksum || "", modified: obj.modified || "" }];
+    }
+    var total = parseInt(obj.n, 10);
+    if (!total || total < 0) return [];
+    if (total > M05_MAX_SOURCES) total = M05_MAX_SOURCES;
+    var list = [];
+    for (var i = 0; i < total; i++) {
+        var p = "s" + i + ".";
+        var fp = {
+            v: obj[p + "v"] || obj.v,
+            name: obj[p + "name"] || "",
+            path: obj[p + "path"] || "",
+            size: obj[p + "size"] || "",
+            checksum: obj[p + "checksum"] || "",
+            modified: obj[p + "modified"] || ""
+        };
+        if (fp.path) list.push(fp);
+    }
+    return list;
+}
+
+/** Etat d'UNE empreinte DEJA lue (m05DecideState prenait le label brut, mono-source). */
+function m05DecideStateFor(stored) {
+    if (!stored || !stored.path) return ETAT_SOURCE_ABSENTE;
+    var f = new File(stored.path);
+    if (!f.exists) return ETAT_SOURCE_ABSENTE;
+    var courant = m05BuildFingerprint(f);
+    if (!courant) return ETAT_SOURCE_ABSENTE;
+    if (stored.checksum === courant.checksum && stored.size === courant.size) return ETAT_IDENTIQUE;
+    return ETAT_DIFFERENT;
+}
+
+/**
+ * Etats de TOUTES les sources memorisees, DANS L'ORDRE de la liste, separes par
+ * "|". Fonction PUBLIQUE du moteur : le panneau l'appelle pour etiqueter CHAQUE
+ * ligne (une source par ligne). Une etiquette sans source rend "".
+ */
+function m05DecideStateList(raw) {
+    var list = m05ParseFingerprintList(raw);
+    var etats = [];
+    for (var i = 0; i < list.length; i++) etats.push(m05DecideStateFor(list[i]));
+    return etats.join("|");
 }
 
 /**
@@ -227,6 +309,12 @@ var demanderConfirmationM05 = function (message) {
 /**
  * Écrit l'empreinte de la source dans le document. Appelé UNIQUEMENT après un
  * import réussi (ou après chargement du place gun, cf. l'appel en mode gun).
+ *
+ * v2 (02/10/2026) : UPSERT dans la LISTE. On relit la liste existante, on
+ * REMPLACE l'entree de MEME chemin (un reimport de la meme source ne doit PAS
+ * creer une 2e ligne), sinon on AJOUTE en tete (le plus recent d'abord).
+ * insertLabel() ecrase toujours la valeur : c'est NOUS qui reinserons la liste
+ * entiere, augmentee de la nouvelle source.
  */
 function saveSourceFingerprint(file) {
     try {
@@ -237,8 +325,24 @@ function saveSourceFingerprint(file) {
             logToFile("M05-empreinte: ABANDON — lecture impossible, aucune empreinte ecrite pour " + file.fsName);
             return false;
         }
-        doc.insertLabel(LABEL_SOURCE_FP, serializeFlatMapping(fp));
-        logToFile("M05-empreinte: ECRITE -> " + fp.path + " | v=" + fp.v + " | size=" + fp.size + " | checksum=" + fp.checksum);
+        var existantes = [];
+        try { existantes = m05ParseFingerprintList(doc.extractLabel(LABEL_SOURCE_FP) || ""); }
+        catch (eRel) { logError(eRel, "M05-empreinte relecture avant upsert"); existantes = []; }
+        var liste = [];
+        var remplace = false;
+        for (var i = 0; i < existantes.length; i++) {
+            if (existantes[i].path === fp.path) {
+                if (!remplace) { liste.push(fp); remplace = true; }
+            } else {
+                liste.push(existantes[i]);
+            }
+        }
+        if (!remplace) liste.unshift(fp);
+        if (liste.length > M05_MAX_SOURCES) liste = liste.slice(0, M05_MAX_SOURCES);
+        doc.insertLabel(LABEL_SOURCE_FP, m05SerializeFingerprintList(liste));
+        logToFile("M05-empreinte: ECRITE -> " + fp.path + " | v=" + fp.v + " | size=" + fp.size
+            + " | checksum=" + fp.checksum + " | sources en memoire=" + liste.length
+            + (remplace ? " (mise a jour)" : " (ajout)"));
         return true;
     } catch (eSave) {
         logError(eSave, "M05-empreinte saveSourceFingerprint");
@@ -258,34 +362,56 @@ function saveSourceFingerprint(file) {
  * d'eux-mêmes.
  */
 function verifierSourceMarkdown(doc) {
-    var resultat = { etat: ETAT_JAMAIS_IMPORTE, chemin: null, relance: false };
+    var resultat = { etat: ETAT_JAMAIS_IMPORTE, chemin: null, chemins: [],
+                     differents: [], absentes: [], nb: 0, relance: false };
     var raw = "";
     try { raw = doc.extractLabel(LABEL_SOURCE_FP) || ""; } catch (eLabel) {
         logError(eLabel, "M05-empreinte extractLabel");
         raw = "";
     }
-    var stored = m05ParseFingerprint(raw);
-    resultat.chemin = (stored && stored.path) ? stored.path : null;
-    resultat.etat = m05DecideState(raw, resultat.chemin);
-    logToFile("M05-empreinte: etat source = " + resultat.etat
-        + " | source memorisee = " + (resultat.chemin || "(aucune)")
-        + " | empreinte memorisee = " + (stored ? (stored.v + "/" + stored.size + "/" + stored.checksum) : "(aucune)"));
+    var liste = m05ParseFingerprintList(raw);
+    resultat.nb = liste.length;
+    if (liste.length === 0) {
+        logToFile("M05-empreinte: aucune source memorisee — jamais importe");
+        return resultat;
+    }
+    resultat.chemin = liste[0].path;
+    // On juge CHAQUE source memorisee ; l'etat rendu est la SYNTHESE (la plus grave
+    // gagne : different > source_absente > identique). Decision FJD du 02/10 :
+    // « toutes — alerte si l'une quelconque a change ».
+    for (var i = 0; i < liste.length; i++) {
+        var etatI = m05DecideStateFor(liste[i]);
+        if (etatI === ETAT_DIFFERENT) resultat.differents.push(liste[i].path);
+        else if (etatI === ETAT_SOURCE_ABSENTE) resultat.absentes.push(liste[i].path);
+        logToFile("M05-empreinte: source[" + i + "] = " + etatI + " | " + liste[i].path);
+    }
+    resultat.chemins = resultat.differents.concat(resultat.absentes);
+    resultat.etat = resultat.differents.length ? ETAT_DIFFERENT
+        : (resultat.absentes.length ? ETAT_SOURCE_ABSENTE : ETAT_IDENTIQUE);
+    logToFile("M05-empreinte: " + liste.length + " source(s) memorisee(s) | differentes="
+        + resultat.differents.length + " | absentes=" + resultat.absentes.length
+        + " | etat agrege=" + resultat.etat);
 
-    if (resultat.etat === ETAT_DIFFERENT) {
-        var msg = "La source Markdown a changé depuis le dernier import.\n\n"
-            + resultat.chemin + "\n\nRelancer l'import de cette source maintenant ?";
+    if (resultat.differents.length > 0) {
+        var msg = resultat.differents.length === 1
+            ? "La source Markdown a changé depuis le dernier import.\n\n" + resultat.differents[0]
+              + "\n\nRelancer l'import de cette source maintenant ?"
+            : (resultat.differents.length + " sources Markdown ont changé depuis le dernier import.\n\n"
+              + resultat.differents.join("\n") + "\n\nRelancer l'import de ces sources maintenant ?");
         if (demanderConfirmationM05(msg)) {
             resultat.relance = true;
-            logToFile("M05-empreinte: relance CONFIRMEE — pipeline complet relance sur la source memorisee");
+            logToFile("M05-empreinte: relance CONFIRMEE — " + resultat.differents.length
+                + " source(s) a relancer (le pipeline traite UNE source par execution)");
         } else {
             logToFile("M05-empreinte: relance REFUSEE par l'utilisateur — arret du script");
         }
-    } else if (resultat.etat === ETAT_SOURCE_ABSENTE) {
-        logToFile("M05-empreinte: source memorisee ABSENTE — signale, sans relance automatique");
-        alertUser("La source Markdown mémorisée est introuvable :\n\n" + (resultat.chemin || "(chemin inconnu)")
+    } else if (resultat.absentes.length > 0) {
+        logToFile("M05-empreinte: " + resultat.absentes.length + " source(s) ABSENTE(S) — signale, sans relance automatique");
+        alertUser("Une ou plusieurs sources Markdown mémorisées sont introuvables :\n\n"
+            + resultat.absentes.join("\n")
             + "\n\nVous pouvez choisir un autre fichier Markdown.");
-    } else if (resultat.etat === ETAT_IDENTIQUE) {
-        logToFile("M05-empreinte: source INCHANGEE depuis le dernier import — aucune alerte");
+    } else {
+        logToFile("M05-empreinte: " + liste.length + " source(s) INCHANGEE(S) depuis le dernier import — aucune alerte");
     }
     return resultat;
 }
@@ -2841,7 +2967,16 @@ function mainInterne() {
             try {
                 var verifSource = verifierSourceMarkdown(doc);
                 if (verifSource.relance) {
-                    relanceSourcePath = verifSource.chemin;
+                    // Le pipeline traite UNE source par execution : on relance la
+                    // PREMIERE source modifiee. S'il en reste, on le DIT au journal
+                    // (jamais silencieux) — l'utilisateur relancera le script.
+                    relanceSourcePath = (verifSource.differents && verifSource.differents.length)
+                        ? verifSource.differents[0] : verifSource.chemin;
+                    if (verifSource.differents.length > 1) {
+                        logToFile("M05-empreinte: relance source par source — "
+                            + (verifSource.differents.length - 1)
+                            + " autre(s) source(s) modifiee(s) reste(nt) a relancer (relancez le script)");
+                    }
                 } else if (verifSource.etat === ETAT_DIFFERENT) {
                     return; // relance refusée : on s'arrête net, rien n'est touché
                 }

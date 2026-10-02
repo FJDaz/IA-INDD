@@ -4,101 +4,169 @@
   <meta charset="utf-8" />
   <title>Sonde Import MD</title>
   <style>
-    html, body { margin: 0; padding: 0; }
+    /* ------------------------------------------------------------------
+       MISSION 5 — Habillage Spectrum.
+         tir 1 : les 4 ZONES (patron DA : en-tete / liste / actions / infos).
+         tir 2 (ce fichier) : WIDGETS NATIFS + TOKENS.
+           - les 4 actions sont des <sp-button> portant une <sp-icon
+             slot="icon"> ET leur libelle (icone + mot, jamais icone seule) ;
+           - le champ du chemin est un <sp-textfield> ;
+           - plus AUCUNE couleur en dur hors du bloc de tokens ci-dessous ;
+           - le CSS maison ne sert plus qu'a l'AGENCEMENT.
+       Regle d'or UXP : on ne restyle PAS les widgets sp-* — ils prennent
+       l'apparence et le theme (sombre/clair) de l'application hote.
+       Les ids et le comportement sont INTACTS : main.js n'est pas touche
+       (sp-button emet « click », sp-textfield expose « .value » — verifie
+       dans la reference Adobe avant ecriture, cf. CR).
+       ------------------------------------------------------------------ */
+
+    :root {
+      /* Tokens de COMPOSANT — agencement */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --rayon: 4px;
+      /* Tokens de COULEUR — seul endroit ou une couleur est ecrite.
+         Les widgets sp-* tiennent leur theme de l'hote ; ces tokens ne
+         servent qu'au HTML brut qui n'a pas de widget natif : le tableau
+         et le journal. Le BASCULEMENT clair/sombre de ce HTML brut n'est
+         PAS encore cable (a mesurer, tir ulterieur) — on ne le suppose pas. */
+      --panel-bg: #2b2b2b;
+      --panel-surface: #1f1f1f;
+      --panel-journal-bg: #1a1a1a;
+      --panel-border: #444444;
+      --panel-border-strong: #555555;
+      --panel-separator: #3a3a3a;
+      --panel-th-bg: #333333;
+      --panel-text: #e8e8e8;
+      --panel-text-dim: #cfd8cf;
+      --panel-journal-text: #cfe8cf;
+      --panel-warning-text: #ffb4b4;
+      --panel-success-bg: #1f6f2f;
+      --panel-success-border: #3fbf5f;
+      --panel-success-text: #eaffea;
+      --panel-error-bg: #7a1f1f;
+      --panel-error-border: #dd6666;
+      --panel-error-text: #ffecec;
+    }
+
+    html, body { margin: 0; padding: 0; height: 100%; }
     body {
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      padding: var(--space-2);
       font-family: system-ui, -apple-system, "Helvetica Neue", sans-serif;
       font-size: 11px;
-      padding: 8px;
-      color: #e8e8e8;
-      background: #2b2b2b;
+      color: var(--panel-text);
+      background: var(--panel-bg);
       -webkit-user-select: text;
       user-select: text;
       cursor: default;
     }
-    h1 { font-size: 12px; margin: 0 0 2px 0; }
-    .note { opacity: 0.65; margin: 0 0 8px 0; line-height: 1.35; }
-    button {
+
+    /* --- zone 1 : EN-TETE --- */
+    #zone_entete { flex: 0 0 auto; }
+    #zone_entete h1 { font-size: 12px; margin: 0 0 var(--space-1) 0; }
+    .note { opacity: 0.65; margin: var(--space-1) 0 0 0; line-height: 1.35; }
+
+    /* --- zone 2 : LISTE (prend la hauteur restante, defile seule) --- */
+    #zone_liste {
+      flex: 1 1 auto;
+      min-height: 120px;
+      margin: var(--space-2) 0;
+      overflow: auto;
+    }
+
+    /* --- zone 3 : ACTIONS (barre fixe, sous la liste) --- */
+    #zone_actions {
+      flex: 0 0 auto;
+      padding-top: var(--space-2);
+      border-top: 1px solid var(--panel-border);
+    }
+
+    /* --- zone 4 : INFORMATIONS (zone basse, lisible) --- */
+    #zone_infos { flex: 0 0 auto; }
+    #zone_infos #btn_mesures { margin-top: 0; }
+
+    /* Les 4 actions et les boutons de l'annexe sont des WIDGETS NATIFS :
+       on ne les restyle pas (regle d'or UXP). On ne regle que l'AGENCEMENT
+       — pleine largeur et empilement vertical. */
+    #zone_actions sp-button,
+    #zone_infos sp-button,
+    #mesures sp-button {
       display: block;
       width: 100%;
-      margin: 3px 0;
-      padding: 5px 6px;
-      font-size: 11px;
-      text-align: left;
-      color: #e8e8e8;
-      background: #3a3a3a;
-      border: 1px solid #555;
-      border-radius: 4px;
+      margin: var(--space-1) 0;
     }
-    input {
-      display: block;
-      width: 100%;
-      box-sizing: border-box;
-      margin: 6px 0 3px 0;
-      padding: 4px 5px;
-      font-size: 10px;
-      font-family: ui-monospace, Menlo, monospace;
-      color: #e8e8e8;
-      background: #1f1f1f;
-      border: 1px solid #555;
-      border-radius: 4px;
-    }
+
+    /* Champ du chemin : widget natif, simple reglage d'agencement. */
+    #chemin { width: 100%; margin: 6px 0 3px 0; }
+
+    /* Le JOURNAL n'a pas de widget natif : il reste du HTML brut, mais
+       TOKENISE (plus aucune couleur en dur, plus rien a restyler). */
     #journal {
-      margin: 8px 0 0 0;
+      margin: var(--space-1) 0 0 0;
       padding: 6px;
       font-family: ui-monospace, Menlo, monospace;
       font-size: 10px;
       line-height: 1.4;
       white-space: pre-wrap;
       word-break: break-word;
-      color: #cfe8cf;
-      background: #1a1a1a;
-      border: 1px solid #444;
-      border-radius: 4px;
+      color: var(--panel-journal-text);
+      background: var(--panel-journal-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--rayon);
       max-height: 260px;
       overflow: auto;
       -webkit-user-select: text;
       user-select: text;
       cursor: text;
     }
-    #journal .ko { color: #ffb4b4; }
-    #btn_copier { margin-top: 6px; }
+    #journal .ko { color: var(--panel-warning-text); }
     /* Tableau de la LISTE (Mission 2) : une ligne par source.
+       Il n'existe PAS de widget natif « tableau » (verifie dans la doc :
+       la route native n'en fournit pas) — le choix tranche par FJD le
+       30/09 est donc : HTML, mais TOKENISE. Aucune couleur en dur ici.
        Le tableau est TOUJOURS present, meme vide : une liste vide est un
        resultat (0 ligne), pas une absence d'affichage. */
     table#liste {
       width: 100%;
-      margin: 8px 0 3px 0;
+      margin: 0 0 var(--space-1) 0;
       border-collapse: collapse;
       font-size: 10px;
-      background: #1f1f1f;
-      border: 1px solid #444;
-      border-radius: 4px;
+      background: var(--panel-surface);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--rayon);
     }
     table#liste th {
       text-align: left;
       padding: 4px 5px;
       font-weight: 600;
-      color: #cfd8cf;
-      background: #333;
-      border-bottom: 1px solid #555;
+      color: var(--panel-text-dim);
+      background: var(--panel-th-bg);
+      border-bottom: 1px solid var(--panel-border-strong);
       white-space: nowrap;
     }
     table#liste td {
       padding: 4px 5px;
       vertical-align: top;
-      border-top: 1px solid #3a3a3a;
+      border-top: 1px solid var(--panel-separator);
       word-break: break-word;
       -webkit-user-select: text;
       user-select: text;
     }
-    #liste_note { opacity: 0.7; margin: 0 0 4px 0; }
+    #liste_note { opacity: 0.7; margin: 0; }
     /* Bandeau de statut : la seule chose que l'on ne peut PAS rater.
-       Vert = succes, Rouge = echec. Affiche le chemin du fichier journal. */
+       Vert = succes, Rouge = echec. Affiche le chemin du fichier journal.
+       Il reste un <div> (pas de widget natif « banner » cote widgets UXP) :
+       main.js lui affecte « className = ok|ko », contrat conserve tel quel. */
     #statut {
       display: none;
-      margin: 0 0 8px 0;
+      margin: var(--space-1) 0 0 0;
       padding: 7px 9px;
-      border-radius: 4px;
+      border-radius: var(--rayon);
       font-size: 11px;
       font-weight: 600;
       line-height: 1.4;
@@ -109,66 +177,96 @@
     }
     #statut.ok {
       display: block;
-      background: #1f6f2f;
-      border: 1px solid #3fbf5f;
-      color: #eaffea;
+      background: var(--panel-success-bg);
+      border: 1px solid var(--panel-success-border);
+      color: var(--panel-success-text);
     }
     #statut.ko {
       display: block;
-      background: #7a1f1f;
-      border: 1px solid #dd6666;
-      color: #ffecec;
+      background: var(--panel-error-bg);
+      border: 1px solid var(--panel-error-border);
+      color: var(--panel-error-text);
     }
   </style>
 </head>
 <body>
-  <h1>Sonde Import MD</h1>
-  <div id="statut"></div>
-  <p class="note">
-    Ce panneau repond a UNE question : la source Markdown de ce document
-    a-t-elle bouge depuis l'import ? Quatre boutons suffisent. Les trois
-    premiers ne font que LIRE ; « Importer » est le SEUL a ECRIRE dans le
-    document, en donnant l'ordre au moteur import_md.jsx. Les mesures
-    techniques qui ont servi a construire le panneau sont rangees dans la
-    section repliee, en bas.
-  </p>
-
-  <button id="btn_liste">Voir la liste des sources</button>
-  <button id="btn_actualiser">Actualiser (sans rien ecrire)</button>
-  <button id="btn_import">Importer la source Markdown dans le document</button>
-  <button id="btn_copier">Enregistrer le journal (.txt)</button>
-
-  <table id="liste">
-    <thead>
-      <tr>
-        <th>Etat</th>
-        <th>Source</th>
-        <th>Modifiee</th>
-        <th>Mots</th>
-        <th>Signes</th>
-      </tr>
-    </thead>
-    <tbody id="liste_corps"></tbody>
-  </table>
-  <div id="liste_note">liste non construite - cliquer « Voir la liste des sources ».</div>
-
-  <!-- MESURES TECHNIQUES : rangees ici, repliees par defaut.
-       RIEN N'EST SUPPRIME : ce sont les outils qui ont permis de certifier le
-       panneau (dont le controle negatif, qui DOIT echouer). Ils restent
-       utilisables, mais ils ne polluent plus la lecture du panneau. -->
-  <button id="btn_mesures">Mesures techniques (repliees) - cliquer pour ouvrir</button>
-  <div id="mesures" style="display: none;">
-    <button id="btn_dom">1. Le DOM InDesign repond-il ?</button>
-    <button id="btn_doscript">2. app.doScript existe-t-il ?</button>
-    <button id="btn_moteur">3. Notre moteur import_md.jsx est-il joignable ?</button>
-    <button id="btn_fichier">4. Lire un .md sur le disque</button>
-    <button id="btn_negatif">5. Controle negatif (doit ECHOUER)</button>
-    <button id="btn_identite">6. Identite de la source (etiquette du doc)</button>
-    <button id="btn_canal">7. Le tuyau : quel canal porte un argument ?</button>
-    <input id="chemin" type="text" />
+  <!-- zone 1 — EN-TETE : titre + bandeau d'etat + note -->
+  <div id="zone_entete">
+    <h1>Sonde Import MD</h1>
+    <div id="statut"></div>
+    <p class="note">
+      Ce panneau repond a UNE question : la source Markdown de ce document
+      a-t-elle bouge depuis l'import ? Quatre boutons suffisent. Les trois
+      premiers ne font que LIRE ; « Importer » est le SEUL a ECRIRE dans le
+      document, en donnant l'ordre au moteur import_md.jsx. Les mesures
+      techniques qui ont servi a construire le panneau sont rangees dans la
+      section repliee, en bas.
+    </p>
   </div>
 
-  <pre id="journal"></pre>
+  <!-- zone 2 — LISTE : en-tetes + lignes (prend la hauteur restante) -->
+  <div id="zone_liste">
+    <table id="liste">
+      <thead>
+        <tr>
+          <th>Etat</th>
+          <th>Source</th>
+          <th>Modifiee</th>
+          <th>Mots</th>
+          <th>Signes</th>
+        </tr>
+      </thead>
+      <tbody id="liste_corps"></tbody>
+    </table>
+    <div id="liste_note">liste non construite - cliquer « Voir la liste des sources ».</div>
+  </div>
+
+  <!-- zone 3 — ACTIONS : les 4 boutons NATIFS, chacun AVEC son icone.
+       Regle FJD du 30/09 : icone + mot, JAMAIS l'icone seule.
+       Hierarchie : les 3 lectures en « secondary », l'ECRITURE (Importer)
+       seule en « cta » (accent) — c'est le seul bouton qui ecrit dans le
+       document.
+       Les noms d'icones sont ceux du jeu INTEGRE (liste fermee, doc Adobe).
+       Aucun ne dit « rafraichir » : les plus proches sont pris ici, a
+       CONFIRMER visuellement dans le vrai runtime (cf. CR). -->
+  <div id="zone_actions">
+    <sp-button id="btn_liste" variant="secondary">
+      <sp-icon name="ui:Magnifier" size="s" slot="icon"></sp-icon>
+      Voir la liste des sources
+    </sp-button>
+    <sp-button id="btn_actualiser" variant="secondary">
+      <sp-icon name="ui:ArrowDownSmall" size="s" slot="icon"></sp-icon>
+      Actualiser (sans rien ecrire)
+    </sp-button>
+    <sp-button id="btn_import" variant="cta">
+      <sp-icon name="ui:CheckmarkMedium" size="s" slot="icon"></sp-icon>
+      Importer la source Markdown dans le document
+    </sp-button>
+    <sp-button id="btn_copier" variant="secondary">
+      <sp-icon name="ui:ArrowUpSmall" size="s" slot="icon"></sp-icon>
+      Enregistrer le journal (.txt)
+    </sp-button>
+  </div>
+
+  <!-- zone 4 — INFORMATIONS : annexe technique repliee + journal -->
+  <div id="zone_infos">
+    <!-- MESURES TECHNIQUES : repliees par defaut.
+         RIEN N'EST SUPPRIME : ce sont les outils qui ont permis de certifier le
+         panneau (dont le controle negatif, qui DOIT echouer). Ils restent
+         utilisables, mais ils ne polluent plus la lecture du panneau. -->
+    <sp-button id="btn_mesures" variant="secondary" quiet>Mesures techniques (repliees) - cliquer pour ouvrir</sp-button>
+    <div id="mesures" style="display: none;">
+      <sp-button id="btn_dom" variant="secondary" quiet>1. Le DOM InDesign repond-il ?</sp-button>
+      <sp-button id="btn_doscript" variant="secondary" quiet>2. app.doScript existe-t-il ?</sp-button>
+      <sp-button id="btn_moteur" variant="secondary" quiet>3. Notre moteur import_md.jsx est-il joignable ?</sp-button>
+      <sp-button id="btn_fichier" variant="secondary" quiet>4. Lire un .md sur le disque</sp-button>
+      <sp-button id="btn_negatif" variant="secondary" quiet>5. Controle negatif (doit ECHOUER)</sp-button>
+      <sp-button id="btn_identite" variant="secondary" quiet>6. Identite de la source (etiquette du doc)</sp-button>
+      <sp-button id="btn_canal" variant="secondary" quiet>7. Le tuyau : quel canal porte un argument ?</sp-button>
+      <sp-textfield id="chemin" placeholder="Chemin du fichier .md"></sp-textfield>
+    </div>
+    <pre id="journal"></pre>
+  </div>
 
   <script src="main.js"></script>
 </body>

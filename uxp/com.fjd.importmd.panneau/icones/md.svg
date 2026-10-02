@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="23" height="23" viewBox="0 0 23 23">
+  <!-- Icone de barre d'accroche du panneau Liens MD (23 x 23).
+       Provient du badge MD de panneau_liens_md.svg : carre 18x18
+       rx 4, lettres Helvetica-Bold 8 px. Couleurs demandees par
+       FJD : fill #535353, stroke et lettres #b0b0b0. -->
+  <rect x="1.5" y="1.5" width="20" height="20" rx="4.44" ry="4.44"
+        fill="#535353" stroke="#b0b0b0" stroke-width="1"/>
+  <path fill="#b0b0b0" d="M4.969 14.681V8.319H6.891L8.046 12.659L9.187 8.319H11.114V14.681H9.921V9.673L8.658 14.681H7.421L6.162 9.673V14.681Z M12.697 8.319H15.045Q15.84 8.319 16.256 8.44Q16.816 8.605 17.215 9.026Q17.615 9.447 17.823 10.057Q18.031 10.667 18.031 11.561Q18.031 12.346 17.836 12.915Q17.597 13.609 17.155 14.039Q16.82 14.365 16.252 14.547Q15.827 14.681 15.115 14.681H12.697ZM13.982 9.395V13.609H14.941Q15.479 13.609 15.718 13.549Q16.031 13.47 16.237 13.284Q16.443 13.097 16.573 12.67Q16.703 12.242 16.703 11.504Q16.703 10.766 16.573 10.372Q16.443 9.977 16.209 9.755Q15.974 9.534 15.614 9.456Q15.345 9.395 14.559 9.395Z"/>
+</svg>

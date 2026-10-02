@@ -1,0 +1,67 @@
+{
+    "id": "com.fjd.importmd.panneau",
+    "name": "Liens MD",
+    "version": "0.1.0",
+    "main": "index.html",
+    "manifestVersion": 5,
+    "host": {
+        "app": "ID",
+        "minVersion": "21.6.0"
+    },
+    "entrypoints": [
+        {
+            "type": "panel",
+            "id": "liens-md",
+            "label": {
+                "default": "Liens MD"
+            },
+            "minimumSize": {
+                "width": 260,
+                "height": 420
+            },
+            "maximumSize": {
+                "width": 900,
+                "height": 2000
+            },
+            "preferredDockedSize": {
+                "width": 320,
+                "height": 640
+            },
+            "preferredFloatingSize": {
+                "width": 320,
+                "height": 640
+            },
+            "icon": [
+                {
+                    "width": 23,
+                    "height": 23,
+                    "path": "icones/md.png",
+                    "scale": [
+                        1,
+                        2
+                    ],
+                    "theme": [
+                        "all"
+                    ]
+                }
+            ]
+        }
+    ],
+    "icons": [
+        {
+            "width": 24,
+            "height": 24,
+            "path": "icones/panneau.png",
+            "scale": [
+                1,
+                2
+            ],
+            "theme": [
+                "all"
+            ]
+        }
+    ],
+    "requiredPermissions": {
+        "localFileSystem": "fullAccess"
+    }
+}

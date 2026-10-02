@@ -7,3 +7,6 @@ IMPORT_MD_MODEL.indt
 # Artefacts d'execution produits par le plugin (jamais versionnes).
 import_md_mapping_memory.txt
 import_md_errors.log
+
+# Contenu de formation (valeur commerciale separee, pas la vitrine technique).
+doc/formation/

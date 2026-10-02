@@ -1536,7 +1536,7 @@ L'entrypoint `icon` est l'icône **du panneau** (« overrides the plugin icon in
 
 ## Chapitre Panneau — Mission 6 — La boucle : tous les imports du document courant
 
-**Statut** : 🟡 PARTIELLE — **tir 1 (01/10/2026)** : le panneau appelle le **MOTEUR RÉEL** (`import_md.jsx`) via le **tube gelé**, à **N = 1** ; prouvé par batterie (`verifier_moteur.js`, **75/75** — 48 au tir 1, **+3** par l'arbitrage FJD du 01/10 sur le bandeau d'état, **+24 au tir 2** du 01/10 sur le repli du calibrage, cf. §6 bis et §6 quater) — le **critère 2** (« vierge ⇒ 0 ligne », contrôle négatif obligatoire) est **ATTEINT**, le **critère 1** (« N imports ⇒ N lignes ») reste **OUVERT** : il exige l'**étiquette-LISTE** (N sources), évolution de stockage **tranchée le 30/09 mais NON faite**. **Arbitrage FJD du 01/10 appliqué** (`#statut` = **triangle danger UNIQUEMENT si source modifiée, rien du tout sinon** ; `#journal` = canal de **debug**, désormais réellement alimenté ; objections « chemin » et « `btn_import` » **retirées car infondées**) ; **restent ouverts : la page** (voir §6 quater : FJD la veut = le **point d'insertion du texte**, donnée **absente du moteur**), la **signalétique texte-en-excès / page de sortie** (capacité **NEUVE**, idem) et la **provenance / `info_modele`** (capacité **NEUVE** — le moteur ne détecte RIEN —, **à spécifier par l'Architecte**, cf. §6 bis et §6 quater). **Tir 2 (01/10)** : **cercle rouge d'alerte RESTAURÉ** sur la ligne importée (chemin d'import brisé ⇒ à réimporter) et **repli du calibrage CORRIGÉ** (l'état des chevrons est désormais posé **EN LIGNE**, plus par sélecteur composé — cf. §6 quater). Validation visuelle FJD (1 rechargement UDT) à faire. **Décidée APRÈS la Mission 5** (ordre FJD du 30/09/2026 : l'UI d'abord). **Débloquée** : FJD a **confirmé le 30/09/2026** que l'étiquette passe de **1** à **N** sources par document (le gel du 30/09 est levé **pour cette évolution précise, et pour elle seule**).
+**Statut** : 🟡 PARTIELLE — **tir 1 (01/10/2026)** : le panneau appelle le **MOTEUR RÉEL** (`import_md.jsx`) via le **tube gelé**, à **N = 1** ; prouvé par batterie (`verifier_moteur.js`, **97/97** — 48 au tir 1, **+3** par l'arbitrage FJD du 01/10 sur le bandeau d'état, **+24 au tir 2**, **+4 au tir 3** du 01/10 sur le repli du calibrage, **+18 au tir 4** du 01/10 sur le câblage de `btn_relier`, cf. §6 bis, §6 quater, §7 et le CR tir 4) — le **critère 2** (« vierge ⇒ 0 ligne », contrôle négatif obligatoire) est **ATTEINT**, le **critère 1** (« N imports ⇒ N lignes ») est **DÉSORMAIS ATTEINT EN BATTERIE (tir 8, 02/10)** : l'**étiquette-LISTE** v2 est **implémentée et prouvée** (**164/0** panneau + **51/0** moteur, fichier neuf `verifier_empreinte.js`) — évolution de stockage **tranchée le 30/09** et **faite** ; **ne reste que la validation visuelle FJD** (1 rechargement UDT, `cloneNode` non certifié à l'écran). **Arbitrage FJD du 01/10 appliqué** (`#statut` = **triangle danger UNIQUEMENT si source modifiée, rien du tout sinon** ; `#journal` = canal de **debug**, désormais réellement alimenté ; objections « chemin » et « `btn_import` » **retirées car infondées**) ; **restent ouverts : la page** (voir §6 quater : FJD la veut = le **point d'insertion du texte**, donnée **absente du moteur**), la **signalétique texte-en-excès / page de sortie** (capacité **NEUVE**, idem) et la **provenance / `info_modele`** (capacité **NEUVE** — le moteur ne détecte RIEN —, **à spécifier par l'Architecte**, cf. §6 bis et §6 quater). **Tir 2 (01/10)** : **cercle rouge d'alerte RESTAURÉ** sur la ligne importée (chemin d'import brisé ⇒ à réimporter) et repli du calibrage (l'état des chevrons est désormais posé **EN LIGNE**, plus par sélecteur composé — cf. §6 quater) — **cette seconde conclusion est FAUSSE et FJD l'a démentie le 01/10 (« le collapse marche tjrs pas »)** : le tir 2 posait l'état visible en **vidant** le style en ligne (`""`), ce qui **rend la main à la CSS** et y **masque** le chevron ouvert. **Tir 3 (01/10)** : cause réelle trouvée et corrigée (valeur d'affichage **TOUJOURS explicite**, `block`/`none`), **4 règles à sélecteur composé SUPPRIMÉES** de `index.html`, **cadrage du bloc ouvert** posé, **vidange du journal** forcée — batterie **79/79**, cf. **§7**. **Tir 4 (01/10)** : `btn_relier` **CÂBLÉ** — « Relier un fichier .md… » (sélecteur natif UXP `getFileForOpening`) alimente le **même tube gelé** que « Importer » via le tronc commun `envoyerImportAuMoteur()` : **l'impasse du premier import est LEVÉE** (le panneau ne pouvait produire un `Chemin` que depuis une étiquette, elle-même issue d'un import). Tube **INCHANGÉ** (3 champs nommés) ; `btn_editer` devient le **seul orphelin** ; batterie **97/97**, cf. CR tir 4. **Tir 5 (01/10)** : **écran VIDE au chargement** (le panneau ne s'ouvre **plus** sur la maquette : `viderLaListe()` au load, puis lecture **DIFFÉRÉE** de 600 ms) et **icône d'alerte CONDITIONNÉE** — l'aiguillage par **position** envoyait « identique » sur la ligne du **cercle rouge** ⇒ une source **SAINE** s'affichait avec une alerte ; corrigé (`different`→triangle ambre, `source_absente`→cercle rouge, `identique`/indéterminé→colonne **VIDE**), **les traces n'ont pas bougé** ; **wiki nourri : Cas 49 et Cas 50 créés** (47 ⇒ 49 cas, 0 ancre introuvable) ; batterie **125/125** (+28), cf. CR tir 5. **Tir 6 (02/10)** : FJD a signalé *« import envoyé, mais journal moteur illisible »* — **cause trouvée et MESURÉE** : le journal du moteur est écrit en **MacRoman** (`logToFile()`, `import_md.jsx` **L348**, `open("a")` **sans encoding**) et **UXP le lit en UTF-8** ⇒ `getEntryWithUrl` + `read()` **échouent** sur ce fichier (**129 Ko**) alors que la **source `.md`** du **même dossier** se lit (**6 157 car.**) : ce n'était pas le chemin, c'était l'encodage. Correctif : le journal est lu **PAR LE MOTEUR** (`app.doScript`, ExtendScript, `File.encoding = "BINARY"`) — route déjà éprouvée par la **sonde** (`com.fjd.importmd.sonde/main.js` L354) ; **batterie 125 ⇒ 132** (**+7**, 0 échec) et la batterie **n'est plus un faux témoin** (elle certifiait une lecture UXP que l'hôte refuse — d'où le défaut passé) ; **wiki : Cas 51 créé** (49 ⇒ **50 cas**), cf. CR tir 6. **DÉFAUT LATENT signalé au tir 5, CORRIGÉ au tir 7 (02/10)** : `envoyerImportAuMoteur()` n'appelait **pas** `actualiserListe()` après un import ⇒ l'écran ne se rafraîchissait pas tout seul après une importation réussie — **corrigé** (le panneau **relit** le document avant le verdict de succès ; règle **écrire (moteur) ⇒ relire (panneau)**, cf. CR tir 7 §2). **Tir 7 (02/10)** : défaut FJD *« Un nouvel import, pas de nouvelle ligne »* — **cause trouvée et corrigée** (`envoyerImportAuMoteur()` ne relisait pas le document après l'import : l'écran restait sur l'instantané **d'avant**) ; **batterie 132 ⇒ 137** (**+5**, 0 échec) et **fidélité du test** rétablie (bloc « tube gelé » ramené à un état `identique`, fidèle au geste réel) ; **wiki : Cas 52 créé** (50 ⇒ **51 cas**, 0 ancre introuvable) ; **ambiguïté déclarée** (CR tir 7 §4 : lecture (a) rafraîchissement — **traitée** ; lecture (b) **N lignes** = critère 1, **toujours OUVERT**) — **à confirmer par FJD**. Validation visuelle FJD (1 rechargement UDT) **toujours à faire**. **Décidée APRÈS la Mission 5** (ordre FJD du 30/09/2026 : l'UI d'abord). **Débloquée** : FJD a **confirmé le 30/09/2026** que l'étiquette passe de **1** à **N** sources par document (le gel du 30/09 est levé **pour cette évolution précise, et pour elle seule**). **Tir 8 (02/10)** : FJD **confirme la lecture (b)** du tir 7 §4 ⇒ **critère 1 traité**. Cause trouvée : ce n'était **pas** un défaut d'affichage mais une **impossibilité du support** — `insertLabel` associe **une** clé à **une** valeur et **écrase** (Cas 44), donc l'étiquette **mono-source** ne pouvait **par construction** porter N sources ; ES3 n'a **pas de `JSON`** (Cas 07). Correctif : étiquette **v2 LISTE** en **paires plates** de profondeur 1 (`v`/`n`/`s<i>.v|name|path|size|checksum|modified`), **rétrocompatible** (v1 relue comme liste à 1 élément, **aucune source perdue**), **bornée à 12** en lecture **et** en écriture, avec **UPSERT qui remplace SUR PLACE** (nouveau chemin ⇒ tête par `unshift` ; chemin connu ⇒ **position conservée**, l'ordre des lignes est **stable**) ; côté panneau, `afficherLignesSources` **clone** le gabarit d'icône (classe `ligne-src`, `data-index` = rang, `data-modele` = icône, modèles toujours **masqués** = bibliothèque d'icônes), `classeDeLigne` **préserve** `ligne-src` (défaut joint), N lignes distinctes sans empilement. **Preuves** : panneau **137 ⇒ 164** (**+27**, 0 échec) ; **fichier neuf** `verifier_empreinte.js` **51/0** (comble la lacune : la batterie panneau **stube `app.doScript`** donc **n'exécutait jamais le moteur**) ; **cumul 215/0** ; 0 U+FFFD, batteries **100 % ASCII**, **wiki Cas 53 créé** (51 ⇒ **52 cas**, 0 ancre morte sur 178 liens). **Le tube gelé et l'import mono-source par exécution sont INCHANGÉS.** **Restent ouverts** (rappelés) : la **page** (donnée absente du moteur), la **provenance / `info_modele`** et la **signalétique texte-en-excès / page de sortie** (capacités neuves, **à spécifier par l'Architecte**). **Validation visuelle FJD (1 rechargement UDT) toujours à faire** — seul point restant du critère 1. **Tir 9 (02/10/2026)** : le panneau **SUIT désormais le document actif** (ouverture / **bascule** / fermeture) — **veille à deux étages** : `app.addEventListener` sur les noms **sourcés** (`afterOpen`/`afterActivate`/`afterClose`/`afterNew`) **+ veille périodique 1 s** comme **filet garanti** pour la **bascule entre deux documents déjà ouverts**, dont l'événement exact **n'est pas mesurable hors InDesign** ; **un seul** rafraîchissement différé par salve (anti-rafale 300 ms) — prouvé par batterie (`verifier_moteur.js` **164 ⇒ 179**, **+15**, 0 échec ; **cumul 230/0**), 0 U+FFFD, batteries **100 % ASCII** (**tube gelé inchangé** : la veille ne fait que RELIRE).
 
 **Le périmètre, tranché par FJD (30/09/2026)** : la liste porte sur **tous les imports du document courant** — ni « tous les documents ouverts », ni un registre sur disque. **Plus simple et plus juste** que la proposition antérieure. (La « Question 2 » du chapitre — actif vs tous les docs — est donc **close** : c'est **le document courant**, et ses imports.)
 
@@ -1666,7 +1666,7 @@ Normalisation ASCII appliquée à `main.js` (`-` pour le tiret cadratin, guillem
 
 ---
 
-### CR — tir 2 : cercle rouge restauré, repli du calibrage corrigé, et les 2 capacités neuves demandées par FJD (01/10/2026)
+### CR — tir 2 : cercle rouge restauré ; repli du calibrage annoncé corrigé mais **DÉMENTI au tir 3** ; les 2 capacités neuves demandées par FJD (01/10/2026)
 
 **Contexte** : après le tir 1 (§6 bis / §6 ter), FJD signale **2 défauts réels** et demande **2 évolutions**. Le présent tir traite les défauts ; les évolutions sont **escaladées** (jamais inventées).
 
@@ -1697,6 +1697,10 @@ Normalisation ASCII appliquée à `main.js` (`-` pour le tiret cadratin, guillem
 
 **Preuve — `node verifier_moteur.js` ⇒ `TOUT PASSE (75 vérifications)`** (48 au tir 1, +3 arbitrage, **+24 tir 2**). `node --check main.js` ⇒ **SYNTAXE OK**.
 **Preuve — navigateur réel** (4 clics sur `#btn_expand` via `page.evaluate`) : `calibrage` = `(défaut) → flex → none → flex → none`, `barreFerme` = `(défaut) → none → (défaut) → none → (défaut)`, `barreOuvert` = l'inverse exact. **Le cycle est stable, plus de blocage.**
+
+> ⚠️ **CORRECTION — la conclusion ci-dessus est FAUSSE ; FJD l'a démentie le 01/10/2026 (« le collapse marche tjrs pas »).**
+> Le §2 de ce tir **nomme** la bonne famille de cause (sélecteur composé non certifié en UXP) mais **ne supprime pas la dépendance** : il l'a **déplacée**. Pour **montrer** un chevron, `afficherTrace()` écrivait `style.display = ""` — or **vider la propriété en ligne ne rend pas « le défaut de l'élément », cela rend la main à la FEUILLE DE STYLE**, et la CSS de base masque précisément `.act-ouvert` / `.cal-ouvert`. La phrase « `""` pour RENDRE LA MAIN au défaut de l'élément » est donc **le bug lui-même**, et non la correction.
+> **Deux raisons pour lesquelles le tir 2 n'a pas vu son erreur** : (a) `verifier_moteur.js` contrôlait la valeur **en ligne** (`""`) et **jamais le style calculé** ; (b) le navigateur **certifie** les sélecteurs composés, donc le test navigateur affichait `flex` là où **InDesign** restait à `none`. Voir le **CR tir 3 (§7)**.
 
 #### 3. ÉVOLUTION DEMANDÉE (1) — la page = le POINT D'INSERTION du texte
 
@@ -1731,6 +1735,584 @@ Normalisation ASCII appliquée à `main.js` (`-` pour le tiret cadratin, guillem
 - `node --check main.js` ⇒ **SYNTAXE OK**.
 - `node verifier_moteur.js` ⇒ **TOUT PASSE (75 vérifications)**.
 - `grep -c $'\xef\xbf\xbd'` ⇒ **0** sur `main.js`, `index.html`, `verifier_moteur.js` et la présente ROADMAP (**ligne de Statut incluse**). `verifier_moteur.js` reste **100 % ASCII**.
+
+---
+
+### CR — tir 3 : cause RÉELLE du repli trouvée (le style en ligne `""` rendait la main à la CSS) (01/10/2026)
+
+**Instruction FJD** : « le collapse marche tjrs pas » — c'est-à-dire : le tir 2 vient d'annoncer « corrigé », et **le défaut est toujours là**.
+
+#### 1. La cause réelle, et pourquoi le tir 2 l'a manquée
+
+Pour **montrer** un chevron, `afficherTrace()` écrivait `style.display = ""`.
+
+**Vider la propriété en ligne ne rend pas « le défaut de l'élément » : cela rend la main à la FEUILLE DE STYLE.** Or la CSS de base porte exactement :
+
+- `.act-ouvert { display: none; }` — chevron ouvert de la **barre d'actions** ;
+- `.cal-ouvert { display: none; }` — chevron ouvert de la ligne **« Calibrage »**.
+
+Les **seules** règles qui les rallumaient étaient les 4 règles à **sélecteur composé** `.deplie` — la classe de sélecteurs **non certifiée** dans le runtime UXP, donc **inopérante dans InDesign**. Conséquence, à l'ouverture : le chevron **fermé** passe à `none` (en ligne) et le chevron **ouvert** reste à `none` (CSS) ⇒ **PLUS AUCUN CHEVRON**, ce qui se lit à l'écran comme « le repli ne marche pas ».
+
+**Preuve de la cascade** (navigateur réel, `page.evaluate`, **cascade pure donc indépendante de l'hôte**) :
+
+| état | `btn_expand_ouvert` | `icone_calibrage_ouvert` |
+|---|---|---|
+| fermé | `none` | `none` |
+| après `style.display = ""` (ce que faisait le tir 2) | **`none`** | **`none`** |
+| ouvert **avec** la classe `.deplie` (Chromium, qui certifie ce sélecteur) | `flex` | `flex` |
+| ouvert **sans** la classe `.deplie` (**= le cas UXP**) | **`none`** ❌ | **`none`** ❌ |
+
+**Pourquoi la batterie et le navigateur du tir 2 sont passés à côté** : (a) `verifier_moteur.js` contrôlait la valeur **en ligne** (`""`) et **jamais le style calculé** ; (b) Chromium **certifie** les sélecteurs composés, donc le test navigateur affichait `flex` là où InDesign restait à `none`. **Un test qui certifie ce que l'hôte refuse est un faux témoin : c'est la leçon de ce tir.**
+
+#### 2. Correction
+
+- **`afficherTrace(id, visible)` pose désormais TOUJOURS une valeur explicite** : `none` pour masquer, **`block`** pour montrer. `block` n'est pas une valeur inventée : c'est **exactement le `display` CALCULÉ du trace en état fermé** (les deux `svg` sont des items flex, donc déjà blockifiés) ⇒ **le rendu fermé reste celui, déjà validé, de la référence, au pixel**.
+- **Les 4 règles à sélecteur composé sont SUPPRIMÉES** de `index.html`, remplacées par un commentaire **anti-récidive** expliquant pourquoi il ne faut **pas** les réintroduire. La CSS ne porte plus que l'état **fermé par défaut** (avant que `main.js` ne prenne la main).
+- **Cadrage du bloc ouvert** : `#calibrage` est le **dernier** bloc de `#zone_infos` (hauteur **figée 163 px**, contenu déplié **192 px**) — il ouvre donc **sous la ligne de flottaison**. `basculerCalibrage()` cadre maintenant **les deux sens** (`scrollTop = scrollHeight` à l'ouverture, `0` à la fermeture) : sinon « l'ouverture ne fait rien » à l'écran alors que le bloc **est** affiché.
+- **Vidange du journal forcée** à chaque bascule (`programmerEcritureJournal()`) : `journaliser()` n'écrivait que dans le tableau et à l'écran, si bien que la bascule **n'atteignait pas le fichier** — donc **n'était pas diagnosticable** après coup.
+- **Batterie alignée sur le raisonnement (+4 vérifications)** : les 5 assertions qui exigeaient `""` exigent maintenant **`block`**, et **3 contrôles neufs** verrouillent la cause elle-même — aucun des 4 traces ne doit **jamais** rester à `""` ; exactement **2** traces montrés après fermeture (**ni 0 ni 4**) et ce sont bien les **fermés** ; plus le **cadrage bas** à l'ouverture.
+
+#### 3. Preuves
+
+- `node --check main.js` ⇒ **SYNTAXE OK**.
+- `node verifier_moteur.js` ⇒ **TOUT PASSE (79 vérifications)** (75 au tir 2, **+4**).
+- **Navigateur réel, après correctif** : clic **sur le trace SVG** du bouton (donc via la **bulle** d'événement) ⇒ `#calibrage` = `flex`, `btn_expand_ouvert` **calculé** = **`block`**, `icone_calibrage_ouvert` **calculé** = **`block`** (les deux valaient `none` avant) ; re-clic ⇒ `none`, chevrons fermés de retour à `block`, `scrollTop` **remis à 0** ; clic sur la ligne **« Calibrage »** ⇒ même comportement (les **deux** commandes du bloc restent synchrones).
+- **Cadrage mesuré** : à l'ouverture, `zone_infos.scrollTop` = **29.5**, soit **exactement le maximum** (`scrollHeight 192 − 163 = 29`) ⇒ le bloc ouvert est **amencé à l'écran**, il n'est plus coupé sous la ligne de flottaison.
+- **Sélecteurs `.deplie` restants dans `index.html` : 0** (seuls des commentaires en parlent) ⇒ la dépendance non certifiée **n'existe plus**.
+- **Journal** : `[calibrage] deplie` / `[calibrage] replie` présents dans `#journal`.
+- `grep -c $'\xef\xbf\xbd'` ⇒ **0** sur `main.js`, `index.html`, `verifier_moteur.js` et la présente ROADMAP (**ligne de Statut incluse**).
+
+#### 4. Ce que ce tir NE prouve PAS (doute honnête, à lever par FJD)
+
+Le correctif est prouvé **au niveau de la cascade** (navigateur) et **au niveau du style en ligne** (batterie), mais **PAS encore dans InDesign** : il exige **1 rechargement UDT** et **l'œil de FJD**. Tant que ce contrôle n'a pas eu lieu, la mission **reste 🟡** et le point 2 du tir 2 **reste démenti**.
+
+**Si le repli échoue encore**, la question décisive est maintenant **tracée** — le journal (`PluginData/panneau_liens_md_journal.txt`) porte-t-il la ligne **`[calibrage] deplie`** ?
+
+- **oui** ⇒ le clic **atteint bien** le gestionnaire : le défaut restant est **visuel** (cascade, géométrie, cadrage) ;
+- **non** ⇒ le clic **n'atteint pas** `basculerCalibrage` : le défaut est dans le **câblage** de l'événement, et c'est **cette** piste qu'il faut ouvrir (pas la CSS).
+
+**Précision demandée à FJD** : **quelle commande** est cliquée (**le chevron de la barre d'actions** ou **la ligne « Calibrage »**) et **ce qui est observé** exactement (le bloc ne s'ouvre pas / il s'ouvre mais le chevron ne tourne pas / il reste bloqué après une réouverture).
+
+#### 5. Ce que ce tir ne fait pas
+
+- Il ne touche **pas** au moteur `import_md.jsx` (aucune ligne).
+- Il **ne commite pas** : le commit reste à FJD/Claude.
+- Il ne change **pas** l'habillage validé : en état **fermé**, le rendu est **identique** (`block` = le `display` calculé d'origine).
+
+---
+
+### CR — tir 4 : `btn_relier` CÂBLÉ — le panneau savait enfin produire un PREMIER chemin (01/10/2026)
+
+**Instruction FJD** : « import refusé, aucune source sélectionnée. On dirait que le panneau exige un premier import pour importer une première fois, on n'est pas rendus… ». Arbitrage FJD de l'alternative posée : **option A — câbler `btn_relier` sur « Relier un fichier .md… » (sélecteur natif)**.
+
+#### 1. Le blocage réel, confirmé par le code (impasse de CHICKEN-AND-EGG)
+
+**FJD a raison, et c'est architectural.** Le panneau n'obtenait un `Chemin` que d'**une seule** source : `sourceSelectionnee()`, qui lit les **lignes affichées**, qui viennent de l'étiquette `md-source-fingerprint` du document — **étiquette écrite par un import** (`insertLabel`).
+
+```
+import → étiquette → ligne → Chemin → import
+   ↑                                      │
+   └────────── la seule source de Chemin ─┘
+```
+
+Sur un document **jamais importé** : pas d'étiquette ⇒ **CAS 3** (étiquette absente) ⇒ **0 ligne** ⇒ `importerDepuisPanneau()` refuse avec `"import refuse : aucune source selectionnee"` (`main.js` L1025). **Le panneau n'avait aucun moyen de produire un premier `Chemin`.**
+
+**Le moteur, lui, n'a jamais eu ce problème** : l'étiquette est une **SORTIE** de l'import, et le chemin **MENU** ouvre `File.openDialog("Choisir un fichier Markdown", "Markdown:*.md;*.markdown;*.txt")` (`import_md.jsx` **L2980-2984**). C'est **le panneau seul** qui était sans entrée.
+
+#### 2. Correction — `btn_relier` cesse d'être un orphelin
+
+`btn_relier` **écrivait au journal** `(non câblé : orphelin)`. Il **agit** maintenant.
+
+- **Nouvelle fonction `relierDepuisPanneau()`** (`main.js`) : sélecteur **natif UXP** `localFileSystem.getFileForOpening({ types: ["md","markdown","txt"], allowMultiple: false })` — **premier usage de cette API dans le projet**. Elle rend un fichier, ou **`null` si FJD annule**.
+- **Annuler n'est pas échouer** : `null` ⇒ on **n'envoie RIEN** au moteur, on le dit au journal (`[relier] selection annulee - rien envoye`) et le bandeau **reste muet** (il n'y a **pas** de faute à annuler).
+- **Chemin illisible** (`nativePath` vide) ⇒ refus franc, **rien n'est envoyé au moteur** : `"relier impossible : chemin illisible"`.
+- **Fichier choisi mais introuvable sur le disque** ⇒ `lireFichierTexte()` rend `null` ⇒ `"import impossible : source introuvable"`, **rien n'est envoyé au moteur**.
+- **Suite normale** ⇒ `envoyerImportAuMoteur(cheminMd)`.
+
+**`envoyerImportAuMoteur(cheminMd)` — le tronc COMMUN aux deux entrées** (`Importer` **et** `Relier`). Il a été **extrait** de `importerDepuisPanneau()` pour qu'il n'y ait **qu'UN** chemin vers le moteur : impossible que les deux boutons divergent. Il acquiert lui-même `ind` / `lang`, construit le **tube gelé INCHANGÉ** (`Appelant=panneau`, `Action=importer`, `Chemin=<md>`), l'appelle par `$.evalFile(new File(<cheminJsx>))`, lit le journal du moteur **avant / après**, et distingue :
+- `/M04: REFUS/` ⇒ `"import REFUSE : aucun bloc de texte n'est actif dans le document…"` ;
+- succès ⇒ `"import demande au moteur…"`.
+
+#### 3. Défaut RÉEL trouvé pendant l'extraction (et corrigé)
+
+Extraire le tronc a laissé `ind` / `lang` référencés **là où ils n'étaient plus déclarés** (ils venaient des locales de l'appelant) ⇒ `ReferenceError: ind is not defined`, que le panneau affichait honnêtement en `"import : ind is not defined"`. La batterie a **crié** : **14 ÉCHECS** d'un coup. **Corrigé** en ré-acquérant `ind` / `lang` **dans le tronc lui-même** — un tronc partagé ne peut pas dépendre des locales d'**un** de ses appelants.
+
+Second défaut, côté **test** (pas produit) : une assertion attendait `"import impossible : source introuvable\n/x/absent.md"` alors que `afficherStatut()` n'affiche que la **première ligne**. Assertion **alignée** sur le comportement réel (le chemin reste au **journal**).
+
+#### 4. Preuves
+
+- `node --check main.js` ⇒ **SYNTAXE OK**.
+- `node verifier_moteur.js` ⇒ **TOUT PASSE (97 vérifications)** — 79 au tir 3, **+18**. Les **11 vérifications neuves « RELIER »** couvrent : document **vierge** ⇒ 0 ligne (le vrai point de départ de FJD) ; **chemin choisi** ⇒ tube à **3 champs gelés** (`Chemin=` + `Appelant=panneau` + `Action=importer`) + `$.evalFile(new File("/projet/import_md.jsx"))` + bandeau **muet** ; **annulation** ⇒ **rien envoyé**, bandeau muet, journal `[relier] selection annulee` ; **fichier illisible** ⇒ **rien envoyé**, bandeau `"import impossible : source introuvable"`.
+- Le stub `lfs` de la batterie expose désormais `getFileForOpening` (il ne l'exposait pas : le sélecteur n'était **jamais** atteint avant ce tir).
+- `grep -c $'\xef\xbf\xbd'` ⇒ **0** sur `main.js`, `index.html`, `verifier_moteur.js` et la présente ROADMAP ; `verifier_moteur.js` reste **100 % ASCII**.
+
+#### 5. Cohérence d'interface — infobulle de `btn_relier`
+
+`index.html` portait encore `title="Reediter le lien"` (+ commentaire « reediter le lien »), hérité de l'**intention d'origine** du bouton. Depuis ce tir, le bouton **relie** : l'infobulle devient **`title="Relier un fichier Markdown"`** et le commentaire **grave le câblage daté**. **Aucune géométrie, aucun `viewBox`, aucun trace n'a bougé** ⇒ la validation au pixel de la Mission 5 **tient**. Édition **100 % ASCII** (le compte non-ASCII de `index.html` reste **8**).
+
+#### 6. Inventaire des orphelins — mise à jour du §4
+
+| Composant | État après ce tir |
+|---|---|
+| `btn_relier` | ✅ **CÂBLÉ** — « Relier un fichier .md… » (sélecteur natif UXP → tube gelé) |
+| `btn_editer` | 🔴 **SEUL ORPHELIN RESTANT** — aucun moteur derrière dans `import_md.jsx` |
+| `btn_page` + colonne Page | 🔴 aucune source (l'étiquette ne porte pas de page) |
+| `info_modele` | 🔴 aucune source (provenance = capacité NEUVE) |
+| `nb_selection` | mono-source ⇒ « 1 lien selectionne » (juste) |
+| `compterLignesListe()` | déclarée, non utilisée — réservée à la boucle N |
+| 3 lignes de la maquette | révélées/cachées, jamais fabriquées |
+
+#### 7. Ce que ce tir ne fait PAS
+
+- Il **ne touche pas** au **tube gelé** : signature **INCHANGÉE** (3 champs **nommés**). `Relier` et `Importer` empruntent **le même** tube ⇒ le moteur reste le **seul** à décider.
+- Il **ne touche pas** au moteur `import_md.jsx` (aucune ligne).
+- Il **ne fait pas** le **critère 1** de la mission (N imports ⇒ N lignes, **étiquette-LISTE**) : **TOUJOURS OUVERT**.
+- Il **ne commite pas** : le commit reste à FJD/Claude.
+
+#### 8. Reste à faire pour clore ce tir
+
+**1 rechargement UDT** puis validation visuelle FJD, **sur un document VIERGE** : cliquer **Relier**, choisir un `.md` ⇒ l'import doit démarrer (l'impasse est levée) ; re-cliquer **Relier** et **annuler** ⇒ **rien** ne doit se passer.
+
+---
+
+### CR — tir 5 : écran VIDE au chargement (la maquette n'est plus l'état d'ouverture) + icône d'alerte CONDITIONNÉE (01/10/2026)
+
+**Cas wiki consultés** : Cas 44 (ce que `extractLabel`/`insertLabel` acceptent réellement — l'étiquette est une **sortie** de l'import, d'où l'impasse du tir 4), Cas 47 (canal d'appel / tube gelé — 3 champs **nommés** ; le panneau **propose**, le moteur **décide**), Cas 27 (ce qu'un sandbox Node peut réellement **certifier**), Cas 38 (UXP). **Aucun cas voisin n'existait pour `style.display` ni pour l'aiguillage d'icônes par position** — vérifié par recherche dans le wiki : rien ⇒ ces faits sont **produits** ci-dessous (Cas 49 et Cas 50) au lieu d'être consultés.
+
+**Cas wiki produits/enrichis** : **Cas 49 créé** (UXP `getFileForOpening` : le sélecteur natif qui casse l'œuf-poule du premier import) et **Cas 50 créé** (un écran de panneau UXP démarre **VIDE** ; l'aiguillage d'icônes se fait **par position** et il est le **seul** conditionnement ; `style.display = ""` rend la main à la CSS). Sommaire mis à jour : **47 ⇒ 49 cas**, dernière revue **01/10/2026**, nouveau thème « Panneau UXP (état d'ouverture, habillage, sélecteur de fichier) » + 4 entrées d'index par symptôme. **Aucun cas renuméroté** (numérotation immuable ; trous assumés Cas 11 / Cas 15 inchangés) — contrôle des ancres : **49 titres, 49 liens, 0 introuvable**.
+
+**Instruction FJD (verbatim)** : *« l'import fonctionne mais la ligne apparaît avec une icône d'alerte rouge (sans doute pas conditionnée encore). Le mieux à faire est de créer une UI exempte de toute ligne onload. Là, on a par défaut le panneau garni des items qui ont servi à produire la maquette statique. Il faut des éléments vierges, un panneau vide on load »* — puis la précision qui tranche : *« non, pas vide, mais actualisé par défaut. Vide puis refresh onload »*.
+
+Ce tir traite **deux** défauts. Ils se ressemblent (même écran, même fichier) mais **n'ont pas la même cause** — c'est le point à retenir.
+
+#### 1. Défaut A — une **alerte rouge** sur une source SAINE
+
+**Constat FJD confirmé, et ce n'était pas l'icône qui était fausse : c'était l'AIGUILLAGE.**
+
+Les 3 lignes-modèles portent l'icône **en dur** dans le gabarit : rang 1 = triangle ambre (`#fcb910`), rang 2 = **cercle rouge** (`#d50f2b` + point d'exclamation blanc), rang 3 = colonne État **vide**. Il n'existe **aucune** règle CSS `.etat-*` : le **seul** mécanisme qui décide quelle ligne s'affiche est **`indexLignePourEtat(etat)`**.
+
+Or l'ancien aiguillage envoyait `identique → rang 2`, soit **la ligne du cercle rouge**. Conséquence : une source **saine** révélait l'alerte. La définition que FJD a donnée lui-même de ce pictogramme — *un chemin d'import **brisé** à réimporter* — désigne sans ambiguïté **`source_absente`**, jamais `identique`.
+
+**Correction — l'aiguillage, pas le dessin** (aucun trace, aucun `viewBox` touché) :
+
+```
+different      -> rang 1  (triangle ambre = source MODIFIÉE)
+source_absente -> rang 2  (cercle rouge   = chemin BRISÉ)
+identique      -> rang 3  (colonne VIDE : rien à signaler)
+indéterminé    -> rang 3  (colonne VIDE : jamais une icône inventée)
+```
+
+#### 2. Défaut B — le panneau s'ouvrait sur la **maquette**
+
+**L'état d'ouverture vivait dans le DOM, en QUATRE endroits** — c'est pourquoi aucun code n'était « en faute » : l'écran **était** le dessin jusqu'à la première lecture.
+
+1. les 3 `<div class="ligne">` (affichées, portant leurs classes d'état) ;
+2. les champs de la **fiche** (`info_nom`, `info_taille`, `info_date`, `info_chemin`, `info_modele`, `info_etat` avec sa classe `modifiee`) ;
+3. la **note** de liste (`3 sources dans ce document.`) ;
+4. le **compteur** de sélection (`2 liens selectionnes`).
+
+**Correction en deux temps — exactement « vide PUIS refresh » :**
+
+1. **DOM assaini** : les 3 lignes passent `display:none`, **sans aucune classe** d'état, textes **vides** ; tous les champs de fiche vidés ; note et compteur vidés. Le DOM ne transporte plus **aucune** donnée ⇒ les 3 lignes deviennent une **bibliothèque d'icônes**, plus un état. (`#zone_infos` et `#calibrage` sont écrits par `main.js` à partir de la **lecture disque réelle**.)
+2. **`viderLaListe()` au chargement**, puis **lecture DIFFÉRÉE** (`setTimeout` 600 ms) qui rappelle `actualiserListe()` et remplit l'écran **réel**.
+
+Le report de 600 ms **n'est pas cosmétique** : au tout premier instant de vie d'un panneau UXP, le pont InDesign peut n'être **pas encore établi**, et une lecture immédiate aurait affiché `module indesign indisponible` — soit un **faux diagnostic présenté comme une mesure**. Bénéfice de bord : le `setTimeout` de la batterie ne se déclenche jamais, donc **la batterie reste déterministe**.
+
+**Distinction tenue** : le libellé d'attente (`0 source  -  lecture du document en cours`) est une **ANNONCE**, pas une **MESURE** — l'écran vide ne prétend pas avoir compté (cf. Cas 47 sur les compteurs qui mentent).
+
+**Étiquette-liste : TOUJOURS NON FAITE.** Les `SOURCES` de démonstration restent dans `main.js` avec `maquette:true`, et c'est **volontaire** : le garde-fou de la batterie (« une ligne marquée *maquette* est REFUSÉE à l'import ») **repose** sur ces valeurs. Elles sont devenues des **étiquettes de test et de dessin**, jamais affichées.
+
+#### 3. Leçon de méthode — le `""` qui rend la main à la CSS
+
+Trouvée **par la batterie**, pas par relecture : une assertion a échoué (`avant le refresh : l'ecran est toujours vide`) parce que le bloc de test **précédent** laissait `style.display = ""`. En UXP, `""` **n'est pas** « la valeur par défaut » : il **rend la main à la feuille de styles**, si bien que la ligne restait comptée comme **affichée**. Corrigé en écrivant explicitement `"none"` — ce qui **applique** au passage la règle du projet (toujours `block` / `none` / `flex`).
+
+#### 4. Preuves (sorties brutes)
+
+```
+$ node --check main.js             -> SYNTAXE OK main.js
+$ node --check verifier_moteur.js  -> SYNTAXE OK verifier_moteur.js
+$ node verifier_moteur.js
+=== OUVERTURE - l'ecran demarre VIDE, jamais sur la maquette ===
+  OK    aucune ligne affichee a l'ouverture  ->  []
+  OK    aucune ligne marquee selectionnee a l'ouverture  ->  0
+  OK    fiche - classe d'etat retiree (aucune couleur d'etat residuelle)  ->  "etat"
+  OK    note : la lecture est ANNONCEE, pas mesuree  ->  "0 source  -  lecture du document en cours"
+  OK    les 3 lignes-modeles sont intactes (bibliotheque d'icones)  ->  3
+=== Fonctions pures ===
+  OK    indexLignePourEtat(different) = triangle ambre  ->  0
+  OK    indexLignePourEtat(source_absente) = cercle ROUGE  ->  1
+  OK    indexLignePourEtat(identique) = colonne VIDE (aucune alerte)  ->  2
+  OK    indexLignePourEtat(etat indetermine) = colonne VIDE  ->  2
+=== OUVERTURE - " vide PUIS refresh " : la lecture remplit l'ecran vide ===
+  OK    avant le refresh : l'ecran est toujours vide  ->  []
+  OK    apres le refresh : la ligne 0 (triangle ambre) est servie  ->  ["0"]
+  OK    apres le refresh : note MESUREE, plus annoncee  ->  "1 source  -  modifiee - 3 mot(s), 16 signe(s)"
+  OK    viderListe : plus aucune ligne affichee  ->  []
+  OK    refresh apres vidage : la ligne revient  ->  ["0"]
+=== CAS 5 bis - source identique (1 ligne, colonne Etat VIDE : rien a signaler) ===
+  OK    ligne 2 affichee (et non le cercle rouge : la source est SAINE)  ->  ["2"]
+=== CAS 5 ter - source absente : cercle ROUGE, 0 chiffre invente ===
+  OK    ligne 1 affichee (cercle rouge = chemin d'import brise)  ->  ["1"]
+TOUT PASSE  (125 verifications)
+$ grep -c $'\xef\xbf\xbd' main.js index.html verifier_moteur.js COMMUNICATION/ROADMAP.md  -> 0 / 0 / 0 / 0
+```
+
+**Batterie : 97 ⇒ 125 vérifications** (**+28**, **0 échec**) : bloc neuf « OUVERTURE — l'écran démarre VIDE » (15), bloc neuf « vide PUIS refresh » (12), 4 assertions remappées `indexLignePourEtat`, CAS 5 bis / 5 ter ré-étiquetés.
+
+**Fichiers touchés** : `main.js` (nouvelle `viderLaListe()`, init réécrite, `indexLignePourEtat` remappé, export enrichi de `viderListe`, message de `cabler()` corrigé) · `index.html` (DOM assaini, commentaires datés) · `verifier_moteur.js` (**simulation d'un RÉSIDU de maquette** écrite dans les stubs avant `vm.runInContext` ⇒ on **prouve** que `viderLaListe()` efface une régression, au lieu de certifier un cas favorable) · `doc/wiki_extendscript_indesign.md` (Cas 49/50 + sommaire). **Moteur `import_md.jsx` : 0 ligne touchée.** **Tube gelé : INCHANGÉ.**
+
+Les 3 caractères non-ASCII de `main.js` (`…` dans un chemin de démonstration, `é` dans la table `libelleEtat`, `—` dans un commentaire) et les 6 de `index.html` sont **tous antérieurs** à ce tir : **aucun** introduit, **aucun** U+FFFD.
+
+#### 5. Ce que ce tir ne fait PAS
+
+- Il **ne fait pas** le **critère 1** (N imports ⇒ N lignes, **étiquette-LISTE**) : **TOUJOURS OUVERT**.
+- **DÉFAUT LATENT SIGNALÉ, NON CORRIGÉ** : `envoyerImportAuMoteur()` **n'appelle pas** `actualiserListe()` après un import. L'écran ne se rafraîchit donc **pas** de lui-même après une importation réussie (l'actualisation différée du chargement **masque** ce manque à l'ouverture, mais ne le corrige pas). **À trancher par l'Architecte** : rafraîchir automatiquement après import, ou laisser FJD cliquer « Actualiser ».
+- Il **ne touche pas** au tube gelé, **ne touche pas** au moteur, **ne commite pas** (le commit reste à FJD/Claude).
+
+#### 6. Reste à faire pour clore ce tir
+
+**1 rechargement UDT** puis validation visuelle FJD : **(a)** à l'ouverture, l'écran doit être **VIDE** puis se remplir tout seul au bout d'un instant (jamais la maquette) ; **(b)** une source **saine** (« identique ») ne doit montrer **aucune** icône d'état ; **(c)** une source **modifiée** ⇒ triangle ambre ; **(d)** une source **absente** ⇒ cercle rouge.
+
+---
+
+### CR — tir 6 : « journal moteur illisible » — le journal du moteur est en MacRoman, UXP le lit en UTF-8 (02/10/2026)
+
+**Défaut signalé par FJD (verbatim)** : *« OK. Mais j'ai un message "import envoyé, mais journal moteur illisible" »*.
+
+#### 1. Diagnostic — la chaîne de preuves, mesurée
+
+Le journal **du panneau** (dossier de données UXP) montrait trois faits, dans le **même** dossier :
+
+- le dossier de projet déduit était **correct** ;
+- la **source `.md`** s'y lisait sans peine (**6 157 caractères**) par le helper `lireFichierTexte()` ;
+- le **journal du moteur** (`import_md_errors.log`, **129 368 octets**), lu par **le même helper depuis le même dossier**, rendait **`null`**.
+
+Même dossier + même helper + mêmes permissions ⇒ **ce n'était pas un problème de chemin, mais d'encodage** sur ce fichier précis. Le `catch` de `lireFichierTexte()` renvoyait `null` **sans la cause** : le panneau accusait le journal sans dire pourquoi.
+
+#### 2. Cause racine (mesurée sur le fichier réel)
+
+`logToFile()` (`import_md.jsx` **L348**) ouvre le fichier avec `open("a")` **sans encoding explicite** ⇒ ExtendScript écrit dans l'encodage **système**, soit **MacRoman** sur macOS (un « é accent aigu » y est l'octet `0x8E`). UXP, lui, lit en **UTF-8**. Vérification sur le journal réel :
+
+```
+$ ls -la import_md_errors.log
+-rw-r--r--@ 1 francois-jeandazin  staff  129368  2 oct 08:04 import_md_errors.log
+$ python3 (decode du fichier)
+taille: 129368 octets
+decode UTF-8 : ECHEC -> 'utf-8' codec can't decode byte 0xd1 in position 664: invalid continuation byte
+decode MacRoman : OK ; extrait accentue -> ['—', '—', '—', '—', 'é', 'é', 'é', 'É']
+```
+
+La **sonde** (`com.fjd.importmd.sonde/main.js` **L354**) lisait déjà ce journal **dans ExtendScript, en `BINARY`** — route éprouvée. **Le panneau avait dévié** de cette route en tentant une lecture UXP.
+
+#### 3. Correctif
+
+- **`main.js`** : nouvelle route **`lireJournalParLeMoteur(chemin)`** (L870) — le journal est lu **par le moteur** (`app.doScript`, ExtendScript, `File.encoding = "BINARY"`), **jamais** par UXP. Le tronc `envoyerImportAuMoteur()` relève le journal **avant** et **après** par cette route (L1186 / L1198) et ne juge que sur les lignes **ajoutées**. Les lignes reportées au journal **du panneau** sont filtrées de tout non-ASCII (`replace(/[\u0080-\uffff]/g, "")`), sans quoi les octets MacRoman y apparaîtraient en bruit.
+- **Motif honnête** : quand le moteur ne rend rien, le message devient *« import envoye, mais le moteur n'a pas rendu son journal »* + le chemin + *« Le document peut avoir ete importe : ce message ne juge que le journal. »* — **aucune cause inventée**, aucun jugement du document.
+- **Tube gelé : INCHANGÉ** (3 champs nommés). **Moteur `import_md.jsx` : 0 ligne touchée** (choix délibéré : l'écrire en UTF-8 changerait aussi ce que lit la sonde).
+
+#### 4. Preuve d'exécution (sorties brutes)
+
+```
+$ node --check main.js             -> OK
+$ node --check verifier_moteur.js  -> OK
+$ node verifier_moteur.js
+=== JOURNAL DU MOTEUR - lu par le MOTEUR (ExtendScript BINARY), jamais par UXP ===
+  OK    journal lu PAR le MOTEUR (2 lectures : avant et apres)  ->  2
+  OK    journal JAMAIS lu par UXP (getEntryWithUrl)  ->  0
+  OK    la lecture du journal est en BINARY (journal MacRoman)  ->  true
+=== IMPORT - le moteur ne rend pas son journal : message HONNETE, rien d'invente ===
+  OK    journal non rendu - bandeau ALLUME (echec franc)  ->  "flex"
+  OK    journal non rendu - motif HONNETE, sans cause inventee  ->  "import envoye, mais le moteur n'a pas rendu son journal"
+  OK    journal non rendu - aucune reussite annoncee  ->  false
+TOUT PASSE  (132 verifications)
+$ grep -c $'\xef\xbf\xbd' main.js index.html verifier_moteur.js COMMUNICATION/ROADMAP.md doc/wiki_extendscript_indesign.md  -> 0 partout
+```
+
+**Batterie : 125 ⇒ 132 vérifications** (**+7**, **0 échec**) : bloc neuf « JOURNAL DU MOTEUR — lu par le MOTEUR, jamais par UXP » (3 assertions : 2 lectures, 0 lecture UXP, lecture en `BINARY`) + bloc neuf « le moteur ne rend pas son journal : message HONNÊTE » (4 assertions).
+
+**La batterie n'est plus un faux témoin** : elle **prouvait** auparavant une lecture réussie par `lfs` que l'hôte réel **refuse** — c'est précisément pour cette raison que le défaut avait échappé à la batterie. Elle simule désormais la route **réelle** (le `doScript` répond à la lecture du journal) et **compte** qu'UXP n'est **jamais** sollicité.
+
+**Fichiers touchés** : `main.js` (nouvelle `lireJournalParLeMoteur`, tronc avant/après, filtrage non-ASCII, message honnête, **fichier NON commité**) · `verifier_moteur.js` (blocs neufs ci-dessus, **reste 100 % ASCII**) · `doc/wiki_extendscript_indesign.md` (**Cas 51 créé**, 49 ⇒ **50 cas**, 0 ancre introuvable).
+
+**Cas wiki consultés** : **Cas 45** (`File.modified` ne signale pas un changement de contenu ; `File.read()` **normalise** les fins de ligne — même famille : la lecture d'un fichier par ExtendScript a des effets non visibles) · **Cas 50** (un `catch`/`null` qui cache la cause ⇒ message trompeur) · **Cas 27** (ce que le sandbox peut vraiment certifier — ici : un stub qui certifie ce que l'hôte refuse est un **faux témoin**).
+
+**Cas wiki produits/enrichis** : **Cas 51 créé** — *« Le journal du moteur est en MacRoman : UXP le lit en UTF-8 et échoue »* (Statut `mesuré`, build 21.6.0.57, preuve brute du décodage, route `BINARY` reprise de la sonde).
+
+#### 5. Ce que ce tir ne fait PAS
+
+- Il **ne fait pas** le **critère 1** (N imports ⇒ N lignes, **étiquette-LISTE**) : **TOUJOURS OUVERT**.
+- **DÉFAUT LATENT TOUJOURS OUVERT** : `envoyerImportAuMoteur()` **n'appelle pas** `actualiserListe()` après un import — **à trancher par l'Architecte** (cf. CR tir 5).
+- Il **ne touche pas** au moteur, **ne touche pas** au tube gelé, **ne commite pas**.
+- **Optimisation non faite** (signalée) : la lecture avant/après transfère le journal **entier** deux fois par import (129 Ko) ; une lecture **par offset** (taille avant ⇒ lire les octets suivants) serait plus sobre — non nécessaire pour l'instant.
+
+#### 6. Reste à faire pour clore ce tir
+
+**1 rechargement UDT** puis validation visuelle FJD : un import **doit** désormais rendre un statut utile (`appel PANNEAU vu` / `source imposee`) au lieu de *« journal moteur illisible »* — et si le moteur ne rend rien, le message **honnête** doit s'afficher.
+
+---
+
+### CR — tir 7 : « Un nouvel import, pas de nouvelle ligne » — le panneau ne relisait pas le document après l'import (02/10/2026)
+
+**Défaut signalé par FJD (verbatim)** : *« Un nouvel import, pas de nouvelle ligne. »*
+
+#### 1. Diagnostic — la chaîne de preuves, lue dans le code réel
+
+`grep -n 'actualiserListe' main.js` (avant correctif) rendait **quatre** occurrences : la **définition** (`L1069`, `function actualiserListe() { return construireListe(); }`), l'**export** (`window.panneauLiensMd`), le **câblage du bouton** `btn_actualiser`, et l'**appel de chargement différé** (`setTimeout(..., 600)`). **Aucune** dans le tronc `envoyerImportAuMoteur()`.
+
+Or `envoyerImportAuMoteur()` est le **tronc commun** à « Importer » **et** « Relier » (tube gelé, 3 champs nommés). Il confie l'ordre au moteur, compare le journal **avant/après**, écarte le refus, puis affiche son verdict — **sans jamais relire le document**. L'écran étant un **instantané** de la **dernière** lecture, il continuait d'afficher l'état **d'avant** l'import : un document vierge (lu à l'ouverture ⇒ **0 ligne**) restait à **0 ligne** juste après un import **réussi** (le moteur, lui, avait bien écrit sa nouvelle étiquette `md-source-fingerprint`). **L'import marchait ; c'est l'écran qui ne suivait pas.**
+
+Le défaut était **déjà signalé** au **tir 5** comme *« DÉFAUT LATENT, NON corrigé : `envoyerImportAuMoteur()` n'appelle pas `actualiserListe()` »* (cf. Statut de la mission 6 et CR tir 6 §5). **Ce tir le corrige.**
+
+#### 2. Correctif (une seule ligne de code, à la bonne place)
+
+Dans `envoyerImportAuMoteur()`, **après** le verdict de refus et **avant** le verdict de succès :
+
+```js
+  await actualiserListe();   // relit le document tel qu'il est MAINTENANT
+
+  afficherStatut(true, "import demande au moteur.\n" + ...);
+```
+
+Deux points de méthode (détaillés au **Cas 52**) :
+
+1. **Le panneau ne modifie jamais le document** (règle du tube gelé) : tout changement vient du **moteur**. Toute écriture du moteur impose donc une **relecture explicite** côté panneau. Ce n'est pas une écriture, c'est une **relecture**.
+2. **L'ordre compte** : `actualiserListe()` (`construireListe()`) part d'un bandeau **muet** et **peut le rallumer** (source modifiée). Comme `afficherStatut(true, …)` ne fait que **journaliser** (un succès reste **muet** à l'écran — `if (estOk) return;`), c'est le verdict écrit **en dernier** qui reste **maître du bandeau**.
+
+#### 3. Preuve d'exécution (sorties brutes)
+
+```
+$ node --check main.js             -> OK
+$ node --check verifier_moteur.js  -> OK
+$ node verifier_moteur.js
+=== IMPORT - un nouvel import RAFRAICHIT la liste (sans clic sur Actualiser) ===
+  OK    avant import : 0 ligne (document sans etiquette)  ->  []
+  OK    apres import : la liste est RAFRAICHIE (1 ligne, sans clic)  ->  ["2"]
+  OK    apres import : la ligne porte la source importee  ->  "choisi.md"
+  OK    apres import : la fiche est garnie par la relecture  ->  "choisi.md"
+  OK    apres import : le bandeau reste MUET (un import est un succes)  ->  "none"
+TOUT PASSE  (137 verifications)
+$ grep -c $'\xef\xbf\xbd' main.js index.html verifier_moteur.js COMMUNICATION/ROADMAP.md doc/wiki_extendscript_indesign.md  -> 0 partout
+```
+
+**Batterie : 132 ⇒ 137 vérifications** (**+5**, **0 échec**) : bloc neuf « un nouvel import RAFRAICHIT la liste (sans clic sur Actualiser) » — un document **sans étiquette** (0 ligne), un import via `API.relier()`, le moteur simule l'écriture de son étiquette, et **sans aucun clic** sur `btn_actualiser` la liste passe à **1 ligne** (« choisi.md »), la fiche se garnit, le bandeau reste muet.
+
+**Fidélité du test corrigée au passage** : le bloc « IMPORT — tube gelé » utilisait un état rendu artificiel **`different`** ; désormais que le panneau **relit** après import, cet état allumerait légitimement le **bandeau ambre** et faisait échouer l'assertion « statut MUET ». L'état a été ramené à **`identique`** (fidèle : un import réussi laisse une empreinte **fraîche/identique**). **Le test dit maintenant la vérité du geste réel.**
+
+**Fichiers touchés** : `main.js` (appel `actualiserListe()` avant le verdict de succès, **fichier NON commité**) · `verifier_moteur.js` (bloc neuf + fidélité du bloc tube gelé, **reste 100 % ASCII**) · `doc/wiki_extendscript_indesign.md` (**Cas 52 créé**, 50 ⇒ **51 cas**, 0 ancre introuvable, 0 U+FFFD).
+
+**Cas wiki consultés** : **Cas 50** (l'écran montre ce qu'on a **lu**, pas ce qui **est** — la maquette n'est jamais l'état d'ouverture : ici, l'écran n'est jamais l'état **d'après** l'import) · **Cas 51** (la relecture d'un fichier écrit par le moteur a ses propres pièges : la relecture est faite **par le moteur**, pas par UXP) · **Cas 45** (une lecture/écriture par ExtendScript a des **effets non visibles** — même famille : ne pas supposer que l'écran a suivi).
+
+**Cas wiki produits/enrichis** : **Cas 52 créé** — *« Le panneau relit le document à l'ouverture, pas après l'import : l'écran montre l'état d'avant »* (Statut `mesuré`, build 21.6.0.57, batterie 137/0, règle **écrire (moteur) ⇒ relire (panneau)**).
+
+#### 4. Ambiguïté déclarée — deux lectures possibles (à trancher par FJD)
+
+Le signalement *« Un nouvel import, pas de nouvelle ligne »* admet **deux** lectures :
+
+- **(a) Aucun rafraîchissement après import** — l'écran ne se met pas à jour après une importation **réussie**. **C'est le défaut latent confirmé (tir 5), et c'est ce qui est corrigé ici.**
+- **(b) Plusieurs lignes par document** — attendre qu'un **second** import **ajoute** une ligne **à côté** de la première. Cela relève du **critère 1** de la Mission 6 (« N imports ⇒ N lignes »), qui exige l'**étiquette-LISTE** (N sources par document, l'étiquette actuelle étant **mono-source** et écrasée à chaque import) : **évolution tranchée le 30/09 mais NON implémentée**, donc **TOUJOURS OUVERT**.
+
+**Le tir 7 traite (a).** Si FJD visait **(b)**, le correctif de ce tir **reste nécessaire** (l'écran doit suivre l'état réel), mais **ne suffit pas** : il faut alors ouvrir le chantier **étiquette-LISTE**. **Merci de confirmer la lecture visée.**
+
+#### 5. Ce que ce tir ne fait PAS
+
+- Il **ne fait pas** le **critère 1** (N imports ⇒ N lignes, **étiquette-LISTE**) : **TOUJOURS OUVERT** — voir §4 lecture (b).
+- Il **ne touche pas** au moteur, **ne touche pas** au tube gelé, **ne commite pas**.
+- **Restent ouverts (rappelés du tir 6)** : la **page** (donnée absente du moteur), la signalétique **texte-en-excès / page de sortie** et la **provenance / `info_modele`** (capacités neuves, **à spécifier par l'Architecte**).
+- **Optimisation non faite** (signalée) : la lecture avant/après transfère le journal **entier** deux fois par import.
+
+#### 6. Reste à faire pour clore ce tir
+
+**1 rechargement UDT** puis validation visuelle FJD : après un import **réussi**, **la ligne doit apparaître sans aucun clic** sur « Actualiser ».
+
+### CR — tir 8 : « Toujours pas de nouvelle ligne » — l'étiquette était MONO-SOURCE, elle ne POUVAIT pas porter N sources (02/10/2026)
+
+**Défaut signalé par FJD (verbatim)** : *« Toujours pas de nouvelle ligne dans le panneau. […] j'ai deux imports différents dans mon doc, je dois avoir deux lignes dans mon panneau. »*
+
+**Arbitrage FJD** : FJD **confirme la lecture (b)** déclarée ouverte au **tir 7 §4** — le critère visé est **N imports ⇒ N lignes**. Ce CR traite donc le **critère 1** de la Mission 6.
+
+#### 1. Diagnostic — ce n'était PAS un défaut de code, mais une impossibilité du SUPPORT
+
+Le tir 7 avait corrigé la **fraîcheur** de lecture (le panneau relit après import, **Cas 52**). Le symptôme demeure : la ligne **apparaît** désormais, mais il n'y en a **qu'une** — celle du **dernier** import.
+
+La cause est structurelle et **déjà écrite noir sur blanc** dans le ROADMAP depuis le 30/09 (bloc « Décision tranchée » ci-dessus) : `insertLabel(clé, valeur)` associe **une** clé à **une** valeur et **ÉCRASE** la précédente (mesuré, **Cas 44**). L'étiquette `md-source-fingerprint` était **mono-source** : elle mémorisait **1** chemin, **1** taille, **1** somme, **1** date. **Chaque import remplaçait le contenu du précédent.**
+
+Conséquence : **aucune correction côté affichage n'aurait pu faire apparaître deux lignes** — le document n'avait tout simplement **pas de mémoire** de la seconde source. Le critère 1 était **inatteignable sans changer le format de stockage**.
+
+S'ajoute la contrainte de langage : ExtendScript est **ES3**, **sans `JSON` natif** (**Cas 07**) — donc pas de « sérialiser un tableau » disponible.
+
+#### 2. Correctif — l'étiquette passe en **v2 LISTE**, et l'écran rend **N lignes**
+
+**(a) Côté moteur (`import_md.jsx`) — format v2.** La liste est encodée en **paires plates** dans **une seule** valeur de label (format `serializeFlatMapping` déjà employé par le projet — pas de `JSON`, **Cas 07**), à **un seul niveau**, avec préfixe d'index :
+
+```
+{"v":"2","n":"2","s0.v":"2","s0.name":"un.md","s0.path":"/x/un.md","s0.size":"16",
+ "s0.checksum":"…","s0.modified":"…","s1.v":"2","s1.name":"deux.md", …}
+```
+
+- `v` = version du format, `n` = compteur, `s<i>.` = index de la source dans l'ordre de la liste.
+- **Rétrocompatible** : une étiquette **v1** (mono-source, déjà posée dans des documents existants) est relue **comme une liste à 1 élément** — la reprise d'un document déjà importé **ne perd pas** sa source (mesuré : *« la source v1 n'est PAS perdue »*, la nouvelle passe en tête, l'ancienne est conservée, l'étiquette réécrite passe en v2).
+- **Bornée aux deux bouts** : `M05_MAX_SOURCES = 12` à l'**écriture** (15 imports de chemins différents ⇒ 12 mémorisés, les 3 plus anciens évincés) **et** à la **lecture** (`n` = 99 ⇒ 12 lues, jamais 99).
+- **UPSERT qui remplace SUR PLACE** : un chemin **déjà** mémorisé est mis à jour **à sa position** ; seul un chemin **nouveau** est poussé en tête (`unshift`). Conséquence visible : après un réimport, **l'ordre des lignes ne bouge pas**. Journal de contrôle : `["ajout","ajout","maj"]`.
+
+**(b) Côté panneau (`main.js`) — N lignes.** `decoderEtiquetteListe()` relit le v2 (et retombe sur le v1 comme liste à 1 élément) ; `afficherLignesSources(sources)` **clone** le gabarit d'icône de chaque source et l'affiche. Les **3 lignes-modèles** de `index.html` restent en place **masquées**, comme **bibliothèque d'icônes** : chaque source reçoit un clone portant la classe `ligne-src`, `data-index = <rang de la source>` et `data-modele = <icône>` ; les clones sont **retirés et reconstruits** à chaque rafraîchissement (pas d'empilement). Correctif joint (hazard) : `selectionner()` réécrivait le `className` de **chaque** `.ligne`, ce qui **détruisait** `ligne-src` sur les clones — `classeDeLigne()` **préserve** désormais ce marqueur.
+
+**(c) Le moteur reste seul décideur, et la boucle reste mono-source.** L'état de **chaque** source est rendu **par le moteur** (`m05DecideStateList`, invoquée via `app.doScript`) — le panneau ne décide rien. Le déclencheur du moteur reste **agrégatif** (« toutes » : alerte si **au moins une** source mémorisée a bougé) et le **pipeline d'import reste mono-source par exécution** (la relance ne porte que **la première** source modifiée) : ce tir **ne** transforme **pas** l'import en import multiple.
+
+#### 3. Preuve d'exécution (sorties brutes)
+
+**Batterie du panneau** (`uxp/com.fjd.importmd.panneau/`) — **137 ⇒ 164 vérifications** (**+27**), **0 échec** :
+
+```
+$ node verifier_moteur.js
+=== TIR 8 - DEUX imports dans le document : DEUX lignes dans le panneau ===
+  OK    DEUX lignes affichees (une par import)  ->  ["0","1"]
+  OK    DEUX lignes affichees, ni une ni trois  ->  2
+  OK    icones distinctes : ambre (modifiee) puis cercle rouge (absente)  ->  ["0","1"]
+  OK    nom de la 1re ligne  ->  "un.md"
+  OK    nom de la 2e ligne  ->  "deux.md"
+  OK    compteur de selection au pluriel  ->  "2 liens selectionnes"
+  OK    note : repartition REELLE des etats  ->  "2 sources  -  1 modifiee(s), 1 absente(s), 0 identique(s)"
+  OK    bandeau ALLUME : au moins une source a bouge  ->  "flex | la source A BOUGE depuis l'import"
+  OK    la fiche suit la PREMIERE ligne  ->  "un.md"
+  OK    la fiche ne melange pas les sources (compteurs de un.md)  ->  "0 ko (16 octets)"
+  OK    les 3 lignes-modeles restent la (bibliotheque intacte)  ->  3
+  OK    apres un 2e rafraichissement : toujours DEUX lignes (pas d'empilement)  ->  ["0","1"]
+  OK    apres un 2e rafraichissement : les 3 modeles sont intacts  ->  3
+  OK    TROIS imports : TROIS lignes  ->  ["0","1","2"]
+  OK    TROIS icones, dans l'ordre des sources  ->  ["2","2","0"]
+  OK    compteur de selection au pluriel (3)  ->  "3 liens selectionnes"
+  OK    note a trois sources  ->  "3 sources  -  1 modifiee(s), 0 absente(s), 2 identique(s)"
+  OK    retour a un document sans import : l'ecran s'est VIDE  ->  []
+  OK    retour a un document sans import : 3 modeles intacts  ->  3
+...
+TOUT PASSE  (164 verifications)
+```
+
+**Batterie du MOTEUR — FICHIER NEUF** `verifier_empreinte.js` (racine, **51 vérifications**, 0 échec). Elle **comble une lacune de méthode** : la batterie du panneau **stube `app.doScript`**, donc le moteur n'y est **jamais exécuté** ; celle-ci charge le **vrai** `import_md.jsx` (tronqué avant `if (typeof importMdRegisterMenuEntry !== "undefined") {`) dans un sandbox `vm` avec des stubs ExtendScript minimaux, et éprouve directement le format d'étiquette :
+
+```
+$ node verifier_empreinte.js
+  OK    aller-retour fidele  ->  {"a":"gui\"llemets","b":"C:\\Docs\\x.md"}
+  OK    valeur vide NON serialisee (falsy omis, comportement mesure)  ->  undefined
+  OK    aucun TABLEAU (aucun crochet carre)  ->  true
+  OK    un seul niveau : une seule accolade ouvrante  ->  1
+  OK    v1 relue comme une liste a 1 element  ->  1
+  OK    n = 99 : lecture BORNEE a 12 (jamais 99)  ->  12
+  OK    3 etats, separes par |  ->  "identique|different|source_absente"
+  OK    2 imports differents : 2 sources en memoire  ->  2
+  OK    le plus recent est en tete (unshift)  ->  "/x/deux.md"
+  OK    reimport du meme chemin : TOUJOURS 2 sources (aucun doublon)  ->  2
+  OK    reimport : l'ordre est STABLE (la ligne ne saute pas en tete)  ->  "/x/deux.md"
+  OK    reimport : l'entree mise a jour reste a sa place  ->  "/x/un.md"
+  OK    le journal distingue AJOUT et MISE A JOUR  ->  ["ajout","ajout","maj"]
+  OK    la source v1 n'est PAS perdue  ->  2
+  OK    l'etiquette reecrite est bien en v2  ->  true
+  OK    15 imports : la memoire est bornee a 12  ->  12
+  OK    les 3 plus anciens sont evinces (le plus recent est en tete)  ->  "/x/s14.md"
+TOUT PASSE  (51 verifications)
+```
+
+**Cumul : 164 + 51 = 215 vérifications, 0 échec.**
+
+**Cinq échecs initiaux de la batterie moteur — tous des défauts de la BATTERIE, aucun défaut du moteur.** Ils sont consignés car ils ont **produit deux faits de comportement** que ce CR doit porter :
+
+1. mon assertion « aucune accolade » était **absurde** (le format plat **est** encadré d'une `{`/`}`) — corrigée en « aucun crochet carré (**aucun tableau**) » + « **un seul niveau** : une seule accolade ouvrante » ;
+2. le sérialiseur **omet toute valeur falsy** (`if (obj[key])`) ⇒ **un champ vide et un champ absent sont indistinguables** dans le format (ce n'est pas une perte : les lecteurs reconstituent avec `|| ""`, et un chemin vide rend la source **ignorée** — contrôle négatif : `n = 3` avec une source sans chemin ⇒ **2** lues) ;
+3. + 4. mon attente « la source réimportée remonte en tête » était **fausse** : l'UPSERT **remplace sur place** ⇒ **c'est un fait de comportement**, désormais documenté (« l'ordre est STABLE, la ligne ne saute pas en tête ») ;
+5. `import_md.jsx` **redéfinit** `logToFile`/`logError` en interne, **masquant** les stubs du sandbox posés avant l'évaluation ⇒ la capture du journal revenait **vide** ; corrigé en **re-hookant** après `runInContext`.
+
+**Encodages** :
+
+```
+$ grep -c $'\xef\xbf\xbd' main.js index.html verifier_moteur.js verifier_empreinte.js import_md.jsx COMMUNICATION/ROADMAP.md doc/wiki_extendscript_indesign.md  -> 0 partout
+$ python3 (comptage non-ASCII)  main.js: 8 (legitimes) | verifier_moteur.js: 0 | verifier_empreinte.js: 0 | import_md.jsx: 4370 (UTF-8 preexistant)
+$ python3 (ancres)  LIENS INTERNES = 178 | DISTINCTS = 52 | MORTS = 0
+```
+
+Les deux batteries restent **100 % ASCII** (contrainte de méthode).
+
+**Fichiers touchés** : `import_md.jsx` (format d'étiquette v2 + UPSERT, **NON commité**) · `uxp/com.fjd.importmd.panneau/main.js` (décodage v2 + rendu N lignes + `ligne-src` préservé, **NON commité**) · `uxp/com.fjd.importmd.panneau/verifier_moteur.js` (bloc TIR 8, **+27**) · **`verifier_empreinte.js` (NEUF)** · `doc/wiki_extendscript_indesign.md` (**Cas 53 créé**, 51 ⇒ **52 cas**) · `index.html` (**AUCUNE modification** requise pour ce tir — les 3 gabarits étaient déjà là).
+
+**Ce tir ne touche PAS** : le **tube gelé** (3 champs nommés, inchangé), la **décision de mapping**, ni l'**habillage** (Mission 5).
+
+**Cas wiki consultés** : **Cas 44** (`insertLabel` **écrase** : une clé = une valeur — *c'est la cause racine* ; et `extractLabel` d'une clé absente rend `''`, jamais `null`) · **Cas 07** (pas de `JSON` natif en ES3 — *c'est pourquoi la liste est en paires plates*) · **Cas 07**/**Cas 44** ensemble = ce qui **impose** le format aplati · **Cas 52** (l'écran est un **instantané** : écrire ⇒ relire — le tir 7 reste la base de ce tir) · **Cas 45** (une lecture/écriture ExtendScript a des **effets non visibles** : `File.read()` normalise en LF ⇒ la somme décrit le texte **normalisé** ; ne pas supposer ce que le disque contient).
+
+**Cas wiki produits/enrichis** : **Cas 53 créé** — *« Une étiquette de document ne peut pas mémoriser N sources : la liste encodée en paires plates, et l'UPSERT qui remplace SUR PLACE »* (Statut `mesuré`, build 21.6.0.57, batterie `verifier_empreinte.js` **51/0**) — ajouté au **catalogue**, à l'**index par thème** (groupe « Panneau UXP »), à l'**index par symptôme** (3 entrées : *une seule ligne / le second import efface le premier* · *donnée de longueur variable dans un label* · *l'ordre des lignes saute après réimport*). **Ligne d'état du wiki : 51 ⇒ 52 cas.**
+
+#### 4. Ce que ce tir ne fait PAS
+
+- **La page** — donnée **absente du moteur** (rappelé depuis les tirs 6 et 7 : FJD la veut = le **point d'insertion du texte** ; le moteur ne l'expose pas). **TOUJOURS OUVERT.**
+- **La provenance / `info_modele`** — capacité **NEUVE**, le moteur ne détecte **rien** ; **à spécifier par l'Architecte**. **TOUJOURS OUVERT.**
+- **La signalétique texte-en-excès / page de sortie** — capacité **NEUVE**. **TOUJOURS OUVERT.**
+- Il **n'importe pas** plusieurs sources en une seule exécution (le pipeline reste **mono-source**) : la boucle porte sur la **mémoire** du document, pas sur le geste d'import.
+
+#### 5. Reste à faire pour clore ce tir
+
+**1 rechargement UDT + validation visuelle FJD** : dans un document, faire **deux imports différents** ⇒ **deux lignes** distinctes, chacune avec son état, et la note « **2 sources** ».
+
+**Point de vigilance à valider visuellement (à déclarer honnêtement)** : le rendu N lignes repose sur `cloneNode(true)` côté UXP — comportement **supposé** (non certifié par ce projet à ce jour), **couvert par la batterie** (le stub l'implémente) **mais PAS encore validé à l'écran**. Si le clone ne se comporte pas comme attendu en UXP réel, c'est **le seul point de ce tir** qui resterait à reprendre.
+
+---
+
+### CR — tir 9 : le panneau suit le document actif (02/10/2026)
+
+**Demande FJD (02/10/2026)** : « *Il faudrai un refresh auto on document load aussi car lorsqu'on passe d'un doc à l'autre, le panneau demeure sur l'état précédent* ».
+
+#### 1. Diagnostic — le panneau ne lisait le document qu'UNE fois
+
+`main.js` lisait le document à **deux moments seulement** : au **démarrage** (lecture différée 600 ms) et sur **clic** (« Actualiser », import, relier). **Aucun écouteur** d'événement InDesign n'existait : ouvrir un document ou **basculer** entre deux documents laissait donc l'écran sur l'**état précédent** — exactement le défaut signalé.
+
+#### 2. API exacte — sourcée avant de coder (règle test-oriented)
+
+Deux pages officielles Adobe ont été lues **avant** d'écrire la moindre ligne :
+
+- **Recette « InDesign events »** (`developer.adobe.com/indesign/uxp/resources/recipes/indesign-events/`) : `const { app } = require("indesign"); app.addEventListener("<nom>", handler);` — le handler reçoit un objet exposant `.eventType` et `.currentTarget.name` ; retrait par `app.removeEventListener(...)`. **Les noms sont des chaînes EN MINUSCULES** (`"afterNew"`, `"afterOpen"`, …), **pas** les constantes `Event.*` d'ExtendScript.
+- **Énumération `Event`** (`developer.adobe.com/indesign/uxp/dom/api/e/event/`) : membres **en minuscules** — `afterOpen` (« Dispatched after a Event is opened »), **`afterActivate`** (« Dispatched after the Event becomes active »), `afterClose`, `afterNew`, `afterContextChanged` (« Dispatched after the active context changes »), etc.
+
+**Point non mesurable localement** : *quel* événement se déclenche **exactement** sur une **bascule entre deux documents DÉJÀ ouverts** (`afterActivate` ? `afterContextChanged` ?) **n'est pas vérifiable hors InDesign**. Conformément à la règle « aucune affirmation non mesurée », **ce n'est pas présenté comme mesuré** : c'est traité par la conception du §3.
+
+#### 3. Correctif — veille à deux étages, un seul point d'entrée
+
+Dans `main.js`, après `actualiserListe()` :
+
+- `identiteDocumentActif()` — identité du document actif (`nom|id`, ou `aucun-document` / `module-indesign-indisponible` / `document-actif-illisible` : des états **honnêtes**, jamais inventés).
+- **`veillerSurDocument(motif)`** — **point d'entrée UNIQUE** des deux étages. Compare l'identité ; si **changement** ⇒ journalise (avant/après) et programme **un seul** rafraîchissement différé (**300 ms**, anti-rafale : une salve d'événements ne provoque **pas** N relectures). Renvoie `true`/`false` (preuve testable).
+- **Étage 1 — événements (voie rapide)** : `armerVeille()` enregistre les **quatre** noms sourcés (`afterOpen`, `afterActivate`, `afterClose`, `afterNew`) via `app.addEventListener(nom, ...)`. Si le pont InDesign n'est pas prêt, on **ne marque pas** armé → **retenté** à la veille suivante (silencieusement, sans noyer le journal).
+- **Étage 2 — veille périodique (filet GARANTI)** : `setInterval(..., 1000)` relit l'identité chaque seconde. Un nom d'événement mal choisi **ne peut donc pas** laisser le panneau sur l'état précédent — c'est ce qui rend la correction **insensible** au point non mesurable du §2.
+- Au démarrage, on **cale la référence** (`derniereIdentiteDocument`) sur le document lu : la veille ne déclenche **jamais deux fois** au démarrage.
+- **Tube gelé inchangé** (panneau = demande, moteur = décision) : la veille **ne fait que RELIRE**, elle n'écrit **rien** dans le document. Ajouts à `window.panneauLiensMd` : `veiller`, `identiteDocument`, `attendreMaj`.
+
+#### 4. Preuve d'exécution — batterie
+
+Le harnais `verifier_moteur.js` a dû évoluer : `setTimeout` y était un **no-op** (impossible de tester un comportement **différé**). Il **enregistre** désormais minuteurs/intervales **sans les exécuter** (le harnais décide quand), et **stubbe** `addEventListener`/`removeEventListener` sur `app` pour pouvoir **déclencher** les événements. Les blocs antérieurs restent valides (aucun minuteur ne s'exécute tout seul).
+
+```
+=== TIR 9 - le panneau SUIT le CHANGEMENT de document actif ===
+  OK    4 evenements documentaires enregistres sur l'app  ->  "afterOpen,afterActivate,afterClose,afterNew"
+  OK    la veille periodique est armee (filet garanti pour la bascule)  ->  1
+  OK    1re veille : le document est observe pour la 1re fois  ->  true
+  OK    1re veille : un rafraichissement differe est programme  ->  1
+  OK    2e veille sans changement : rien de neuf  ->  false
+  OK    2e veille : toujours un seul rafraichissement programme  ->  1
+  OK    le 1er document est affiche  ->  "premier.md"
+  OK    bascule : l'evenement programme un rafraichissement  ->  1
+  OK    salve d'evenements : un seul rafraichissement pour la bascule  ->  1
+  OK    apres la bascule : la ligne suit SECOND.md  ->  "second.md"
+  OK    apres la bascule : la fiche suit SECOND.md  ->  "second.md"
+  OK    veille periodique : un rafraichissement programme SANS evenement  ->  1
+  OK    veille periodique : le panneau suit TROISIEME.md  ->  "trois.md"
+  OK    fermeture : le changement est vu  ->  1
+  OK    fermeture : plus aucune ligne affichee  ->  []
+TOUT PASSE  (179 verifications)
+```
+
+`verifier_empreinte.js` (moteur) : **TOUT PASSE (51 verifications)** — inchangé, **aucune régression**. `node --check` : `main.js: OK`, `import_md.jsx: OK` (copie `.js`). **0 U+FFFD** ; batteries **100 % ASCII** ; `main.js` conserve ses **3 non-ASCII d'UI préexistants** (L45 `…`, L76 `é`, L837 `—`), **aucun ajouté**.
+
+#### 5. Ce que ce tir ne fait PAS / reste à faire
+
+- **Le point non mesurable du §2 reste ouvert** à la mesure : *quel* événement tire sur une **bascule**. La **veille périodique** le couvre **par conception** (filet garanti) ; si FJD constate à l'écran que les événements suffisent, la veille périodique **pourra être retirée** — **à trancher par l'Architecte**.
+- **Validation visuelle FJD** : **1 rechargement UDT** — ouvrir un document, puis **basculer** vers un autre : le panneau doit **suivre** (ses lignes, sa note, sa fiche). Idem à la **fermeture** (retour à 0 ligne).
+- Toujours **ouverts** (rappel) : la **page**, la **provenance / `info_modele`**, la **signalétique texte-en-excès / page de sortie**.
 
 ---
 

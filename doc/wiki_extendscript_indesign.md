@@ -73,7 +73,7 @@ les 6 rubriques habituelles, dans cet ordre.
 
 ## Table des matières
 
-**État du wiki** : **47 cas** | build de référence **InDesign 21.x** (`21.6.0.57`, `fr_FR`, macOS) | dernière revue : **30/09/2026**.
+**État du wiki** : **53 cas** | build de référence **InDesign 21.x** (`21.6.0.57`, `fr_FR`, macOS) | dernière revue : **02/10/2026**.
 
 Index de navigation rapide — utile pour ne charger/scanner que la section pertinente plutôt que tout le fichier avant une nouvelle mission. Les liens pointent vers les ancres de titre (`## Cas NN — ...`).
 
@@ -130,6 +130,12 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 - [Cas 46](#cas-46--docsave-refuse-tmp-et-privatetmp--foldertemp-est-la-seule-cible-qui-marche) — **`mesuré`** — `Document.save()` refuse `/tmp` **et** `/private/tmp` (`ECHEC : Dossier "…" introuvable`), `Document.saveAs` **n'existe pas** (`d.saveAs is not a function`) ⇒ seule **`Folder.temp`** permet d'enregistrer le document témoin d'un test fermeture/réouverture.
 - [Cas 47](#cas-47--le-canal-darguments-de-appdoscript--lobjet-arguments-racine-jamais-appscriptargs) — **`mesuré`** — Le canal d'arguments de `app.doScript()` est l'objet **`arguments` de niveau racine** du script exécuté (`n=4`, les 4 valeurs **dans l'ordre**) ; **jamais** `app.scriptArgs` (objet **non indexable** ici : ni `length`, ni `[0]`, ni `getArguments`, **identique** avec et sans argument) ; **sans** argument `arguments` est **`undefined`** ⇒ test de discrimination menu/panneau direct ; le 3e paramètre exige une **liste** (`Array of Any Types attendu(e)`).
 - [Cas 48](#cas-48--le-numéro-de-paragraphe-absolu-se-compte-en-retours-paragraphe-avant-loffset-caractère-jamais-par-soustraction) — **`mesuré`** — Pour désigner un paragraphe par son **rang absolu** dans une story, il faut **compter les retours paragraphe (`\r`) avant l'offset caractère** du point d'insertion, **jamais** soustraire `story_total − N` : le **dernier bloc inséré fusionne** avec le paragraphe suivant ⇒ **N paragraphes insérés ≠ N paragraphes décomptés** (mesure réelle : 527 avant + 44 blocs ⇒ total **570**, pas 571 ⇒ soustraction **526** au lieu de **527** ⇒ tout le mapping décalé d'un cran).
+- [Cas 49](#cas-49--uxp-getfileforopening--le-sélecteur-natif-qui-casse-lœuf-poule-du-premier-import) — **`mesuré`** — `require("uxp").storage.localFileSystem.getFileForOpening({types:[…], allowMultiple:false})` est le **seul point d'entrée indépendant de tout état du document** : le panneau lisait sa source dans l'étiquette `md-source-fingerprint`, elle-même écrite par le moteur **après** un import réussi ⇒ **œuf-poule** (« import refusé : aucune source sélectionnée » sur document neuf, aucun moyen de déclarer une 1ʳᵉ source). Le sélecteur natif rend un `Entry` dont `nativePath` repart dans **le même tube gelé** ⇒ le moteur reste seul décideur.
+- [Cas 50](#cas-50--un-écran-de-panneau-uxp-démarre-vide--la-maquette-nest-jamais-létat-douverture) — **`mesuré`** — Un panneau ne doit **jamais** s'ouvrir sur la maquette : l'état d'ouverture vivait dans le **DOM** (3 lignes-modèles, fiche, note, compteur) ⇒ l'écran affichait le dessin. Parade : DOM vidé (`display:none`, textes vides, **aucune** classe d'état résiduelle) + `viderLaListe()` au chargement + lecture **différée** (600 ms) qui remplit l'écran vide. Défaut joint, même famille : les gabarits d'icônes sont choisis **par position** (aucune règle CSS `.etat-*`) ⇒ un état mal aiguillé (« identique » → ligne du cercle rouge) affichait une **alerte rouge sur une source saine**.
+- [Cas 51](#cas-51--le-journal-du-moteur-est-en-macroman--uxp-le-lit-en-utf-8-et-échoue) — **`mesuré`** — Le journal écrit par le moteur (`logToFile()`, `open("a")` **sans encoding**) est en **MacRoman** ; UXP lit en **UTF-8** ⇒ `getEntryWithUrl` + `read()` **échouent** sur ce fichier (129 Ko) alors que la **source `.md`** du **même dossier**, lue par le **même helper**, passe (6 157 car.). Parade : relire le journal **par le moteur** (`app.doScript`, `File.encoding = "BINARY"`) comme le fait la **sonde** — et **dire la cause** au lieu d'un `null` muet.
+- [Cas 52](#cas-52--le-panneau-relit-le-document-à-louverture-pas-après-limport--lécran-montre-létat-davant) — **`mesuré`** — L'écran d'un panneau n'est qu'un **instantané** de sa dernière lecture : après un import réussi, le **moteur** a écrit une nouvelle étiquette dans le document, mais l'écran montrait encore l'état **d'avant** (document vierge = 0 ligne) ⇒ il fallait cliquer « Actualiser ». Parade : **relire** le document après l'import (`await actualiserListe()`, avant le verdict) — **écrire (moteur) ⇒ relire (panneau)**.
+- [Cas 53](#cas-53--une-étiquette-de-document-ne-peut-pas-mémoriser-n-sources--la-liste-encodée-en-paires-plates-et-lupsert-qui-remplace-sur-place) — **`mesuré`** — `insertLabel` est un **couple clé/valeur qui ÉCRASE** (Cas 44) ⇒ une étiquette mono-source ne **peut pas** mémoriser N sources : « N imports ⇒ N lignes » est structurellement impossible sans changer le **format**. Parade : encoder la **liste** en **paires plates** à un seul niveau (`v`/`n`/**`s<i>.`**`v|name|path|size|checksum|modified`, pas de `JSON` — Cas 07), **versionnée** (v1 relue comme liste à 1 élément) et **bornée à 12** en lecture comme en écriture ; l'UPSERT **remplace sur place** (chemin déjà mémorisé = même position ; chemin nouveau = en tête).
+- [Cas 54](#cas-54--le-panneau-ne-suit-pas-le-document-actif--événements-indesign-en-chaînes-minuscules-et-bascule-non-mesurable-hors-indesign) — **`sourcé`** — Un panneau UXP ne « voit » que ce qu'il **relit** : sans **abonnement** aux événements du host, il reste sur le **document précédent** à la bascule. Les noms d'événements UXP sont des **chaînes EN MINUSCULES** (`afterOpen`, `afterActivate`, `afterClose`, `afterNew`) via `app.addEventListener` / `removeEventListener` — jamais des constantes `Event.*`. **Quel** événement tire sur une **bascule entre deux documents déjà ouverts** n'est **pas mesurable hors InDesign** ⇒ parade : **superposition** des 4 événements **+ veille périodique** (filet garanti), **un seul** rafraîchissement par salve.
 
 ### 2. Index par thème
 
@@ -186,6 +192,14 @@ Index de navigation rapide — utile pour ne charger/scanner que la section pert
 **Canal d'appel — passage d'arguments panneau UXP → moteur ExtendScript**
 - [Cas 47](#cas-47--le-canal-darguments-de-appdoscript--lobjet-arguments-racine-jamais-appscriptargs) — `app.doScript(src, lang, [args])` → `arguments` racine ; `app.scriptArgs` ne transporte rien
 
+**Panneau UXP (état d'ouverture, habillage, sélecteur de fichier)**
+- [Cas 49](#cas-49--uxp-getfileforopening--le-sélecteur-natif-qui-casse-lœuf-poule-du-premier-import) — `getFileForOpening` : le point d'entrée qui **casse l'œuf-poule** du premier import
+- [Cas 50](#cas-50--un-écran-de-panneau-uxp-démarre-vide--la-maquette-nest-jamais-létat-douverture) — écran **vide au chargement**, puis lecture différée ; les gabarits d'icônes se choisissent **par position**
+- [Cas 51](#cas-51--le-journal-du-moteur-est-en-macroman--uxp-le-lit-en-utf-8-et-échoue) — un fichier écrit par le **moteur** (MacRoman) se relit **par le moteur** (`BINARY`), jamais par UXP (UTF-8)
+- [Cas 52](#cas-52--le-panneau-relit-le-document-à-louverture-pas-après-limport--lécran-montre-létat-davant) — l'écran est un **instantané** : après un import, **relire** le document (écrire ⇒ relire)
+- [Cas 53](#cas-53--une-étiquette-de-document-ne-peut-pas-mémoriser-n-sources--la-liste-encodée-en-paires-plates-et-lupsert-qui-remplace-sur-place) — une étiquette = **une** valeur : mémoriser **N** sources oblige à **aplatir** (paires `s<i>.`), **versionner** et **borner** ; l'UPSERT **remplace sur place**
+- [Cas 54](#cas-54--le-panneau-ne-suit-pas-le-document-actif--événements-indesign-en-chaînes-minuscules-et-bascule-non-mesurable-hors-indesign) — suivre le **document actif** : événements du host en **chaînes minuscules** (`app.addEventListener`) **+ filet périodique** (la bascule n'est pas mesurable hors InDesign)
+
 **Lien dynamique / fichier lié (`Link`, `place`, story liée)**
 - [Cas 37](#cas-37--lien-natif-vers-un-fichier-source-sans-place--le-modèle-dobjet-link) — modèle d'objet `Link` : ce qui marche (`place(.icml)`) et ce qui ne marche pas (`createTextFragmentLink()`, `update()` qui ne recharge rien)
 
@@ -241,6 +255,16 @@ Chercher par ce qu'on a **vu à l'écran** (message d'erreur, comportement obser
 - **Une donnée attachée au document se relit vide / le test « le label est-il là ? » ne se déclenche jamais** → [Cas 44](#cas-44--extractlabel--insertlabel--ce-que-le-label-accepte-réellement)
 - **Une empreinte ne voit pas une source modifiée (ou crie au loup) : la date et la taille ne suffisent pas** → [Cas 45](#cas-45--filemodified-ne-signale-pas-un-changement-de-contenu-et-fileread-normalise-les-fins-de-ligne)
 - **`doc.save()` échoue avec « Dossier … introuvable » / besoin d'un document témoin réellement enregistrable** → [Cas 46](#cas-46--docsave-refuse-tmp-et-privatetmp--foldertemp-est-la-seule-cible-qui-marche)
+- **Un panneau réclame une source qu'on ne peut pas lui donner / « import refusé : aucune source sélectionnée » sur un document neuf** → [Cas 49](#cas-49--uxp-getfileforopening--le-sélecteur-natif-qui-casse-lœuf-poule-du-premier-import)
+- **Le panneau s'ouvre garni de données de démonstration / la maquette s'affiche au chargement** → [Cas 50](#cas-50--un-écran-de-panneau-uxp-démarre-vide--la-maquette-nest-jamais-létat-douverture)
+- **Une alerte rouge (ou toute icône d'état) s'affiche sur une source saine / en changeant un état c'est une autre icône qui bouge** → [Cas 50](#cas-50--un-écran-de-panneau-uxp-démarre-vide--la-maquette-nest-jamais-létat-douverture)
+- **Un élément masqué puis réaffiché reste invisible (ou l'inverse) : `style.display = ""` rend la main à la feuille de styles** → [Cas 50](#cas-50--un-écran-de-panneau-uxp-démarre-vide--la-maquette-nest-jamais-létat-douverture)
+- **« import envoyé, mais journal du moteur illisible » : un fichier écrit par le moteur ne se relit pas (MacRoman vs UTF-8)** → [Cas 51](#cas-51--le-journal-du-moteur-est-en-macroman--uxp-le-lit-en-utf-8-et-échoue)
+- **Après un import, aucune nouvelle ligne ne s'affiche / il faut cliquer « Actualiser » pour voir la source importée** → [Cas 52](#cas-52--le-panneau-relit-le-document-à-louverture-pas-après-limport--lécran-montre-létat-davant)
+- **Un document à plusieurs imports n'affiche qu'UNE seule ligne / le second import efface le premier** → [Cas 53](#cas-53--une-étiquette-de-document-ne-peut-pas-mémoriser-n-sources--la-liste-encodée-en-paires-plates-et-lupsert-qui-remplace-sur-place)
+- **Une donnée de longueur variable attachée au document (liste de sources, d'éléments…) ne tient pas dans un label** → [Cas 53](#cas-53--une-étiquette-de-document-ne-peut-pas-mémoriser-n-sources--la-liste-encodée-en-paires-plates-et-lupsert-qui-remplace-sur-place)
+- **L'ordre des lignes saute / se réordonne après un réimport d'une source déjà connue** → [Cas 53](#cas-53--une-étiquette-de-document-ne-peut-pas-mémoriser-n-sources--la-liste-encodée-en-paires-plates-et-lupsert-qui-remplace-sur-place)
+- **Le panneau reste sur l'état du document PRÉCÉDENT quand on ouvre ou bascule vers un autre document / il faut cliquer « Actualiser »** → [Cas 54](#cas-54--le-panneau-ne-suit-pas-le-document-actif--événements-indesign-en-chaînes-minuscules-et-bascule-non-mesurable-hors-indesign)
 
 ---
 
@@ -1675,6 +1699,250 @@ sur le texte voisin.
 paragraphes insérés (pas seulement l'import Markdown). Se combine au **Cas 26**
 (`.index` n'est pas un index de paragraphe) et au **Cas 24** (la story capturée se
 détache après une assignation de contenu).
+
+---
+
+## Cas 49 — UXP `getFileForOpening` : le sélecteur natif qui casse l'œuf-poule du premier import
+
+**Thème** : panneau UXP (sélecteur de fichier)
+**API / objet visé** : `require("uxp").storage.localFileSystem.getFileForOpening({ types, allowMultiple })` → `Entry.nativePath`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS), panneau UXP `com.fjd.importmd.panneau` — mesuré le **01/10/2026** (mission 06, batterie `verifier_moteur.js`, **125 vérifications / 0 échec**)
+
+**Contexte** — Le panneau Liens MD n'a qu'**une seule** source de vérité pour savoir quoi importer : l'**étiquette de document** `md-source-fingerprint` (6 champs `v,size,checksum,modified,name,path`), relue par `extractLabel` (cf. Cas 44). Cette étiquette est écrite par le **moteur** `import_md.jsx`, et **seulement après un import réussi**. Le panneau ne PROPOSE donc jamais un chemin : il **décide** sur ce que le document lui dit (tube gelé, cf. Cas 47).
+
+**Symptôme** — Sur un document **neuf** (donc sans étiquette), le panneau refuse tout : bandeau allumé `import refuse : aucune source selectionnee`. Constat FJD : *« import refusé, aucune source sélectionnée. On dirait que le panneau exige un premier import pour importer une première fois, on n'est pas rendus… »*. L'utilisateur n'a **aucun geste** qui lui permette de déclarer une première source.
+
+**Cause** — C'est un **œuf-poule** fermé, et il tient à **un seul** point d'entrée : le chemin ne pouvait venir **que** de l'étiquette ; l'étiquette ne peut venir **que** d'un import réussi ; un import réussi exige **déjà** un chemin. Chaque maillon est correct isolément ; c'est la **transition** (document neuf → première source) qui n'avait aucun représentant dans l'interface.
+
+Aucun script ne pouvait le révéler : c'est un défaut de **chemin d'accès**, pas de logique — tous les tests unitaires passaient, parce qu'ils **fournissaient** une étiquette au lieu de constater son absence.
+
+**Ce que dit la doc** — **Aucune citation vérifiée conservée** : la page Adobe décrivant `getFileForOpening` n'a **pas** été retrouvée verbatim avec URL HTTP 200 à la date d'écriture. Le cas porte donc `mesuré` (comportement constaté en réel, sans source externe citable) — **fallback honnête déclaré**, jamais de reformulation de mémoire (règle du gabarit É1). Seule la **forme d'appel effectivement utilisée** est reproduite ci-dessous, telle qu'exécutée.
+
+**Solution** — Câbler le bouton `btn_relier` sur le sélecteur **natif** :
+
+```js
+const fs = require("uxp").storage.localFileSystem;
+const entree = await fs.getFileForOpening({
+  types: ["md", "markdown", "txt"],
+  allowMultiple: false,
+});
+// entree.nativePath part dans LE MÊME tube gelé (Appelant / Action / Chemin)
+// que l'import classique : le panneau PROPOSE, le moteur DÉCIDE.
+```
+
+1. Le sélecteur est **le seul point d'entrée indépendant de tout état du document** : il n'a besoin ni d'étiquette, ni d'import antérieur, ni de sélection. C'est ce qui rouvre le chemin.
+2. Ne **pas** court-circuiter le tube : le chemin obtenu repart dans les **3 champs nommés** (`Appelant=panneau`, `Action=importer`, `Chemin=<md>`) — le panneau ne décide **rien** lui-même (cf. Cas 47).
+3. Le moteur reste **complet sans étiquette** : c'est un **premier** import, il n'y a rien à confronter ; l'étiquette est **écrite** à l'issue, ce qui rend l'import suivant comparable.
+4. Sur le **refus/annulation** du sélecteur, ne rien envoyer au moteur et le **dire** (trace au journal) — un refus silencieux serait indiscernable d'un blocage.
+
+**Portée** — Tout panneau UXP dont la donnée de pilotage est **stockée dans le document** (étiquette, `Link`, métadonnée) et qui doit néanmoins démarrer sur un document **vierge**. Généralise le Cas 44 (ce que le label accepte) : un label est un **état**, jamais un **point d'entrée** — il faut toujours, à côté, un geste qui n'en dépend pas.
+
+---
+
+## Cas 50 — Un écran de panneau UXP démarre VIDE : la maquette n'est jamais l'état d'ouverture
+
+**Thème** : panneau UXP (état d'ouverture, habillage)
+**API / objet visé** : `element.style.display` (valeurs explicites `block` / `none` / `flex`), `document.getElementById`, `setTimeout`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS), panneau UXP `com.fjd.importmd.panneau` — mesuré le **01/10/2026** (mission 06, batterie `verifier_moteur.js`, **125 vérifications / 0 échec**)
+
+**Contexte** — Le panneau a été dessiné à partir d'une **maquette** (3 sources de démonstration, fiche garnie, compteur « 2 liens sélectionnés »). Ces valeurs ont fini par être écrites **dans le DOM** — donc l'écran les affichait à l'ouverture, avant toute lecture du document réel.
+
+**Symptôme** — Deux défauts distincts, même écran :
+
+1. FJD : *« par défaut le panneau garni des items qui ont servi à produire la maquette statique. Il faut des éléments vierges, un panneau vide on load »* — puis, plus précis : *« pas vide, mais actualisé par défaut. Vide puis refresh onload »*. L'écran mentait : il montrait le **dessin**, pas le **document**.
+2. FJD : *« la ligne apparaît avec une icône d'alerte rouge »* — sur une source **saine**. Une **alerte rouge** s'affichait alors que rien n'était cassé.
+
+**Cause** —
+
+1. **L'état d'ouverture vivait dans le DOM**, en **quatre** endroits : les 3 `<div class="ligne">`, les champs de la fiche (`info_nom`, `info_taille`, `info_date`, `info_chemin`, `info_modele`, `info_etat`), la note de liste et le compteur de sélection. Rien ne les effaçait au chargement : l'écran **était** la maquette jusqu'à la première lecture.
+2. **Les gabarits d'icônes sont choisis par POSITION, pas par classe.** Les 3 lignes-modèles portent l'icône **en dur** : rang 1 = triangle ambre (`#fcb910`), rang 2 = **cercle rouge** (`#d50f2b` + point d'exclamation blanc), rang 3 = colonne État **vide**. Il n'existe **aucune** règle CSS `.etat-*` : l'aiguillage se fait par `indexLignePourEtat(etat)`, **seul** mécanisme de conditionnement. Or l'ancien aiguillage envoyait `identique → rang 2` — soit **la ligne du cercle rouge**. Une source **saine** (« identique ») révélait donc l'alerte. Ce n'est pas l'icône qui était fausse : c'est **l'aiguillage**.
+
+**Ce que dit la doc** — Aucune citation externe : cas de **méthode/habillage**, `mesuré` (même fallback déclaré que le Cas 49).
+
+**Solution** —
+
+1. **Assainir le DOM** : les 3 lignes-modèles passent en `display:none`, **sans aucune classe** d'état, textes **vides** ; tous les champs de fiche vidés ; note et compteur vidés. Le DOM ne transporte plus **aucune** donnée : les 3 lignes deviennent une **bibliothèque d'icônes**, pas un état.
+2. **Vider explicitement au chargement** : un `viderLaListe()` masque les lignes, blanchit la fiche, retire la classe d'état, éteint le bandeau et **annonce** la lecture (`0 source  -  lecture du document en cours`).
+   Distinction à tenir : ce libellé est une **annonce**, pas une **mesure** — l'écran vide ne prétend pas avoir compté.
+3. **Puis lire, en différé** (600 ms) : `actualiserListe()` remplit l'écran **réel**. Le report n'est pas cosmétique : au tout premier instant de vie d'un panneau UXP le pont InDesign peut n'être **pas encore établi**, et une lecture immédiate afficherait `module indesign indisponible` — soit un **faux diagnostic présenté comme une mesure**.
+4. **Corriger l'aiguillage, pas l'icône** :
+   `different → rang 1` (triangle ambre = source modifiée) · `source_absente → rang 2` (cercle rouge = **chemin d'import brisé à réimporter**, définition FJD) · `identique` **et** état indéterminé `→ rang 3` (**colonne vide : rien à signaler**, jamais une icône inventée).
+5. **Toujours écrire `display` explicitement** (`block` / `none` / `flex`) — piège joint, mesuré au tir : `style.display = ""` **ne rend pas la valeur par défaut**, il **rend la main à la feuille de styles**. Un `""` laissait la ligne comptée comme **affichée** et faussait la mesure suivante (échec de batterie obtenu puis corrigé par `"none"`).
+
+Preuve d'exécution (batterie, extraits bruts) :
+
+```
+=== OUVERTURE - l'ecran demarre VIDE, jamais sur la maquette ===
+  OK    aucune ligne affichee a l'ouverture  ->  []
+  OK    note : la lecture est ANNONCEE, pas mesuree  ->  "0 source  -  lecture du document en cours"
+=== OUVERTURE - " vide PUIS refresh " : la lecture remplit l'ecran vide ===
+  OK    avant le refresh : l'ecran est toujours vide  ->  []
+  OK    apres le refresh : la ligne 0 (triangle ambre) est servie  ->  ["0"]
+  OK    indexLignePourEtat(identique) = colonne VIDE (aucune alerte)  ->  2
+TOUT PASSE  (125 verifications)
+```
+
+**Portée** — Tout panneau UXP dérivé d'une maquette. Trois règles à garder : **(a)** la maquette est une **bibliothèque d'icônes**, jamais un état d'ouverture ; **(b)** si un habillage se choisit **par position**, l'aiguillage est le **seul** conditionnement — il doit être nommé et testé comme tel ; **(c)** `style.display = ""` n'est pas « la valeur par défaut ». Se combine au **Cas 27** (ce que le sandbox peut vraiment certifier) : la batterie a été étendue pour **simuler un résidu de maquette** et **prouver** que `viderLaListe()` l'efface — sans quoi elle n'aurait attesté qu'un cas favorable.
+
+---
+
+## Cas 51 — Le journal du moteur est en MacRoman : UXP le lit en UTF-8 et échoue
+
+**Thème** : panneau UXP (relecture d'un fichier écrit par le moteur)
+**API / objet visé** : `File.encoding` + `File.writeln` (ExtendScript), `localFileSystem.getEntryWithUrl` + `Entry.read()` (UXP), `app.doScript` (route de repli)
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS), panneau UXP `com.fjd.importmd.panneau` — mesuré le **02/10/2026** (mission 06, batterie `verifier_moteur.js`, **132 vérifications / 0 échec**)
+
+**Contexte** — Le panneau juge un import en lisant les lignes **ajoutées** au journal du moteur (`import_md_errors.log`) entre un relevé « avant » et un relevé « après ». Ce journal est écrit par `logToFile()` (`import_md.jsx`).
+
+**Symptôme** — FJD : *« import envoyé, mais journal moteur illisible »*. L'import avait bien été envoyé au moteur : c'est la **relecture du journal** qui échouait, et le panneau incriminait ce journal — sur un motif qui ne disait pas **pourquoi**.
+
+**Cause** — `logToFile()` ouvre le fichier avec `open("a")` **sans encoding explicite** : ExtendScript écrit alors dans l'encodage **système**, c'est-à-dire **MacRoman** sur macOS (un « é accent aigu » y est l'octet `0x8E`). UXP, lui, lit les fichiers en **UTF-8** : `getEntryWithUrl` + `read()` **échouent** sur ce fichier précis.
+
+Mesure directe sur le journal réel (129 368 octets) :
+
+```
+decode UTF-8 : ECHEC -> 'utf-8' codec can't decode byte 0xd1 in position 664: invalid continuation byte
+decode MacRoman : OK ; accents -> ['—', '—', 'é', 'é', 'É', ...]
+```
+
+Deux éléments écartent l'hypothèse d'un simple problème de chemin : **le même dossier** et **le même helper** (`lireFichierTexte`) lisaient sans peine la **source `.md`** (6 157 caractères, UTF-8 valide) ; seul le **journal** échouait. Ce n'était donc pas l'accès au dossier, mais **l'encodage du fichier**.
+
+Et la cause était **invisible** : le `catch` de `lireFichierTexte()` renvoyait `null` **sans dire pourquoi** — le panneau affichait un motif alarmant sans la raison. Un `null` sans cause transforme un défaut d'encodage en message trompeur.
+
+**Ce que dit la doc** — Aucune citation externe : cas de **méthode/encodage**, `mesuré` (même fallback déclaré que les Cas 49 et 50).
+
+**Solution** — Lire le journal **par le moteur**, jamais par UXP. C'est la route déjà éprouvée par la sonde (`com.fjd.importmd.sonde/main.js` L354 : `j.encoding = "BINARY"; j.open("r")`), reprise à l'identique :
+
+```js
+async function lireJournalParLeMoteur(chemin) {
+  const ind = moduleInDesign();
+  if (!ind || typeof ind.app.doScript !== "function") return null;
+  const src =
+    'var j = new File(' + chaineExtendScript(chemin) + ');\n' +
+    'var texte = "";\n' +
+    'if (j.exists) { j.encoding = "BINARY"; if (j.open("r")) { texte = j.read(); j.close(); } }\n' +
+    'texte;';
+  const t = ind.app.doScript(src, ind.ScriptLanguage.JAVASCRIPT);
+  return (typeof t === "string") ? t : null;
+}
+```
+
+1. La lecture passe par `app.doScript` (ExtendScript) en mode **`BINARY`** : les octets MacRoman deviennent une chaîne **sans tentative de décodage UTF-8**.
+2. Le différentiel **avant/après** reste octet à octet, et les marqueurs jugés (`M04: REFUS`, `M04: source IMPOSEE par le PANNEAU`, `M04-repartiteur: appel PANNEAU`) sont **purs ASCII** : la réussite du décodage n'a aucune incidence sur le jugement.
+3. Les lignes reportées au journal **du panneau** sont filtrées de tout non-ASCII (`replace(/[\u0080-\uffff]/g, "")`) : le journal moteur étant lu en binaire, les octets MacRoman y apparaîtraient sinon en bruit.
+4. Quand le moteur ne rend rien, le motif est **honnête** — « le moteur n'a pas rendu son journal » — et **ne juge pas** le document (« le document peut avoir été importé : ce message ne juge que le journal »).
+
+**Portée** — Tout consommateur **UXP** d'un fichier écrit par un **moteur ExtendScript** : le moteur écrit dans l'encodage **système** (MacRoman sur macOS), UXP lit en **UTF-8**. Deux règles : **(a)** un fichier produit par le moteur se relit **par le moteur** (`File.encoding = "BINARY"`), ou bien le moteur doit écrire en **UTF-8 explicite** ; **(b)** un `catch` qui renvoie `null` **sans cause** cache la raison réelle — toujours signaler la cause. Se combine au **Cas 45** (`File.read()` normalise les fins de ligne) : les deux montrent que la lecture d'un fichier par ExtendScript a des effets que l'on ne voit pas.
+
+---
+
+## Cas 52 — Le panneau relit le document à l'ouverture, pas après l'import : l'écran montre l'état d'avant
+
+**Thème** : panneau UXP (état de l'écran vs état du document)
+**API / objet visé** : `Document.extractLabel` / `insertLabel` (écriture par le moteur), relecture côté panneau (`construireListe()`), `app.doScript`
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS), panneau UXP `com.fjd.importmd.panneau` — mesuré le **02/10/2026** (mission 06, batterie `verifier_moteur.js`, **137 vérifications / 0 échec**)
+
+**Contexte** — Le panneau affiche « une ligne par source » en relisant l'étiquette `md-source-fingerprint` du document actif. Cette étiquette est écrite par le **moteur** (`import_md.jsx`, `insertLabel`) au moment d'un import réussi : c'est le moteur, pas le panneau, qui écrit dans le document.
+
+**Symptôme** — FJD : *« Un nouvel import, pas de nouvelle ligne. »* L'import réussissait (le moteur écrivait bien), mais l'écran ne montrait **jamais** la nouvelle ligne : il fallait cliquer « Actualiser » pour la voir apparaître.
+
+**Cause** — Le panneau ne relisait le document qu'à **deux** moments : au chargement (lecture différée de 600 ms) et sur clic « Actualiser ». La fonction qui traite l'import (`envoyerImportAuMoteur()`, tronc commun à « Importer » et « Relier ») **ne relisait pas** le document après avoir confié l'ordre au moteur. Or l'écran n'est qu'un **instantané** de la dernière lecture : le document venait de **changer** (le moteur y avait écrit sa nouvelle étiquette), mais l'écran affichait encore l'état **d'avant** l'import. Un document vierge restait donc à « 0 ligne » juste après un import réussi.
+
+C'est un défaut de **fraîcheur de lecture**, pas d'écriture : le panneau n'écrit rien (règle du tube gelé, cf. Cas 47) ; il oubliait simplement de **relire** ce que le moteur venait d'écrire.
+
+**Ce que dit la doc** — Aucune citation externe : cas de **méthode**, `mesuré` (même famille que les Cas 49 à 51).
+
+**Solution** — Après un import réussi, **relire le document** avant de conclure — et placer cette relecture **avant** le verdict :
+
+```js
+  // ... import confié au moteur, journal comparé, refus écarté ...
+  await actualiserListe();   // relit le document tel qu'il est MAINTENANT
+
+  afficherStatut(true, "import demande au moteur.\n" + ...);
+```
+
+Deux points de méthode :
+
+1. **Relire après toute écriture venue d'ailleurs.** Le panneau ne modifie jamais le document : tout changement (étiquette, page, etc.) vient du moteur. Toute écriture du moteur impose donc une **relecture explicite** côté panneau.
+2. **L'ordre compte.** `actualiserListe()` (`construireListe()`) part d'un bandeau muet et **peut le rallumer** (source modifiée). Comme `afficherStatut(true, …)` ne fait que **journaliser** (un succès reste muet, cf. Cas 50), c'est le verdict écrit en **dernier** qui reste maître du bandeau.
+
+La preuve tient dans la batterie : un document **sans étiquette** (0 ligne) reçoit un import ; le moteur simule l'écriture de l'étiquette ; **sans aucun clic** sur « Actualiser », la liste passe à **1 ligne** et la fiche se garnit (`apres import : la liste est RAFRAICHIE (1 ligne, sans clic) -> ["2"]`).
+
+**Portée** — Tout panneau (UXP) dont l'écran **reflète** un état que **seul le moteur écrit** : l'écran est un instantané, il ne se met pas à jour tout seul. Règle : **écrire (moteur) ⇒ relire (panneau)**, au même endroit du code que l'action, et jamais sur un état antérieur. Se combine au **Cas 50** (l'écran montre ce qu'on a lu, pas ce qui est) et au **Cas 51** (la relecture d'un fichier du moteur a ses propres pièges d'encodage).
+
+---
+
+## Cas 53 — Une étiquette de document ne peut pas mémoriser N sources : la liste encodée en paires plates, et l'UPSERT qui remplace SUR PLACE
+
+**Thème** : persistance d'état dans le document (étiquette) — format de stockage
+**API / objet visé** : `Document.insertLabel` / `extractLabel` (Couple clé/valeur), absence de `JSON` natif (ES3), `File.fsName` / `File.read()` (empreinte des sources)
+**Statut source** : `mesuré`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS), moteur `import_md.jsx` — mesuré le **02/10/2026** (mission 06, batterie `verifier_empreinte.js`, **51 vérifications / 0 échec**)
+
+**Contexte** — Le panneau affiche **une ligne par source importée** et lit cet état dans l'étiquette `md-source-fingerprint` du document. Jusqu'ici cette étiquette ne mémorisait **qu'une seule** source (chemin + taille + somme + date), réécrite à chaque import — suffisant pour la question d'alors (« la source qui a servi au dernier import a-t-elle changé ? », cf. Cas 45), insuffisant dès que le critère devient « **N imports ⇒ N lignes** ».
+
+**Symptôme** — FJD : *« j'ai deux imports différents dans mon doc, je dois avoir deux lignes dans mon panneau. »* Le panneau affichait **une seule** ligne, celle du **dernier** import : la précédente avait disparu.
+
+**Cause** — Ce n'est pas un défaut de code, c'est une **impossibilité structurelle du support**. `insertLabel(clé, valeur)` associe **une** clé à **une** valeur et **ÉCRASE** la valeur précédente (mesuré, cf. **Cas 44**). Une étiquette **mono-source** ne *peut pas* contenir N sources : chaque nouvel import remplaçait le contenu du précédent. Le document n'avait donc **pas de mémoire** de la seconde source — aucune correction côté affichage ne pouvait la faire apparaître.
+
+S'y ajoute la contrainte de langage : ExtendScript est **ES3**, sans `JSON` natif (**Cas 07**), donc pas de « sérialiser un tableau » disponible.
+
+**Ce que dit la doc** — `insertLabel(key, value)` : la doc Adobe ne propose qu'un **couple clé/valeur**, sans conteneur ni variante plurielle ; aucune API de type « plusieurs valeurs pour une clé ». L'absence de `JSON` est **sourcée** (Cas 07, ES3 §15.12). Pour le reste, comportement **constaté en réel** (batterie moteur).
+
+**Solution** — Encoder la **liste** dans **une seule** valeur de label, en **paires plates** à **un seul niveau** — le format déjà employé par le projet (`serializeFlatMapping`) :
+
+```
+{"v":"2","n":"2","s0.v":"2","s0.name":"un.md","s0.path":"/x/un.md","s0.size":"16",
+ "s0.checksum":"…","s0.modified":"…","s1.v":"2","s1.name":"deux.md", …}
+```
+
+Quatre décisions, toutes justifiées par une mesure :
+
+1. **Une seule accolade, aucun tableau, aucun imbrication.** Le format est plat par construction : une regex de paires `"clé":"valeur"` suffit à le relire, sans parseur. Le préfixe `s<i>.` donne l'ordre des sources (`s0`, `s1`, …), `v` porte la **version du format** et `n` le **compteur**.
+2. **Versionné dès la première évolution, et rétrocompatible.** Une étiquette **v1** (mono-source, déjà posée dans des documents existants) est relue **comme une liste à un élément** : `!obj.n && obj.path` ⇒ 1 source. Aucun document déjà importé ne perd sa source (vérifié : *« la source v1 n'est PAS perdue »*, la nouvelle source vient en tête, l'ancienne est conservée, et l'étiquette réécrite passe en v2).
+3. **Borné aux deux bouts.** `M05_MAX_SOURCES = 12` s'applique à l'**écriture** (15 imports de **chemins différents** ⇒ 12 mémorisés, les 3 plus anciens évincés, le plus récent en tête) **et** à la **lecture** (un compteur `n` valant **99** ⇒ **12** sources lues, jamais 99). Un document forgé ne peut donc pas faire allouer au panneau une liste arbitrairement longue.
+4. **Aucun champ vide n'est écrit.** Le sérialiseur n'écrit que les valeurs *truthy* (`if (obj[key])`) : un champ vide et un champ **absent** sont **indistinguables** dans le format. Ce n'est pas une perte — les lecteurs reconstituent avec `|| ""`, et un chemin vide rend une source **ignorée** (contrôle négatif : `n=3` avec une source sans chemin ⇒ **2** sources lues).
+
+**Deuxième comportement mesuré, à la mise à jour d'une source déjà mémorisée** : l'écriture est un **UPSERT qui remplace SUR PLACE**. Un chemin **déjà** mémorisé est remplacé **à sa position** ; seul un chemin **nouveau** est poussé en tête (`unshift`). Conséquence visible : après un réimport, l'ordre des lignes **ne bouge pas** — le panneau ne se réordonne pas sous les yeux de l'utilisateur entre deux rafraîchissements. Vérifié dans les deux sens : `2 imports différents` ⇒ `["/x/deux.md", "/x/un.md"]` (le récent en tête), puis réimport de `/x/un.md` ⇒ **toujours 2 sources** et l'ordre **inchangé** (`/x/deux.md` reste 1ʳᵉ, `/x/un.md` reste 2ᵉ), le journal distinguant l'**ajout** de la **mise à jour** (`ajout`, `ajout`, `maj`).
+
+**Portée** — Toute donnée de **longueur variable** attachée à un document InDesign passe obligatoirement par un **label**, donc par un **couple clé/valeur** : il faut l'**aplatir** (un seul niveau, préfixes d'index), la **versionner** (dès la première évolution, en gardant la lecture de l'ancien format) et la **borner** en lecture comme en écriture. Ne jamais supposer qu'un label accepte un tableau ou un objet imbriqué : `insertLabel` ne connaît que du texte, et ExtendScript n'a pas de `JSON` pour en fabriquer un. Se combine au **Cas 44** (le label écrase : une clé = une valeur) et au **Cas 07** (pas de `JSON` natif) — ce cas est ce que ces deux-là imposent quand il faut mémoriser **plusieurs** choses.
+
+---
+
+## Cas 54 — Le panneau ne suit pas le document actif : événements InDesign en chaînes minuscules, et bascule NON mesurable hors InDesign
+
+**Thème** : panneau UXP — écoute des événements du host InDesign
+**API / objet visé** : `app.addEventListener` / `app.removeEventListener` (module `indesign`), énumération `Event` (`afterOpen`, `afterActivate`, `afterClose`, `afterNew`, `afterContextChanged`), `app.activeDocument`
+**Statut source** : `sourcé`
+**Build de référence** : InDesign **21.6.0.57** (fr_FR, macOS) — événements UXP disponibles depuis **InDesign 18.4**
+
+**Contexte** — Le panneau « Liens MD » lit l'état des imports dans l'étiquette du **document actif** (`app.activeDocument`). Jusqu'au tir 9, il ne lisait ce document qu'à **deux moments** : au **démarrage** (lecture différée) et sur **clic** (« Actualiser », import, relier). **Aucun écouteur d'événement InDesign n'existait.**
+
+**Symptôme** — FJD : *« lorsqu'on passe d'un doc à l'autre, le panneau demeure sur l'état précédent »*. Ouvrir un document, ou **basculer** vers un autre document déjà ouvert, laissait l'écran figé sur les lignes, la note et la fiche du **document précédent**.
+
+**Cause** — Un panneau UXP est un **observateur** : il ne « voit » que ce qu'il **relit**. Sans **abonnement aux événements du host**, rien ne le prévient qu'un autre document est devenu actif ⇒ l'écran reste un **instantané** de sa dernière lecture. Même famille que le **Cas 52** (écrire ⇒ relire) : le panneau ne relit pas au bon **moment**.
+
+**Ce que dit la doc** — Deux pages Adobe **consultées le 02/10/2026** :
+
+- Recette « InDesign events » (`https://developer.adobe.com/indesign/uxp/resources/recipes/indesign-events/`) : `const { app } = require("indesign"); app.addEventListener("<nom>", handler);` — le handler reçoit un objet exposant `.eventType` et `.currentTarget.name` ; retrait par `app.removeEventListener("<nom>", handler)`. **Le nom est une chaîne EN MINUSCULES** (`"afterNew"`, `"afterOpen"`, …), **jamais** une constante `Event.*` à la manière d'ExtendScript.
+- Énumération `Event` (`https://developer.adobe.com/indesign/uxp/dom/api/e/event/`) : membres tous **en minuscules** — `afterOpen`, **`afterActivate`** (« Dispatched after the Event becomes active »), `afterClose`, `afterNew`, `afterContextChanged` (« Dispatched after the active context changes »)…
+
+**Limite de source, déclarée** : **quel** événement se déclenche **exactement** sur une **bascule entre deux documents DÉJÀ ouverts** n'est pas documenté sans ambiguïté et **n'est pas mesurable hors InDesign** (`afterActivate` ? `afterContextChanged` ?). Ce cas ne le présente donc **pas** comme établi.
+
+**Solution** — Une **veille à deux étages**, avec **un seul point d'entrée** qui tranche :
+
+1. **Étage 1 — abonnement (voie rapide)** : enregistrer une **superposition** d'événements (`afterOpen`, `afterActivate`, `afterClose`, `afterNew`). Puisque le nom exact de la bascule est incertain, on **couvre** au lieu de parier. `removeEventListener` n'est pas appelé en l'état : le panneau vit toute la session.
+2. **Étage 2 — veille périodique (filet GARANTI)** : une relecture `setInterval(…, 1000)` de l'**identité du document actif** (`nom|id`). C'est ce qui rend la correction **insensible** à l'incertitude ci-dessus : même si aucun des quatre noms ne tire sur la bascule, le panneau suit quand même.
+3. **Un point d'entrée unique** compare l'identité ; il ne déclenche un rafraîchissement que sur **changement réel**, et **une seule fois par salve** (anti-rafale ≈ 300 ms) — une salve d'événements ne provoque **pas** N relectures.
+4. **Lecture seule** : la veille ne fait que **relire** le document ; elle n'écrit **rien** (tube gelé inchangé, cf. **Cas 47**).
+
+Le tirant se voit à l'écran : identités consignées avant/après, un rafraîchissement par changement, et `true`/`false` selon qu'un changement a été observé.
+
+**Portée** — Tout panneau **persistant** qui affiche un état **dépendant du contexte** (document actif, sélection, page) doit **s'abonner** aux événements du host — mais un abonnement dont le **nom** n'est pas certain ne suffit **jamais** à garantir la réactivité : prévoir systématiquement un **filet** (relecture périodique) et **journaliser l'identité** de ce qu'on observe, pour distinguer « rien n'a changé » de « on n'a rien vu ». Se combine au **Cas 52** (écrire ⇒ relire) et au **Cas 50** (l'écran est un instantané).
 
 ---
 

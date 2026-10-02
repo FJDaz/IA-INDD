@@ -1,0 +1,733 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Liens MD</title>
+<style>
+/* =====================================================================
+   Panneau  Liens MD  -  maquette pixel.
+   Geometrie relevee AU PX sur la reference Illustrator de FJD :
+     illustrator/panneau_liens_md.svg   (viewBox 0 0 371.5 592)
+   Le panneau utile de cette reference occupe x = 51.5 -> 371.5 (320 de
+   large) et y = 0 -> 592 (592 de haut). Toutes les valeurs ci-dessous sont
+   donc donnees en repere PANNEAU = repere SVG moins 51.5 en abscisse.
+
+   Contraintes techniques verifiees dans la doc UXP avant d'ecrire :
+     - CSS grid NON supporte  (reference-css/styles ne documente ni grid ni
+       display:grid ; display accepte none|inline|block|inline-block|flex|
+       inline-flex)              -> tout le calage est fait en FLEXBOX
+     - position:absolute + top/left/right/bottom : supportes
+     - line-height NON documente -> calage vertical par hauteur de boite +
+       line-height explicite (mesure : ecart de baseline < 0.4 px)
+     - text-decoration NON documente -> soulignement des numeros de page
+       refait par une bordure basse
+     - cursor NON documente
+   ===================================================================== */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+#panneau {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #535353;              /* fond du panneau (rect 0, #535353) */
+  color: #eaeaea;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  /* Interlettrage global (demande FJD 01/10). Documente UXP (v2.0+).
+     .035em = 0.385 px a 11 px. Herite par tout le panneau. */
+  letter-spacing: .035em;
+}
+
+/* =====================================================================
+   ZONE 1 - EN-TETE   (y 0 -> 32)
+   La reference ne porte QUE le titre : ni pastille d'etat, ni texte
+   d'etat. Le bandeau #statut est MUET par defaut (contrat d'identifiants) ;
+   decision FJD du 01/10/2026 : il s'allume pour une source MODIFIEE (TRIANGLE
+   DE DANGER) ET pour une action REFUSEE (ex. import sur la maquette) : dans
+   les deux cas il y a quelque chose a signaler. Les SUCCES restent muets et
+   le detail complet part au JOURNAL.
+   ===================================================================== */
+#zone_entete {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 32px;
+}
+
+/* titre : origine texte (63.5, 22) en repere SVG, bbox y 10.04 h 14.95 */
+#zone_entete .titre {
+  position: absolute;
+  left: 12px;                       /* 63.5 - 51.5 */
+  top: 10.04px;
+  height: 14.95px;
+  line-height: 14.95px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #eaeaea;
+  white-space: nowrap;
+}
+
+/* Bandeau d'etat — DECISION FJD (01/10/2026).
+   Il ne parle QUE pour une source MODIFIEE, et montre alors le TRIANGLE DE
+   DANGER : le trace ambre du dessin (path 3), repris tel quel a la colonne
+   Etat. Le CSS le tient MASQUE par defaut ; c'est le JS qui l'allume en
+   posant style.display (jamais un selecteur compose : non certifie en UXP). */
+#statut {
+  display: none;
+  position: absolute;
+  right: 12px;
+  top: 8.5px;
+  height: 14.95px;
+  align-items: center;
+  color: #fcb910;
+  white-space: nowrap;
+}
+
+#statut svg { width: 13.79px; height: 12.42px; margin-right: 5.04px; }
+
+#statut_texte {
+  height: 14.95px;
+  line-height: 14.95px;
+  color: #fcb910;
+}
+
+/* =====================================================================
+   ZONE 2 - LISTE   (bloc 9 -> 311 en x, y 32 -> 400)
+   Colonnes (largeurs relevees, somme = 302 exactement) :
+     7 | 18 badge | 22.17 | nom (elastique) | 37 etat | 34.37 page | 17.23
+   ===================================================================== */
+#zone_liste {
+  position: absolute;
+  left: 9px;                        /* 60.5 - 51.5 */
+  right: 9px;
+  top: 32px;
+  bottom: 192px;                    /* -> y 400 */
+
+  /* Contenant a HAUTEUR MODULABLE : les deux offsets ci-dessus font que la
+     zone prend tout l'espace laisse entre l'en-tete et la barre d'actions,
+     quelle que soit la hauteur du panneau (320 x 592 dans la reference, mais
+     le panneau est redimensionnable).
+
+     min-height = la hauteur de TROIS LIENS, pour qu'un panneau ecrase ne
+     puisse jamais descendre sous trois lignes visibles :
+        24 px  de l'origine de la zone (y 32) jusqu'a la premiere ligne,
+               puisque #liste_corps est pose a top:24px dans la zone ;
+      + 72 px  trois pas de 24 px (.ligne mesure exactement 24 px)
+      = 96 px  -> les trois lignes de la reference restent visibles. */
+  min-height: 96px;
+}
+
+/* --- en-tete de liste : bande y 35 -> 57 ------------------------------ */
+/* height 20 + padding-bottom 2 = 22 dans les deux conventions de
+   box-sizing, ce qui place le centre de ligne a y 45 : la baseline tombe
+   alors a 48.96 px pour une cible de 49 px. */
+#entetes {
+  position: absolute;
+  left: 0; right: 0; top: 3px;      /* -> y 35 */
+  height: 20px;
+  padding-bottom: 2px;
+  display: flex;
+  align-items: center;
+}
+
+#entetes .col-nom {
+  flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;                   /* text.cls-1 : 12 px gras blanc */
+  white-space: nowrap;
+}
+
+/* filet de base de l'en-tete : line y 57, #5a5a5a, 1 px */
+#zone_liste .filet-entete {
+  position: absolute;
+  left: 0; right: 0; top: 24.5px;   /* -> y 56.5 */
+  height: 1px;
+  background: #5a5a5a;
+}
+
+/* --- lignes : pas de 24 px, bandes y 56 -> 80 -> 104 -> 128 ---------- */
+/* Le CONTENANT EN OVERFLOW fjd : les lignes vivent dans ce bloc, lui-meme
+   engendre dans #zone_liste (le contenant a min-height). Des qu'il y a plus
+   de liens que la zone n'en peut montrer, les lignes en trop sont rognees
+   ICI et non plus au bord du panneau. `overflow:hidden` rogne les DEUX axes,
+   donc un nom trop long (ou une colonne trop large) ne peut pas non plus
+   creer de defilement lateral. */
+#liste_corps {
+  position: absolute;
+  left: 0; right: 0; top: 24px;     /* -> y 56 */
+  bottom: 0;                        /* borne basse = le bas de la zone */
+  overflow: hidden;
+}
+
+.ligne {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  position: relative;
+}
+
+/* separateur = bordure haute de la ligne suivante, compensee en hauteur
+   pour que le pas reste exactement 24 px (content-box : 23.5 + 0.5) */
+.ligne + .ligne {
+  height: 23.5px;
+  border-top: 0.5px solid #6d6d6d;  /* line y 104 : #6d6d6d 0.5 px */
+}
+
+/* ligne selectionnee : fond #323232, filet haut #474747 1 px
+   (23 + 1 = 24 : le pas ne bouge pas) */
+.ligne.selection {
+  height: 23px;
+  border-top: 1px solid #474747;    /* line y 80 : #474747 1 px */
+  background: #323232;              /* rect 3 : #323232 */
+}
+
+/* --- colonnes communes aux deux bandes ------------------------------- */
+.col-etat {
+  flex: 0 0 37px;
+  width: 37px;
+  display: flex;
+  align-items: center;
+  justify-content: center;          /* colonne 222.4 -> 259.4, centre 240.9 */
+}
+
+.col-page {
+  flex: 0 0 34.37px;
+  width: 34.37px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;        /* bord droit des numeros : x 293.77 */
+}
+
+/* soulignement : text-decoration n'est pas documente en UXP -> bordure */
+.page-num {
+  color: inherit;
+  border-bottom: 0.5px solid currentColor;
+}
+
+/* --- cellules specifiques aux lignes --------------------------------- */
+.ligne .marge-g { flex: 0 0 7px; width: 7px; }
+
+.ligne .badge {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: #e68619;              /* rect 4/5/6 : #e68619, rx 4 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.ligne .col-nom {
+  flex: 1 1 auto;
+  margin-left: 22.17px;             /* nom a x 56.17 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;          /* text-overflow est documente */
+  color: #eaeaea;
+}
+
+/* line 1 (charte, etat modifiee) : nom en blanc dans la reference */
+.ligne.etat-modifiee .col-nom { color: #ffffff; }
+
+.ligne .marge-d { flex: 0 0 17.23px; width: 17.23px; }
+
+/* numero de page : blanc, sauf sur la ligne selectionnee -> #e68619 */
+.ligne .col-page { color: #ffffff; }
+.ligne.selection .col-page { color: #e68619; }
+
+/* pastille cliquable de tri (icone page de l'en-tete) */
+#btn_page {
+  width: 16px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  border-radius: 3px;
+}
+#btn_page:hover { background: rgba(255, 255, 255, 0.10); }
+
+#liste_note { display: none; }
+
+/* =====================================================================
+   ZONE 3 - ACTIONS   (bande y 399 -> 431, boutons 32 x 32)
+   centres releves : chevron 24 - chaine 188 - import 224 - actu 260 - crayon 296
+   ===================================================================== */
+#zone_actions {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 161px;
+  height: 32px;
+}
+
+#zone_actions .barre-gauche {
+  position: absolute;
+  left: 8px; top: 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+#zone_actions .barre-droite {
+  position: absolute;
+  right: 8px; top: 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.bouton-icone {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bouton-icone:hover { background: rgba(255, 255, 255, 0.10); }
+
+/* Le PREMIER element de #zone_actions est un chevron : c'est l'expander de
+   la zone Informations. Il commande exactement le meme bloc que la ligne
+   « Calibrage » (les deux pilotent #calibrage et restent synchronises par
+   main.js), et il en porte donc le meme etat visuel : le trace d'origine a
+   plat quand c'est replie, LE MEME trace tourne de 90 degres horaire quand
+   c'est deplie. La rotation est GRAVEE dans le trace (attribut d) par
+   illustrator/rot_chevron.py, car `transform` n'est pas documente en UXP. */
+#btn_expand .act-ferme,
+#btn_expand .act-ouvert { flex: none; }
+
+/* Etat ferme par defaut (avant que main.js ne prenne la main) : seul le
+   chevron ferme est visible. C'est main.js qui pose EN LIGNE `display: block`
+   pour montrer un trace et `display: none` pour le masquer.
+   NE PAS re-introduire ici de bascule a SELECTEUR COMPOSE du genre
+   `#btn_expand.deplie .act-ouvert { display: flex }` : les selecteurs
+   composes ne sont PAS certifies dans le runtime UXP, et c'est precisement
+   cette regle qui avait fait disparaitre le chevron a l'ouverture (le style
+   en ligne valait "", donc il rendait la main a la CSS qui masque
+   `.act-ouvert`). Le tracage de l'etat appartient a main.js, pas a la CSS. */
+.act-ouvert { display: none; }
+
+.barre-droite .bouton-icone + .bouton-icone { margin-left: 4px; }
+
+/* compteur : origine texte (95.5, 420) SVG -> (44, 420) */
+#nb_selection {
+  position: absolute;
+  left: 44px;
+  top: 10.85px;
+  height: 12.69px;
+  line-height: 12.69px;
+  font-size: 11px;
+  color: #b0b0b0;
+  white-space: nowrap;
+}
+
+/* =====================================================================
+   ZONE 4 - INFORMATIONS   (y 429 -> 592, hauteur 163)
+   La zone est en FLUX (pas en absolu) pour que le depliage du calibrage
+   la fasse grandir et declenche le defilement : refermee, la somme des
+   hauteurs et marges vaut EXACTEMENT 163 px, donc la geometrie de la
+   reference est reproduite au px.
+   ===================================================================== */
+#zone_infos {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 163px;
+  overflow: auto;
+}
+
+/* filets #6d6d6d 0.5 px : de x 8 a x 312 */
+.filet-h {
+  height: 0.5px;
+  background: #6d6d6d;
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+/* titre : origine texte (71.07, 447) SVG -> x 19.57 */
+#titre_infos {
+  margin: 5.24px 0 0 19.57px;
+  height: 15.22px;
+  line-height: 15.22px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #eaeaea;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------
+   LA FICHE  -  alignee sur le deux-points (demande FJD)
+   Les six lignes de la reference ont toutes leur ":" sur la meme
+   abscisse : x = 132.5 a partir de l'origine de la fiche (59.37 en SVG,
+   soit 7.87 en repere panneau) -> colonne panneau x = 140.37.
+   Obtenu SANS grid : .cle = bloc inline de 129.45 px aligne a droite,
+   puis .val decale de 3.05 px (largeur d'une espace Helvetica 11 px) :
+   le ":" tombe donc a 129.45 + 3.05 = 132.5.
+   Pas de ligne : 13.2 px exactement.
+   --------------------------------------------------------------------- */
+#fiche {
+  margin: 15.17px 9.69px 0 7.87px;
+}
+
+.ligne-fiche {
+  height: 13.2px;
+  line-height: 13.2px;
+  white-space: nowrap;
+  flex: 0 0 13.2px;
+}
+
+.ligne-fiche .cle {
+  display: inline-block;
+  width: 129.45px;
+  text-align: right;
+  font-weight: 700;
+  color: #eaeaea;
+}
+
+.ligne-fiche .val {
+  display: inline-block;
+  padding-left: 3.05px;
+  /* 169.9 px = largeur reellement disponible (302.44 - 129.45 - 3.05).
+     On accorde 171 px pour que la chaine de la reference (avance 170 px,
+     point de suspension compris) tienne SANS declencher la troncature :
+     sinon Chrome repose son propre "…" et l'encre s'arrete a 302 au lieu
+     de 309. Le bord droit du bloc reste a 311.37 < 312 (fin des filets). */
+  max-width: 171px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #eaeaea;
+}
+
+/* ligne  Etat  : le ":" est rouge #d7373f, la valeur ambre #fcb910 */
+.ligne-fiche.etat-ligne .sep { color: #d7373f; }
+
+.etat.modifiee { color: #fcb910; }
+.etat.identique { color: #eaeaea; }
+.etat.absente  { color: #eaeaea; }
+
+/* --- ligne expandable  Calibrage  (refermee dans la reference) -------- */
+#ligne_calibrage {
+  margin: 5.47px 8px 0 8px;
+  height: 21.5px;                   /* 21.5 + 0.5 de filet = 22 */
+  border-top: 0.5px solid #6d6d6d;  /* line y 557 */
+  display: flex;
+  align-items: center;
+  color: #eaeaea;
+}
+#ligne_calibrage:hover { background: rgba(255, 255, 255, 0.05); }
+
+/* chevron : x 29.26 -> 34.58 (5.32 de large), texte a x 41 */
+#ligne_calibrage .cal-spacer {
+  flex: 0 0 21.26px;
+  width: 21.26px;
+}
+/* Le chevron deplie est LE MEME chevron, tourne de 90 degres horaire : il
+   mesure donc 9.15 de large au lieu de 5.32, mais son centre ne bouge pas.
+   Boite = 5.32 (le trace ferme) + marge droite 6.42 = les 11.74 px d'origine,
+   donc le texte "Calibrage" reste a x 41. Le chevron ouvert, plus large que
+   la boite, deborde de 1.915 px de chaque cote (overflow visible) : c'est
+   exactement ce que fait une rotation autour du centre. */
+#ligne_calibrage .cal-icone {
+  flex: 0 0 5.32px;
+  width: 5.32px;
+  margin-right: 6.42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* les deux traces gardent leur taille propre : jamais retrecis par le flex */
+#ligne_calibrage .cal-ferme,
+#ligne_calibrage .cal-ouvert { flex: none; }
+#ligne_calibrage .cal-texte {
+  font-size: 11px;
+  height: 12.69px;
+  line-height: 12.69px;
+  /* ECART VOLONTAIRE a la reference : dans le SVG de reference, "Calibrage"
+     porte .cls-5 = Helvetica NORMAL (le groupe gras est .cls-1/.cls-4/.cls-8/
+     .cls-10/.cls-11..cls-19 = Helvetica-Bold 700). FJD demande explicitement
+     ce label en gras (01/10). font-weight est documente UXP (v3.0+). */
+  font-weight: 700;
+}
+
+/* bascule ferme -> ouvert : la reference ne montre que l'etat ferme. Pour
+   l'etat ouvert on n'utilise NI un autre pictogramme, NI un pictogramme de
+   kit (trace et dimension differents, et il ressort decolore) : on rejoue LE
+   MEME trace d'origine, simplement tourne de 90 degres horaire. */
+/* Idem barre d'actions : pas de bascule par selecteur compose ici. L'etat
+   des deux traces est pose EN LIGNE par afficherTrace() (main.js), qui pose
+   `none` pour masquer et `block` pour montrer. Voir le commentaire detaille
+   dans la zone de la barre d'actions. */
+.cal-ouvert { display: none; }
+
+/* --- bloc calibrage (masque par defaut, main.js le passe en flex) ----- */
+#calibrage {
+  display: none;
+  flex-direction: column;
+  margin: 3px 9.69px 0 7.87px;
+}
+
+/* filet bas (line y 579) + respiration avant le bord du panneau */
+#espace_bas { height: 12.5px; }
+
+#journal { display: none; }
+</style>
+</head>
+<body>
+
+<div id="panneau">
+
+  <!-- ===================== ZONE 1 - EN-TETE ===================== -->
+  <div id="zone_entete">
+    <div class="titre">Liens MD</div>
+    <!-- Bandeau d'etat : MUET par defaut. Il s'allume pour une source
+         MODIFIEE (TRIANGLE DE DANGER, trace ambre du dessin) et pour une
+         action REFUSEE : dans les deux cas il y a quelque chose a signaler. -->
+    <div id="statut">
+      <svg viewBox="285.48 62.86 13.79 12.42" width="13.79" height="12.42" fill="#fcb910">
+        <path fill="#fcb910" d="M292.04,63.06l-6.51,11.64c-.1.19-.04.42.15.53.06.03.12.05.19.05h13.01c.21,0,.39-.17.39-.39,0-.07-.02-.13-.05-.19l-6.51-11.64c-.1-.19-.34-.25-.53-.15-.06.04-.11.09-.15.15ZM293.26,73.8c0,.12-.1.22-.22.22h-1.31c-.12,0-.22-.1-.22-.22v-1.31c0-.12.1-.22.22-.22h1.31c.12,0,.22.1.22.22v1.31ZM293.16,71c0,.11-.09.19-.19.19h-1.17c-.11,0-.19-.09-.19-.19v-4.67c0-.11.09-.19.19-.19h1.17c.11,0,.19.09.19.19v4.67Z"/>
+      </svg>
+      <span id="statut_texte"></span>
+    </div>
+  </div>
+
+  <!-- ===================== ZONE 2 - LISTE ===================== -->
+  <div id="zone_liste">
+
+    <div id="entetes">
+      <span class="marge-g"></span>
+      <span class="col-nom">Nom</span>
+      <!-- colonne etat : triangle gris d'avertissement (path 0, #b0b0b0) -->
+      <span class="col-etat">
+        <svg viewBox="285.48 39.78 13.79 12.42" width="13.79" height="12.42" fill="#b0b0b0">
+          <path fill="#b0b0b0" d="M292.06,40l-6.51,11.64c-.1.19-.04.42.15.53.06.03.12.05.19.05h13.01c.21,0,.39-.17.39-.39,0-.07-.02-.13-.05-.19l-6.51-11.64c-.1-.19-.34-.25-.53-.15-.06.04-.11.09-.15.15ZM293.18,50.47c0,.11-.09.19-.19.19h-1.17c-.11,0-.19-.09-.19-.19v-1.17c0-.11.09-.19.19-.19h1.17c.11,0,.19.09.19.19v1.17ZM293.18,48.14c0,.11-.09.19-.19.19h-1.17c-.11,0-.19-.09-.19-.19v-4.67c0-.11.09-.19.19-.19h1.17c.11,0,.19.09.19.19v4.67Z"/>
+        </svg>
+      </span>
+      <!-- colonne page : icone page cliquable (tri) - paths 1 et 2 -->
+      <span class="col-page">
+        <div id="btn_page" title="Trier par ordre de page">
+          <svg viewBox="335.73 39.77 9.34 12.46" width="9.34" height="12.46" fill="#b0b0b0">
+            <path fill="#b0b0b0" d="M341.18,43.28v-3.5h-5.06c-.21,0-.39.17-.39.39v11.67c0,.21.17.39.39.39h8.56c.21,0,.39-.17.39-.39v-8.17h-3.5c-.21,0-.39-.17-.39-.39Z"/>
+            <path fill="#b0b0b0" d="M341.96,39.78h.03c.1,0,.2.04.27.11l2.69,2.69c.07.07.11.17.11.27v.03h-3.11v-3.11Z"/>
+          </svg>
+        </div>
+      </span>
+      <span class="marge-d"></span>
+    </div>
+
+    <div id="liste_corps">
+      <!-- LES 3 LIGNES SONT VIDES ET CACHEES. Decision FJD du 01/10/2026 :
+           " un panneau vide on load " - " vide puis refresh onload ".
+           Aucune donnee n'est ecrite dans le DOM : ni nom, ni page, ni etat.
+           C'est main.js (actualiserListe) qui remplit la liste avec le
+           document REEL, et lui seul.
+           Les 3 lignes ne sont PAS des donnees mais une BIBLIOTHEQUE
+           D'ICONES : chaque etat du moteur est rendu par la ligne qui porte
+           deja l'icone voulue (cf. indexLignePourEtat dans main.js), et
+           jamais par la classe etat-* de la ligne.
+             rang 1 (data-index 0) : triangle ambre  = source MODIFIEE
+             rang 2 (data-index 1) : cercle rouge    = chemin BRISE (absente)
+             rang 3 (data-index 2) : colonne vide    = identique / indetermine
+           C'est une CORRECTION du 01/10 : l'etat " identique " etait aiguille
+           sur la ligne du cercle rouge, si bien qu'une source SAINE
+           s'affichait avec une alerte rouge (defaut constate par FJD). -->
+      <div class="ligne" data-index="0" data-page="" style="display:none">
+        <span class="marge-g"></span>
+        <span class="badge">MD</span>
+        <span class="col-nom"></span>
+        <span class="col-etat">
+          <!-- triangle ambre (path 3, #fcb910) -->
+          <svg viewBox="285.48 62.86 13.79 12.42" width="13.79" height="12.42" fill="#fcb910">
+            <path fill="#fcb910" d="M292.04,63.06l-6.51,11.64c-.1.19-.04.42.15.53.06.03.12.05.19.05h13.01c.21,0,.39-.17.39-.39,0-.07-.02-.13-.05-.19l-6.51-11.64c-.1-.19-.34-.25-.53-.15-.06.04-.11.09-.15.15ZM293.26,73.8c0,.12-.1.22-.22.22h-1.31c-.12,0-.22-.1-.22-.22v-1.31c0-.12.1-.22.22-.22h1.31c.12,0,.22.1.22.22v1.31ZM293.16,71c0,.11-.09.19-.19.19h-1.17c-.11,0-.19-.09-.19-.19v-4.67c0-.11.09-.19.19-.19h1.17c.11,0,.19.09.19.19v4.67Z"/>
+          </svg>
+        </span>
+        <span class="col-page"><span class="page-num"></span></span>
+        <span class="marge-d"></span>
+      </div>
+
+      <div class="ligne" data-index="1" data-page="" style="display:none">
+        <span class="marge-g"></span>
+        <span class="badge">MD</span>
+        <span class="col-nom"></span>
+        <span class="col-etat">
+          <!-- ALERTE = cercle PLEIN #d50f2b (class cls-33 de la reference,
+               <circle cx="292.84" cy="91.93" r="7.11"/>) PORTANT le point
+               d'exclamation blanc (path 4, #fff). Le cercle avait ete perdu a
+               la transposition : sans lui il ne restait qu'un point blanc
+               flottant. viewBox = union des deux traces : le cercle couvre
+               x 285.73->299.95, y 84.82->99.04 (14.22 de diametre), le point
+               est centre sur (292.7 / 91.88). -->
+          <svg viewBox="285.73 84.82 14.22 14.22" width="14.22" height="14.22">
+            <circle cx="292.84" cy="91.93" r="7.11" fill="#d50f2b"/>
+            <path fill="#ffffff" d="M291.84,95.3c0-.31.08-.52.25-.65s.37-.19.61-.19.43.06.6.19.25.34.25.65-.08.51-.25.64-.37.2-.6.2-.44-.07-.61-.2-.25-.34-.25-.64ZM293.31,92.42h-1.2l-.25-4.8h1.7l-.25,4.8Z"/>
+          </svg>
+        </span>
+        <span class="col-page"><span class="page-num"></span></span>
+        <span class="marge-d"></span>
+      </div>
+
+      <div class="ligne" data-index="2" data-page="" style="display:none">
+        <span class="marge-g"></span>
+        <span class="badge">MD</span>
+        <span class="col-nom"></span>
+        <span class="col-etat"></span>
+        <span class="col-page"><span class="page-num"></span></span>
+        <span class="marge-d"></span>
+      </div>
+    </div>
+
+    <div class="filet-entete"></div>
+
+    <div id="liste_note"></div>
+  </div>
+
+  <!-- ===================== ZONE 3 - ACTIONS ===================== -->
+  <div id="zone_actions">
+    <div class="barre-gauche">
+      <!-- chevron expander (path 5, #eaeaea) - bouton 32 x 32 centre sur 24.
+           C'est l'expander de la zone Informations : il ouvre / referme le
+           meme bloc que la ligne « Calibrage » (#calibrage). -->
+      <div class="bouton-icone" id="btn_expand" title="Afficher / masquer la zone Informations (calibrage)">
+        <svg id="btn_expand_ferme" class="act-ferme" viewBox="73.26 410.42 5.32 9.15" width="5.32" height="9.15" fill="#eaeaea">
+          <path fill="#eaeaea" id="icone_expand" d="M78.36,414.47l-3.83-3.83c-.29-.29-.76-.29-1.05,0-.29.29-.29.76,0,1.05l3.31,3.31-3.31,3.31c-.29.29-.29.76,0,1.05.29.29.76.29,1.05,0l3.83-3.83c.29-.29.29-.76,0-1.05,0,0,0,0,0,0h0Z"/>
+        </svg>
+        <!-- chevron deplie : LE MEME trace, tourne de 90 degres horaire.
+             viewBox d'origine 73.26 410.42 5.32 9.15, centre 75.92 414.995 ;
+             viewBox ci-dessous = sortie brute de illustrator/rot_chevron.py. -->
+        <svg id="btn_expand_ouvert" class="act-ouvert" viewBox="71.337 412.338 9.155 5.315" width="9.155" height="5.315" fill="#eaeaea">
+          <path fill="#eaeaea" d="M76.445,417.435l3.83,-3.83C80.565,413.315 80.565,412.845 80.275,412.555C79.985,412.265 79.515,412.265 79.225,412.555l-3.31,3.31l-3.31,-3.31C72.315,412.265 71.845,412.265 71.555,412.555C71.265,412.845 71.265,413.315 71.555,413.605l3.83,3.83C75.675,417.725 76.145,417.725 76.435,417.435C76.435,417.435 76.435,417.435 76.435,417.435l0,0Z"/>
+        </svg>
+      </div>
+    </div>
+
+    <div id="nb_selection"></div>
+
+    <div class="barre-droite">
+      <!-- chaine = relier un fichier (paths 6 et 7)
+           CABLE le 01/10/2026 : c'est l'entree du PREMIER import. Le panneau
+           ne sait lire une source que dans l'etiquette du document, et cette
+           etiquette nait d'un import : sans ce bouton, impasse. Le selecteur
+           natif UXP rend un chemin, confie au MEME tube gele que " Importer ". -->
+      <div class="bouton-icone" id="btn_relier" title="Relier un fichier Markdown">
+        <svg viewBox="233.32 408.85 12.33 12.32" width="12.33" height="12.32" fill="#eaeaea">
+          <path fill="#eaeaea" d="M244.83,409.67c-1.09-1.09-2.86-1.09-3.95,0-.15.15-1.66,1.64-2.08,2.06.5-.03,1,.05,1.46.24.2-.2,1.39-1.37,1.47-1.45.62-.62,1.63-.62,2.26,0s.62,1.63,0,2.26h0l-2.77,2.77c-.35.34-.82.52-1.31.51-.39,0-.77-.16-1.05-.43-.21-.17-.38-.38-.48-.63-.06.03-.12.08-.17.12l-.64.67c.13.24.29.46.48.65,1.09,1.09,3.06.92,4.15-.17l2.63-2.63c1.09-1.09,1.09-2.86,0-3.95,0,0,0,0,0,0Z"/>
+          <path fill="#eaeaea" d="M238.69,418.04c-.2.2-1.36,1.38-1.44,1.46-.62.62-1.63.62-2.26,0s-.62-1.63,0-2.26l2.8-2.79c.35-.34.82-.52,1.31-.5.67.03,1.25.46,1.47,1.08.06-.03.12-.08.17-.12l.67-.67c-.13-.24-.29-.46-.48-.65-1.11-1.08-2.89-1.08-3.99.02l-2.8,2.79c-1.09,1.09-1.09,2.86,0,3.95,1.09,1.09,2.86,1.09,3.95,0,.15-.15,1.63-1.65,2.05-2.07-.5.03-.99-.05-1.46-.24Z"/>
+        </svg>
+      </div>
+
+      <!-- import du fichier (paths 8 et 9) -->
+      <div class="bouton-icone" id="btn_import" title="Importer le fichier">
+        <svg viewBox="269.27 408.76 12.45 12.45" width="12.45" height="12.45" fill="#eaeaea">
+          <path fill="#eaeaea" d="M281.33,408.78h-8.56c-.21,0-.39.17-.39.39v2.33c0,.21.17.39.39.39h.78c.21,0,.39-.17.39-.39v-1.17h6.22v9.33h-6.22v-1.17c0-.21-.17-.39-.39-.39h-.78c-.21,0-.39.17-.39.39v2.33c0,.21.17.39.39.39h8.56c.21,0,.39-.17.39-.39v-11.67c0-.21-.17-.39-.39-.39Z"/>
+          <path fill="#eaeaea" d="M274.72,417.8c0,.17.14.31.31.31,0,0,0,0,0,0,.08,0,.15-.03.2-.08l2.93-2.9c.07-.08.07-.2,0-.27l-2.93-2.9c-.06-.05-.13-.08-.2-.08-.17,0-.31.14-.31.31,0,0,0,0,0,0v2.02h-5.06c-.21,0-.39.17-.39.39v.78c0,.21.17.39.39.39h5.06v2.02Z"/>
+        </svg>
+      </div>
+
+      <!-- actualiser (paths 10, 11 et 12) -->
+      <div class="bouton-icone" id="btn_actualiser" title="Actualiser (sans rien ecrire)">
+        <svg viewBox="306.05 407.99 12.3 14.01" width="12.3" height="14.01" fill="#eaeaea">
+          <path fill="#eaeaea" d="M312.28,408h.03c.1,0,.2.04.27.11l2.69,2.69c.07.07.11.17.11.28v.03h-3.11v-3.11Z"/>
+          <path fill="#eaeaea" d="M309.94,418.5c0-2.79,2.26-5.06,5.06-5.06.13,0,.26,0,.39.02v-1.58h-3.5c-.21,0-.39-.17-.39-.39v-3.5h-5.06c-.21,0-.39.17-.39.39v11.67c0,.21.17.39.39.39h3.89c-.26-.62-.39-1.28-.39-1.94ZM318.35,419.49c-.52,1.83-2.43,2.9-4.27,2.38-.7-.2-1.31-.61-1.76-1.17l-.49.49s-.08.06-.14.06c-.11,0-.2-.09-.2-.19,0,0,0,0,0,0v-1.94c0-.11.09-.19.19-.19h1.94c.11,0,.2.09.19.2,0,0,0,0,0,0,0,.05-.02.1-.06.14l-.68.68c.76,1.06,2.23,1.3,3.29.54.38-.27.67-.65.83-1.09.06-.15.2-.24.36-.24h.49c.16,0,.29.13.29.3,0,.03,0,.06-.01.08Z"/>
+          <path fill="#eaeaea" d="M311.65,417.54c.52-1.84,2.43-2.9,4.27-2.38.7.2,1.31.61,1.76,1.17l.49-.49s.08-.06.14-.06c.11,0,.2.09.2.19,0,0,0,0,0,0v1.94c0,.11-.09.19-.19.19h-1.94c-.11,0-.2-.09-.19-.2,0,0,0,0,0,0,0-.05.02-.1.06-.14l.68-.68c-.76-1.06-2.23-1.3-3.29-.54-.38.27-.67.66-.83,1.09-.06.15-.2.24-.36.24h-.49c-.16,0-.29-.13-.29-.3,0-.03,0-.06.01-.08Z"/>
+        </svg>
+      </div>
+
+      <!-- crayon = editer (path 13) -->
+      <div class="bouton-icone" id="btn_editer" title="Editer">
+        <svg viewBox="341.3 408.81 12.39 12.39" width="12.39" height="12.39" fill="#eaeaea">
+          <path fill="#eaeaea" d="M353.55,411.19l-2.24-2.24c-.09-.09-.21-.14-.34-.14h-.01c-.14,0-.26.06-.36.16l-8.12,8.12s-.08.1-.1.16l-1.08,3.62c-.04.15.18.33.3.33,0,0,.02,0,.02,0,.11-.02,3.06-.91,3.62-1.08.06-.02.12-.05.16-.1l8.12-8.12c.09-.09.15-.21.16-.34.01-.14-.04-.27-.13-.37ZM344.93,419.4c-.84.25-1.89.57-2.62.79l.78-2.62,1.84,1.83Z"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ZONE 4 - INFORMATIONS ===================== -->
+  <div id="zone_infos">
+
+    <div class="filet-h"></div>
+
+    <div id="titre_infos">Informations sur les liens</div>
+
+    <div class="filet-h" style="margin-top: 6.7px;"></div>
+
+    <!-- fiche : les six ":" sont tous sur l'abscisse x 140.37 du panneau.
+         VIDE dans le DOM : c'est main.js (selectionner) qui l'ecrit depuis la
+         source REELLE, jamais depuis la maquette (decision FJD 01/10/2026).
+         La geometrie de la fiche (hauteur des lignes, abscisse des ":",
+         troncature de .val) est INCHANGEE : seules les valeurs partent. -->
+    <div id="fiche">
+      <div class="ligne-fiche">
+        <span class="cle">Nom</span><span class="val">: <span id="info_nom"></span></span>
+      </div>
+      <div class="ligne-fiche etat-ligne">
+        <span class="cle">Etat</span><span class="val"><span class="sep">:</span> <span id="info_etat" class="etat"></span></span>
+      </div>
+      <div class="ligne-fiche">
+        <span class="cle">Taille</span><span class="val">: <span id="info_taille"></span></span>
+      </div>
+      <div class="ligne-fiche">
+        <span class="cle">Date de modification</span><span class="val">: <span id="info_date"></span></span>
+      </div>
+      <!-- La troncature de .val reste le filet de securite pour un chemin
+           long : le point de suspension n'est plus ecrit dans le contenu (il
+           y annoncait une source de demonstration), la CSS s'en charge. -->
+      <div class="ligne-fiche">
+        <span class="cle">Chemin</span><span class="val">: <span id="info_chemin"></span></span>
+      </div>
+      <div class="ligne-fiche">
+        <span class="cle">Modele</span><span class="val">: <span id="info_modele"></span></span>
+      </div>
+    </div>
+
+    <!-- ligne expandable  Calibrage  (refermee dans la reference) -->
+    <div id="ligne_calibrage" title="Cliquer pour afficher / masquer le calibrage">
+      <span class="cal-spacer"></span>
+      <span class="cal-icone">
+        <svg id="icone_calibrage" class="cal-ferme" viewBox="80.76 562.71 5.32 9.15" width="5.32" height="9.15" fill="#eaeaea">
+          <path fill="#eaeaea" d="M85.86,566.76l-3.83-3.83c-.29-.29-.76-.29-1.05,0-.29.29-.29.76,0,1.05l3.31,3.31-3.31,3.31c-.29.29-.29.76,0,1.05.29.29.76.29,1.05,0l3.83-3.83c.29-.29.29-.76,0-1.05,0,0,0,0,0,0h0Z"/>
+        </svg>
+        <!-- chevron ouvert : LE MEME trace que le chevron ferme ci-dessus,
+             simplement tourne de 90 degres horaire. La rotation est GRAVEE
+             dans le trace (attribut d) par illustrator/rot_chevron.py, car
+             `transform` n'est pas documente dans la surface CSS d'UXP.
+             viewBox d'origine 80.76 562.71 5.32 9.15, centre 83.42 567.285. -->
+        <svg id="icone_calibrage_ouvert" class="cal-ouvert" viewBox="78.845 564.625 9.15 5.32" width="9.15" height="5.32" fill="#eaeaea">
+          <path fill="#eaeaea" d="M83.945,569.725l3.83,-3.83C88.065,565.605 88.065,565.135 87.775,564.845C87.485,564.555 87.015,564.555 86.725,564.845l-3.31,3.31l-3.31,-3.31C79.815,564.555 79.345,564.555 79.055,564.845C78.765,565.135 78.765,565.605 79.055,565.895l3.83,3.83C83.175,570.015 83.645,570.015 83.935,569.725C83.935,569.725 83.935,569.725 83.935,569.725l0,0Z"/>
+        </svg>
+      </span>
+      <span class="cal-texte">Calibrage</span>
+    </div>
+
+    <!-- contenu du calibrage : masque, main.js le passe en flex.
+         Valeurs VIDES : elles sont ecrites depuis la lecture disque reelle. -->
+    <div id="calibrage">
+      <div class="ligne-fiche">
+        <span class="cle">mots</span><span class="val">: <span id="info_mots"></span></span>
+      </div>
+      <div class="ligne-fiche">
+        <span class="cle">signes</span><span class="val">: <span id="info_signes"></span></span>
+      </div>
+    </div>
+
+    <div class="filet-h"></div>
+    <div id="espace_bas"></div>
+  </div>
+
+  <pre id="journal"></pre>
+
+  <script src="main.js"></script>
+</div>
+
+</body>
+</html>
